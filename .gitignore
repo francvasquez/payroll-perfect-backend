@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+function.zip
+*.zip
+.env
+.DS_Store

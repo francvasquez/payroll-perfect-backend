@@ -1,0 +1,190 @@
+# Client specific configuration
+DEFAULT_MIN_WAGE = 17.25
+DEFAULT_MIN_WAGE_40 = 2640.00
+WEEKDAYS = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+]
+DEFAULT_OT_DAY_MAX = 8.0
+DEFAULT_OT_WEEK = 40
+OT_EXCEPTIONS = {"2JT": {"Name": "Hilton Bayside Inn", "Hours": 7.5}}
+DBLT_HOURS = 12
+
+# COLS for reducing dataframe at import
+TA_COLS = [
+    "Employee",
+    "ID",
+    "Status",
+    "Start",
+    "Date/Time",
+    "In Punch",
+    "Out Punch",
+    "Totaled Amount",
+]
+
+# COLS for finding header row
+TA_KEY_COLS = ["Employee", "ID", "Status"]
+WFN_KEY_COLS = ["CO.", "PAY DATE", "Payroll Nameame"]
+WAIVER_KEY_COLS = ["Name", "Check"]
+
+# COLS for printing waiver
+WAIVER_PRINT_COLS = ["Name", "Check_Pure"]
+
+# COLS for printing WFN
+COLUMNS_TO_SHOW = [
+    "Payroll Name",
+    "IDX",
+    "1.5 OT Earnings Due",
+    "Actual Pay Check",
+    "Variance",
+]
+COLUMNS_TO_SHOW_DBLE = [
+    "Payroll Name",
+    "IDX",
+    "Double Time Due",
+    "Actual Pay Check Dble",
+    "Variance Dble",
+]
+COLUMNS_TO_SHOW_BRKCRD = [
+    "Payroll Name",
+    "IDX",
+    "Break Credit Hours",
+    "Break Credit Due",
+    "Actual Pay BrkCrd",
+    "Variance BrkCrd",
+    "Break Credit Due / Break Credit Hours",
+    "Regular Rate Paid",
+]
+COLUMNS_TO_SHOW_REST = [
+    "Payroll Name",
+    "IDX",
+    "Rest Credit Hours",
+    "Rest Credit Due",
+    "Actual Pay RestCrd",
+    "Variance RestCrd",
+    "Rest Credit Due / Rest Credit Hours",
+    "Regular Rate Paid",
+]
+COLUMNS_TO_SHOW_SICK = [
+    "Payroll Name",
+    "IDX",
+    "Sick Credit Hours",
+    "Sick Credit Due",
+    "Sick Paid",
+    "Variance Sick",
+    "Sick Credit Due / Sick Credit Hours",
+    "Regular Rate Paid",
+]
+COLUMNS_TO_SHOW_FLSA = [
+    "Payroll Name",
+    "IDX",
+    "Position Status",
+    "FLSA Code",
+    "Regular Rate Paid",
+]
+COLUMNS_TO_SHOW_MINWAGE = [
+    "Payroll Name",
+    "IDX",
+    "Position Status",
+    "FLSA Code",
+    "REG",
+    "Base Rate",
+    "Regular Rate Paid",
+    "S_Sick Pay_Earnings",
+    "V_Vacation_Earnings",
+]
+COLUMNS_TO_SHOW_NONACTIVE = [
+    "Payroll Name",
+    "IDX",
+    "Position Status",
+    "V_Vacation_Hours",
+    "Termination Date",
+    "REG",
+]
+# COLS for printing TA
+COLS_PRINT = ["Employee", "Totaled Amount"]
+COLS_PRINT2_A = [
+    "ID",
+    "Employee",
+    "Prev Out Punch",
+    "Break Time (min)",
+    "In Punch",
+    "Out Punch",
+    "Totaled Amount",
+    "Shift Length",
+    # "Total Worked Hours Workday",
+    "Next Break Time (min)",
+    "Next In Punch",
+    # "Next Out Punch",
+    "Next Out Punch",
+    "Next Totaled Amount",
+    "Paid Break Credit (hrs)",
+    "Waiver on File?",
+    # "Flag",
+]
+COLS_PRINT3 = [
+    "Employee",
+    "ID",
+    "Prev In Punch",
+    "Prev Out Punch",
+    "Break Time (min)",
+    "In Punch",
+    "Totaled Amount",
+    "Next Break Time (min)",
+    "Paid Break Credit (hrs)",
+]
+COLS_PRINT5 = [
+    "Employee",
+    "ID",
+    "Prev Out Punch",
+    "In Punch",
+    "Break Time (min)",
+    "Regular Rate Paid",
+    "Split Paid ($)",
+    "Split at Min Wage ($)",
+    "Split Shift Due ($)",
+]
+
+COLS_PRINT7 = [
+    "ID",
+    "Employee",
+    "Date",
+    "Total Worked Hours Workday",
+    "Paid Break Credit (hrs)",
+]
+COLS_PRINT8 = [
+    "Employee",
+    "ID",
+    "Hours in Seven Consecutive Days",
+    "Totaled Amount",
+    "First day of Seven",
+]
+COLS_PRINT9 = [
+    "Employee",
+    "ID",
+    "Total OT Hours Pay Period",
+    "OT Hours Paid",
+    "OT Variance (hrs)",
+]
+COLS_PRINT9a = [
+    "Employee",
+    "ID",
+    "Total DT Hours Pay Period",
+    "DT Hours Paid",
+    "DT Variance (hrs)",
+]
+COLS_PRINT10 = [
+    "ID",
+    "Employee",
+    "Paid Break Credit (hrs)",
+    "Due Break Credit (hrs)",
+    "Variance",
+    "Short Break",
+    "Did Not Break",
+    "Over Twelve",
+]
