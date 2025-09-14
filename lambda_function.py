@@ -1,11 +1,8 @@
-# lambda_function.py
 import json
 import pandas as pd
-import numpy as np
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
-#import utility  # Your shared utility module
 
 def lambda_handler(event, context):
     # STEP 0: Variables - will be passed by user later
