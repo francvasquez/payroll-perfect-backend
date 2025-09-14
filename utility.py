@@ -35,13 +35,11 @@ def to_pandas_datetime(df, *columns):
         df[col] = pd.to_datetime(df[col])
     return df
 
-
 def import_excel(file, key_cols, keep_cols=None):
     excel_io = io.BytesIO(file)
     header_row = utility.find_header_row(excel_io, key_cols)
     df = pd.read_excel(excel_io, header=header_row, usecols=keep_cols)
     return df
-
 
 def find_header_row(file, key_columns=None):
     if key_columns is None:
