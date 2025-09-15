@@ -1,11 +1,13 @@
 import pandas as pd
 import utility, io
+from functools import wraps
 
 
 def debug_to_csv(df, IDs, cols, filename):
     print("Columns:", df.columns)
     debug_subset = df.loc[df["ID"].isin(IDs), cols]
     debug_subset.to_csv(filename, index=False)
+
 
 def format_datetime_columns(df, global_date_format, per_column_format=None):
     """Convert all datetime64[ns] columns to strings using either a global
@@ -19,11 +21,14 @@ def format_datetime_columns(df, global_date_format, per_column_format=None):
         df[col] = df[col].dt.strftime(fmt).fillna("N/A")
     return df
 
+
 def print_except(df, rows, *exclude_columns):
     print(df.loc[:rows].drop(columns=list(exclude_columns)))
 
+
 def print_with_mask(df, mask, *exclude_columns):
     print(df.loc[mask, :].drop(columns=list(exclude_columns)))
+
 
 def to_pandas_datetime(df, *columns):
     """
@@ -35,11 +40,13 @@ def to_pandas_datetime(df, *columns):
         df[col] = pd.to_datetime(df[col])
     return df
 
+
 def import_excel(file, key_cols, keep_cols=None):
     excel_io = io.BytesIO(file)
     header_row = utility.find_header_row(excel_io, key_cols)
     df = pd.read_excel(excel_io, header=header_row, usecols=keep_cols)
     return df
+
 
 def find_header_row(file, key_columns=None):
     if key_columns is None:
@@ -55,4 +62,3 @@ def find_header_row(file, key_columns=None):
             return i  # Found header row
 
     raise ValueError("Header row not found.")
-
