@@ -49,6 +49,7 @@ def lambda_handler(event, context):
                                 "ta_rows": len(df),
                                 "anomalies": len(anomalies_df),
                                 "bypunch_rows": len(bypunch_df),
+                                "stapled_rows": len(stapled_df),
                             },
                             # Include sample data for UI
                             "anomalies_sample": (
