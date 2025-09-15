@@ -19,7 +19,9 @@ def lambda_handler(event, context):
             print(
                 f"Request body size: {body_size} bytes ({body_size/1024/1024:.2f} MB)"
             )  # DEBUG
+            t1 = time.time()
             body = json.loads(event["body"])
+            print(f"JSON parse time: {time.time()-t1:.2f}s")
 
             # Get parameters from request
             min_wage = body.get("min_wage", 15.00)
@@ -28,37 +30,48 @@ def lambda_handler(event, context):
 
             # Process uploaded files (Base64 encoded)
             if "waiver_file" in body:
-                print(f"Processing waiver file...")
+                # print(f"Processing waiver file...")
                 waiver_content = base64.b64decode(body["waiver_file"])
-                print(f"Waiver decoded size: {len(waiver_content)} bytes")
+                # print(f"Waiver decoded size: {len(waiver_content)} bytes")
                 # Waiver has headers on row 1 (default)
                 waiver_df = pd.read_excel(io.BytesIO(waiver_content))
-                print(f"Waiver df rows: {len(waiver_df)}")
+                # print(f"Waiver df rows: {len(waiver_df)}")
                 processed_waiver_df = process_waiver(waiver_df)
-                print(f"Waiver processed in {time.time()-start_time:.2f}s")
+                # print(f"Waiver processed in {time.time()-start_time:.2f}s")
 
             if "wfn_file" in body:
-                print(f"Processing wfn file...")
+                # print(f"Processing wfn file...")
                 wfn_content = base64.b64decode(body["wfn_file"])
-                print(f"WFN decoded size: {len(wfn_content)} bytes")
+                # print(f"WFN decoded size: {len(wfn_content)} bytes")
                 # WFN has headers on row 6 (0-indexed = row 5)
                 wfn_df = pd.read_excel(io.BytesIO(wfn_content), header=5)
-                print(f"WFN df rows: {len(wfn_df)}")
+                # print(f"WFN df rows: {len(wfn_df)}")
                 processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
-                print(f"WFN processed in {time.time()-start_time:.2f}s")
+                # print(f"WFN processed in {time.time()-start_time:.2f}s")
 
             if "ta_file" in body:
                 print(f"Processing ta file...")
+                t2 = time.time()
                 ta_content = base64.b64decode(body["ta_file"])
+                print(f"Base64 decode time: {time.time()-t2:.2f}s")
+
                 print(f"TA decoded size: {len(ta_content)} bytes")
                 # TA has headers on row 8 (0-indexed = row 7)
-                ta_df = pd.read_excel(io.BytesIO(ta_content), header=7)
+
+                t3 = time.time()
+                with open("/tmp/ta_temp.xlsx", "wb") as f:
+                    f.write(ta_content)
+                print(f"Write to disk time: {time.time()-t3:.2f}s")
+
+                t4 = time.time()
+                ta_df = pd.read_excel(io.BytesIO(ta_content), header=7)  # SLOWWW
                 print(f"TA df rows: {len(ta_df)}")
+                print(f"Excel Read Time: {time.time()-t4:.2f}s")  ## SLOWWW
+
                 # Process TA with both waiver and wfn data
                 df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
                     ta_df, min_wage, ot_day_max, processed_waiver_df, processed_wfn_df
                 )
-                print(f"TA processed in {time.time()-start_time:.2f}s")
 
                 # Return processed data
                 return {
