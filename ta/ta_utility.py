@@ -351,28 +351,25 @@ def merge_source_into_target_auto(source_df, target_df, key_col="ID"):
 
 
 def add_seventh_day_hours(df):
-    # Populates the total hours worked in the seventh day if 7 consecutive days worked.
-    # Note data needs to be pre sorted by default  otherwise use below
-    # Adds auxiliary column for first day of the seven day streak
+    # Ensure data is sorted by ID and Date
+    df = df.sort_values(["ID", "Date"]).copy()
 
-    # group per ID
-    results = []
-    for _, group in df.groupby("ID"):
-        dates = group["Date"]
-        totals = group["Totaled Amount"]
+    def compute_group(g):
+        # Difference in days
+        diff = g["Date"].diff().dt.days.fillna(0)
+        # Identify consecutive sequences
+        consec_group = (diff != 1).cumsum()
+        # Compute streak length within each sequence
+        streak = g.groupby(consec_group).cumcount() + 1
+        # Rolling sum of 7 days
+        rolling_sum = g["Totaled Amount"].rolling(7, min_periods=7).sum()
+        # Keep only sums where streak >= 7
+        return rolling_sum.where(streak >= 7).fillna(0)
 
-        # rolling 7-day consecutive check
-        consec = (dates.diff().dt.days == 1).astype(int)
-        consec_streak = consec.groupby((consec != 1).cumsum()).cumsum() + 1
-
-        mask = consec_streak >= 7
-        rolling_sum = totals.rolling(7, min_periods=7).sum()
-
-        # only keep sums where 7 consecutive days exist
-        result = rolling_sum.where(mask)
-        results.append(result)
-
-    df["Hours in Seven Consecutive Days"] = pd.concat(results).fillna(0)
+    # Apply per ID group
+    df["Hours in Seven Consecutive Days"] = df.groupby("ID", group_keys=False).apply(
+        compute_group
+    )
     df["First day of Seven"] = df["Date"] - pd.Timedelta(days=6)
 
     return df
