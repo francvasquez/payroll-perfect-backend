@@ -4,7 +4,7 @@ from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
-import time
+import time, os
 
 
 def lambda_handler(event, context):
@@ -50,28 +50,24 @@ def lambda_handler(event, context):
                 # print(f"WFN processed in {time.time()-start_time:.2f}s")
 
             if "ta_file" in body:
-                print(f"Processing ta file...")
+                print(f"Starting process for TA file")
                 t2 = time.time()
                 ta_content = base64.b64decode(body["ta_file"])
-                print(f"Base64 decode time: {time.time()-t2:.2f}s")
-
+                print(f"base64.b64decode decode time: {time.time()-t2:.2f}s")
                 print(f"TA decoded size: {len(ta_content)} bytes")
                 # TA has headers on row 8 (0-indexed = row 7)
-
-                t3 = time.time()
-                with open("/tmp/ta_temp.xlsx", "wb") as f:
-                    f.write(ta_content)
-                print(f"Write to disk time: {time.time()-t3:.2f}s")
 
                 t4 = time.time()
                 ta_df = pd.read_excel(io.BytesIO(ta_content), header=7)  # SLOWWW
                 print(f"TA df rows: {len(ta_df)}")
-                print(f"Excel Read Time: {time.time()-t4:.2f}s")  ## SLOWWW
+                print(f"pd.read_excel read time: {time.time()-t4:.2f}s")  ## SLOWWW
 
+                t5 = time.time()
                 # Process TA with both waiver and wfn data
                 df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
                     ta_df, min_wage, ot_day_max, processed_waiver_df, processed_wfn_df
                 )
+                print(f"process_data_ta time: {time.time()-t5:.2f}s")  ## SLOWWW
 
                 # Return processed data
                 return {
