@@ -11,9 +11,7 @@ def process_data_ta(
 
     # Updated df: Assure timestamps are in Panda's datetime format
 
-    t1 = time.time()
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Date/Time")
-    print(f"Pandas Datetime: {time.time()-t1:.2f}s")
 
     # Normalize Date in case it came with hours - converts the time to midnight (00:00:00). Rename.
     df["Date/Time"] = df["Date/Time"].dt.normalize()
@@ -23,9 +21,7 @@ def process_data_ta(
     df = ta_utility.add_total_hours_workday(df)
 
     # New df: Sort and staple system generated midnight punches
-    t2 = time.time()
     stapled_df = ta_utility.sort_and_staple(df)
-    print(f"Stapled DF creation: {time.time()-t2:.2f}s")
 
     # Updated df: Add time helper columns
     df = ta_utility.add_time_helper_cols(df)
@@ -67,11 +63,14 @@ def process_data_ta(
     t3 = time.time()
     # New df: A reduced col df with daily and add DT and OT calc cols
     bypunch_df = ta_utility.create_bypunch(df, ot_day_max)
+    print(f"Punch df creation: {time.time()-t3:.2f}s")
 
     # Updated df: Adds col "Hours in Seven Consecutive Days" and "First day of Seven".
     bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)
 
     # Updated df: Add OT and DT columns from WFN
+    t4 = time.time()
+
     ta_utility.add_col_from_another_df(
         home_df=bypunch_df,
         lookup_df=processed_wfn_df,
@@ -88,7 +87,7 @@ def process_data_ta(
         lookup_tgt="DBLTIME HRS",
         home_new_col="DT Hours Paid",
     )
-
+    print(f"Punch lookup: {time.time()-t4:.2f}s")
     # Updated df: Add OT vs WFN variances cols.
     bypunch_df["OT Variance (hrs)"] = (
         bypunch_df["Total OT Hours Pay Period"] - bypunch_df["OT Hours Paid"]
@@ -96,10 +95,8 @@ def process_data_ta(
     bypunch_df["DT Variance (hrs)"] = (
         bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"]
     )
-    print(f"By punch section: {time.time()-t3:.2f}s")
+    print(f"Total By punch section: {time.time()-t3:.2f}s")
     # Create anomalies DF
-    t4 = time.time()
     anomalies_df = ta_utility.create_anomalies(df, stapled_df)
-    print(f"Anomalies section: {time.time()-t4:.2f}s")
 
     return (df, bypunch_df, stapled_df, anomalies_df)
