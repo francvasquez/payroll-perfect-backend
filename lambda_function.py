@@ -8,20 +8,15 @@ import time, os
 
 
 def lambda_handler(event, context):
-    start_time = time.time()
-    print(f"Starting backeend processing...")  # DEBUG
+    total_start = time.time()
+    print(f"Starting lambda_handler")  # DEBUG
+
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
     try:
         # Check if this is a real request with files
         if event.get("body"):
-            body_size = len(event["body"])
-            print(
-                f"Request body size: {body_size} bytes ({body_size/1024/1024:.2f} MB)"
-            )  # DEBUG
-            t1 = time.time()
             body = json.loads(event["body"])
-            print(f"JSON parse time: {time.time()-t1:.2f}s")
 
             # Get parameters from request
             min_wage = body.get("min_wage", 15.00)
@@ -30,70 +25,63 @@ def lambda_handler(event, context):
 
             # Process uploaded files (Base64 encoded)
             if "waiver_file" in body:
-                # print(f"Processing waiver file...")
                 waiver_content = base64.b64decode(body["waiver_file"])
-                # print(f"Waiver decoded size: {len(waiver_content)} bytes")
-                # Waiver has headers on row 1 (default)
                 waiver_df = pd.read_excel(io.BytesIO(waiver_content))
-                # print(f"Waiver df rows: {len(waiver_df)}")
                 processed_waiver_df = process_waiver(waiver_df)
-                # print(f"Waiver processed in {time.time()-start_time:.2f}s")
 
             if "wfn_file" in body:
-                # print(f"Processing wfn file...")
                 wfn_content = base64.b64decode(body["wfn_file"])
-                # print(f"WFN decoded size: {len(wfn_content)} bytes")
-                # WFN has headers on row 6 (0-indexed = row 5)
                 wfn_df = pd.read_excel(io.BytesIO(wfn_content), header=5)
-                # print(f"WFN df rows: {len(wfn_df)}")
                 processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
-                # print(f"WFN processed in {time.time()-start_time:.2f}s")
 
             if "ta_file" in body:
                 print(f"Starting process for TA file")
-                t2 = time.time()
+
+                t1 = time.time()
                 ta_content = base64.b64decode(body["ta_file"])
-                print(f"base64.b64decode decode time: {time.time()-t2:.2f}s")
+                print(f"Base64 decode: {time.time()-t1:.2f}s")
                 print(f"TA decoded size: {len(ta_content)} bytes")
-                # TA has headers on row 8 (0-indexed = row 7)
 
-                t4 = time.time()
-                ta_df = pd.read_excel(io.BytesIO(ta_content), header=7)  # SLOWWW
+                t2 = time.time()
+                ta_df = pd.read_excel(
+                    io.BytesIO(ta_content), engine="openpyxl", header=7
+                )  # SLOWWW
                 print(f"TA df rows: {len(ta_df)}")
-                print(f"pd.read_excel read time: {time.time()-t4:.2f}s")  ## SLOWWW
+                print(f"Excel read: {time.time()-t2:.2f}s")
 
-                t5 = time.time()
-                # Process TA with both waiver and wfn data
+                t3 = time.time()
                 df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
                     ta_df, min_wage, ot_day_max, processed_waiver_df, processed_wfn_df
                 )
-                print(f"process_data_ta time: {time.time()-t5:.2f}s")  ## SLOWWW
+                print(f"process_data_ta time: {time.time()-t3:.2f}s")
 
-                # Return processed data
+                t4 = time.time()
+                result = {
+                    "success": True,
+                    "summary": {
+                        "ta_rows": len(df),
+                        "anomalies": len(anomalies_df),
+                        "bypunch_rows": len(bypunch_df),
+                    },
+                    "anomalies_sample": (
+                        anomalies_df.head(100).to_dict("records")
+                        if len(anomalies_df) > 0
+                        else []
+                    ),
+                }
+                print(f"Result creation: {time.time()-t4:.2f}s")
+
+                t5 = time.time()
+                response_body = json.dumps(result)
+                print(f"JSON dumps: {time.time()-t5:.2f}s")
+
+                print(f"TOTAL TIME: {time.time()-total_start:.2f}s")
+
                 return {
                     "statusCode": 200,
                     "headers": CORS_HEADERS,
-                    "body": json.dumps(
-                        {
-                            "success": True,
-                            "summary": {
-                                "ta_rows": len(df),
-                                "anomalies": len(anomalies_df),
-                                "bypunch_rows": len(bypunch_df),
-                                "stapled_rows": len(stapled_df),
-                            },
-                            # Include sample data for UI
-                            "anomalies_sample": (
-                                anomalies_df.head(10).to_dict("records")
-                                if len(anomalies_df) > 0
-                                else []
-                            ),
-                        }
-                    ),
+                    "body": response_body,
                 }
-
-        # Otherwise run test data (your existing code)
-        # ... existing test code ...
 
     except Exception as e:
         return {
