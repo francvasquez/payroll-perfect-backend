@@ -3,9 +3,12 @@ import pandas as pd
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
+from config import *
 
 
 def lambda_handler(event, context):
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
     try:
         # Check if this is a real request with files
         if event.get("body"):
@@ -41,7 +44,7 @@ def lambda_handler(event, context):
                 # Return processed data
                 return {
                     "statusCode": 200,
-                    "headers": {"Access-Control-Allow-Origin": "*"},
+                    "headers": CORS_HEADERS,
                     "body": json.dumps(
                         {
                             "success": True,
@@ -67,6 +70,6 @@ def lambda_handler(event, context):
     except Exception as e:
         return {
             "statusCode": 500,
-            "headers": {"Access-Control-Allow-Origin": "*"},
+            "headers": CORS_HEADERS,
             "body": json.dumps({"error": str(e)}),
         }

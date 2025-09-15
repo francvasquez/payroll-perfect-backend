@@ -1,3 +1,10 @@
+# API configuration
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+}
+
 # Client specific configuration
 DEFAULT_MIN_WAGE = 17.25
 DEFAULT_MIN_WAGE_40 = 2640.00
