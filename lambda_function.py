@@ -1,9 +1,19 @@
-import json, base64, io
+import json, base64, io, boto3
 import pandas as pd
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
+
+# Add boto3 client
+s3_client = boto3.client("s3")
+S3_BUCKET = "pp-btl-demo"  # replace with your bucket name
+
+
+def read_excel_from_s3(key, header=0, engine=None):
+    """Reads Excel file from S3 into pandas DataFrame"""
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    return pd.read_excel(obj["Body"], header=header, engine=engine)
 
 
 def lambda_handler(event, context):
@@ -20,23 +30,20 @@ def lambda_handler(event, context):
             min_wage_40 = body.get("min_wage_40", DEFAULT_MIN_WAGE_40)
             ot_day_max = body.get("ot_day_max", DEFAULT_OT_DAY_MAX)
 
-            # Process uploaded files (Base64 encoded)
-            if "waiver_file" in body:
-                waiver_content = base64.b64decode(body["waiver_file"])
-                waiver_df = pd.read_excel(io.BytesIO(waiver_content))
+            # Process files from S3
+            if "waiver_key" in body:
+                waiver_key = body["waiver_key"]
+                waiver_df = read_excel_from_s3(waiver_key)
                 processed_waiver_df = process_waiver(waiver_df)
 
-            if "wfn_file" in body:
-                wfn_content = base64.b64decode(body["wfn_file"])
-                wfn_df = pd.read_excel(io.BytesIO(wfn_content), header=5)
+            if "wfn_key" in body:
+                wfn_key = body["wfn_key"]
+                wfn_df = read_excel_from_s3(wfn_key, header=5)
                 processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
 
-            if "ta_file" in body:
-                ta_content = base64.b64decode(body["ta_file"])
-                ta_df = pd.read_excel(
-                    io.BytesIO(ta_content), engine="openpyxl", header=7
-                )  # SLOWWW - 3 seconds
-                print(f"TA df rows: {len(ta_df)}")
+            if "ta_key" in body:
+                ta_key = body["ta_key"]
+                ta_df = read_excel_from_s3(ta_key, header=7, engine="openpyxl")
                 df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
                     ta_df, min_wage, ot_day_max, processed_waiver_df, processed_wfn_df
                 )  # SLOWWW - check add_seventh_day_hours function @ 2 seconds
