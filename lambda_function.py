@@ -105,11 +105,12 @@ def handle_file_processing(event):
             "success": True,
             "summary": {
                 "ta_rows": len(df),
-                "anomalies": len(anomalies_df),
+                "anomalies_rows": len(anomalies_df),
                 "bypunch_rows": len(bypunch_df),
+                "stapled_rows": len(stapled_df),
             },
-            "anomalies_sample": (
-                anomalies_df.head(50).to_dict("records")
+            "anomalies_df": (
+                anomalies_df.head(200).to_dict("records")  # Cap at 200 rows
                 if len(anomalies_df) > 0
                 else []
             ),
