@@ -2,7 +2,7 @@
 import json, boto3
 from datetime import datetime
 import pandas as pd
-from ..config import S3_BUCKET, CORS_HEADERS
+from config import S3_BUCKET, CORS_HEADERS
 
 s3_client = boto3.client("s3")
 
