@@ -108,6 +108,8 @@ def handle_file_processing(event):
                 "anomalies_rows": len(anomalies_df),
                 "bypunch_rows": len(bypunch_df),
                 "stapled_rows": len(stapled_df),
+                "wfn_rows": len(processed_wfn_df),
+                "waiver_rows": len(processed_waiver_df),
             },
             "anomalies_df": (
                 anomalies_df.head(200).to_dict("records")  # Cap at 200 rows
