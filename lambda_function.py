@@ -14,32 +14,33 @@ def lambda_handler(event, context):
     print(f"Full event: {json.dumps(event)}")
 
     # Handle CORS preflight
-    if (
-        event.get("httpMethod") == "OPTIONS"
-        or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
-    ):
+    if event.get("httpMethod") == "OPTIONS":
         print("Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
-    # Get path to determine action either presigned URL or file processing
-    # Get the path - try all possible fields
-    path = (
-        event.get("rawPath")
-        or event.get("path")
-        or event.get("resource")
-        or event.get("requestContext", {}).get("http", {}).get("path")
-        or ""
-    )
+    try:
+        # Parse the body to check for action
+        body = json.loads(event.get("body", "{}"))
+        action = body.get("action")
 
-    print(f"Detected path: {path}")
+        # Routing
+        if action == "get-upload-url":
+            print("Routing to presigned URL handler")
+            return handle_presigned_url_request(event)
+        else:
+            print("Routing to file processing handler")
+            return handle_file_processing(event)
 
-    # Route to appropriate function based on path
-    if "get-upload-url" in path:
-        print("Routing to presigned URL handler")
-        return handle_presigned_url_request(event)
-    else:
-        print("Routing to file processing handler")
-        return handle_file_processing(event)
+    except Exception as e:
+        print(f"Error in lambda_handler: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": str(e)}),
+        }
 
 
 def handle_file_processing(event):
