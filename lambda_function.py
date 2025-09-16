@@ -14,7 +14,10 @@ def lambda_handler(event, context):
     print(f"Full event: {json.dumps(event)}")
 
     # Handle CORS preflight
-    if event.get("httpMethod") == "OPTIONS":
+    if (
+        event.get("httpMethod") == "OPTIONS"
+        or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
+    ):
         print("Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
@@ -26,10 +29,10 @@ def lambda_handler(event, context):
         # Routing
         if action == "get-upload-url":
             print("Routing to presigned URL handler")
-            return handle_presigned_url_request(event)
+            return handle_presigned_url_request(event, context)
         else:
             print("Routing to file processing handler")
-            return handle_file_processing(event)
+            return handle_file_processing(event, context)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
