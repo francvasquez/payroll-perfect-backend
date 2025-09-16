@@ -1,23 +1,18 @@
-import json, base64, io, boto3
+import json
 import pandas as pd
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
-
-# Add boto3 client
-s3_client = boto3.client("s3")
-S3_BUCKET = "pp-bartell-demo"  # replace with your bucket name
-
-
-def read_excel_from_s3(key, header=0, engine=None):
-    """Reads Excel file from S3 into pandas DataFrame"""
-    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
-    return pd.read_excel(obj["Body"], header=header, engine=engine)
+from helper.aws import read_excel_from_s3, generate_presigned_url
 
 
 def lambda_handler(event, context):
+    # Presigned URL route (returns URL for direct S3 upload)
+    if event.get("path") == "/get-upload-url":
+        return generate_presigned_url(event, context)
 
+    # File processing route (returns processed dataframes)
     if event.get("httpMethod") == "OPTIONS":
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
     try:

@@ -1,0 +1,51 @@
+# lambda_function.py - Add this before lambda_handler
+import json, boto3
+from datetime import datetime
+import pandas as pd
+from ..config import S3_BUCKET, CORS_HEADERS
+
+s3_client = boto3.client("s3")
+
+
+def read_excel_from_s3(key, header=0, engine=None):
+    """Reads Excel file from S3 into pandas DataFrame"""
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    return pd.read_excel(obj["Body"], header=header, engine=engine)
+
+
+def generate_presigned_url(event, context):
+    """Generate presigned URL for direct S3 upload"""
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
+
+    try:
+        body = json.loads(event["body"])
+        file_name = body.get("fileName")
+        file_type = body.get("fileType")  # 'waiver', 'wfn', or 'ta'
+
+        # Create S3 key with timestamp to avoid collisions
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        s3_key = f"uploads/{file_type}/{timestamp}_{file_name}"
+
+        # Generate presigned URL for PUT
+        presigned_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": S3_BUCKET,
+                "Key": s3_key,
+                "ContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            },
+            ExpiresIn=300,  # 5 minutes
+        )
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"uploadUrl": presigned_url, "s3Key": s3_key}),
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": str(e)}),
+        }

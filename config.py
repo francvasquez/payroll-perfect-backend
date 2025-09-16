@@ -1,3 +1,6 @@
+# S3 config
+S3_BUCKET = "pp-bartell-demo"
+
 # API configuration
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
