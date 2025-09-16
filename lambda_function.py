@@ -7,7 +7,7 @@ from config import *
 
 # Add boto3 client
 s3_client = boto3.client("s3")
-S3_BUCKET = "pp-btl-demo"  # replace with your bucket name
+S3_BUCKET = "pp-bartell-demo"  # replace with your bucket name
 
 
 def read_excel_from_s3(key, header=0, engine=None):
