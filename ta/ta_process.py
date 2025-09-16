@@ -64,10 +64,10 @@ def process_data_ta(
     # New df: A reduced col df with daily and add DT and OT calc cols
     bypunch_df = ta_utility.create_bypunch(df, ot_day_max)
 
-    t7 = time.time()
+    #  = time.time()
     # Updated df: Adds col "Hours in Seven Consecutive Days" and "First day of Seven".
-    bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
-    print(f"7th day hours: {time.time()-t7:.2f}s")
+    # bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
+    # print(f"7th day hours: {time.time()-t7:.2f}s")
 
     # Updated df: Add OT and DT columns from WFN
 
