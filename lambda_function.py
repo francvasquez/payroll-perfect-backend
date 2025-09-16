@@ -29,10 +29,10 @@ def lambda_handler(event, context):
         # Routing
         if action == "get-upload-url":
             print("Routing to presigned URL handler")
-            return handle_presigned_url_request(event, context)
+            return handle_presigned_url_request(event)
         else:
             print("Routing to file processing handler")
-            return handle_file_processing(event, context)
+            return handle_file_processing(event)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")

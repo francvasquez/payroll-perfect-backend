@@ -1,5 +1,5 @@
 # lambda_function.py - Add this before lambda_handler
-import json, boto3
+import json, boto3, io
 from datetime import datetime
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
@@ -11,10 +11,11 @@ def read_excel_from_s3(key, header=0, engine=None):
     """Reads Excel file from S3 into pandas DataFrame"""
     print(f"Reading from S3: bucket={S3_BUCKET}, key={key}")
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
-    return pd.read_excel(obj["Body"], header=header, engine=engine)
+    file_bytes = io.BytesIO(obj["Body"].read())
+    return pd.read_excel(file_bytes, header=header, engine=engine)
 
 
-def handle_presigned_url_request(event, context):
+def handle_presigned_url_request(event):
     """
     Generates presigned URL for direct S3 upload
     This is called when React wants to upload a file
