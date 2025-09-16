@@ -10,15 +10,36 @@ from helper.aws import read_excel_from_s3, handle_presigned_url_request
 def lambda_handler(event, context):
     # Main entry point - routes request to approapriate function
 
+    # DEBUG: Log everything about the request
+    print(f"Full event: {json.dumps(event)}")
+
     # Handle CORS preflight
-    if event.get("httpMethod") == "OPTIONS":
+    if (
+        event.get("httpMethod") == "OPTIONS"
+        or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
+    ):
+        print("Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
     # Get path to determine action either presigned URL or file processing
-    if event.get("path") == "/get-upload-url":
-        return handle_presigned_url_request(event, context)
-    if event.get("path") == "/process-files":
-        return handle_file_processing(event, context)
+    # Get the path - try all possible fields
+    path = (
+        event.get("rawPath")
+        or event.get("path")
+        or event.get("resource")
+        or event.get("requestContext", {}).get("http", {}).get("path")
+        or ""
+    )
+
+    print(f"Detected path: {path}")
+
+    # Route to appropriate function based on path
+    if "get-upload-url" in path:
+        print("Routing to presigned URL handler")
+        return handle_presigned_url_request(event)
+    else:
+        print("Routing to file processing handler")
+        return handle_file_processing(event)
 
 
 def handle_file_processing(event):
