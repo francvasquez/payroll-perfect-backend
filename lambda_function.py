@@ -1,10 +1,11 @@
 import json
-import pandas as pd
+import time
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
 from helper.aws import read_excel_from_s3, handle_presigned_url_request
+from helper.aux import time_and_run_function
 
 
 def lambda_handler(event, context):
@@ -72,24 +73,26 @@ def handle_file_processing(event):
             }
 
         # Process Waiver FIRST
-        print(f"Reading waiver from S3: {body['waiver_key']}")
         waiver_df = read_excel_from_s3(body["waiver_key"])
+        waiver_start = time.time()
         processed_waiver_df = process_waiver(waiver_df)
+        waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
         print(f"Waiver processed: {len(processed_waiver_df)} rows")
 
         # Process WFN SECOND
         print(f"Reading WFN from S3: {body['wfn_key']}")
         wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
         print(f"WFN read from Excel: {len(wfn_df)} rows")
+        wfn_start = time.time()
         processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
+        wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         # Process TA THIRD (using results from first two)
         print(f"Reading TA from S3: {body['ta_key']}")
         ta_df = read_excel_from_s3(body["ta_key"], header=7)
         print(f"TA read from Excel: {len(ta_df)} rows")
-
-        # Run TA processing with dependencies
+        ta_start = time.time()
         df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
             ta_df,
             min_wage,
@@ -97,18 +100,26 @@ def handle_file_processing(event):
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )
+        ta_process_time = round((time.time() - ta_start) * 1000, 2)
         print("TA processed")
 
         # Return complete results
         result = {
             "success": True,
             "summary": {
-                "ta_rows": len(df),
-                "anomalies_rows": len(anomalies_df),
-                "bypunch_rows": len(bypunch_df),
-                "stapled_rows": len(stapled_df),
-                "wfn_rows": len(processed_wfn_df),
-                "waiver_rows": len(processed_waiver_df),
+                "rows": {
+                    "ta_rows": len(df),
+                    "anomalies_rows": len(anomalies_df),
+                    "bypunch_rows": len(bypunch_df),
+                    "stapled_rows": len(stapled_df),
+                    "wfn_rows": len(processed_wfn_df),
+                    "waiver_rows": len(processed_waiver_df),
+                },
+                "timing": {
+                    "ta_process_time_ms": ta_process_time,
+                    "wfn_process_time_ms": wfn_process_time,
+                    "waiver_process_time_ms": waiver_process_time,
+                },
             },
             "anomalies_df": (
                 anomalies_df.head(200).to_dict("records")  # Cap at 200 rows

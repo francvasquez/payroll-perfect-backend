@@ -1,5 +1,5 @@
-## NEED UPDATE S3lambda_function
-- CORS preflight
+## lambda_function
+- Handles CORS preflight
 - Request
     - If preflight, returns 
-    - Else handles actual request
+    - Else handles presigned url request or file processing
