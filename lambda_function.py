@@ -10,17 +10,16 @@ from helper.aws import read_excel_from_s3, handle_presigned_url_request
 def lambda_handler(event, context):
     # Main entry point - routes request to approapriate function
 
-    # DEBUG: Log everything about the request
-    print(f"Full event: {json.dumps(event)}")
-
     # Handle CORS preflight
     if (
-        event.get("httpMethod") == "OPTIONS"
-        or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
+        event.get("httpMethod")
+        == "OPTIONS"
+        ## or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
     ):
-        print("Returning OPTIONS response for CORS")
+        print("Preflight: Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
+    # Handle actual request (either presigned URL or file processing)
     try:
         # Parse the body to check for action
         body = json.loads(event.get("body", "{}"))
@@ -28,10 +27,8 @@ def lambda_handler(event, context):
 
         # Routing
         if action == "get-upload-url":
-            print("Routing to presigned URL handler")
             return handle_presigned_url_request(event)
         else:
-            print("Routing to file processing handler")
             return handle_file_processing(event)
 
     except Exception as e:
@@ -83,13 +80,14 @@ def handle_file_processing(event):
         # Process WFN SECOND
         print(f"Reading WFN from S3: {body['wfn_key']}")
         wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
+        print(f"WFN read from Excel: {len(wfn_df)} rows")
         processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         # Process TA THIRD (using results from first two)
         print(f"Reading TA from S3: {body['ta_key']}")
         ta_df = read_excel_from_s3(body["ta_key"], header=7)
-        print(f"TA loaded: {len(ta_df)} rows")
+        print(f"TA read from Excel: {len(ta_df)} rows")
 
         # Run TA processing with dependencies
         df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
@@ -99,6 +97,7 @@ def handle_file_processing(event):
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )
+        print("TA processed")
 
         # Return complete results
         result = {

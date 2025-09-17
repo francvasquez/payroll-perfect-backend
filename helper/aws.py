@@ -9,7 +9,6 @@ s3_client = boto3.client("s3")
 
 def read_excel_from_s3(key, header=0, engine=None):
     """Reads Excel file from S3 into pandas DataFrame"""
-    print(f"Reading from S3: bucket={S3_BUCKET}, key={key}")
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
     return pd.read_excel(file_bytes, header=header, engine=engine)
@@ -26,8 +25,6 @@ def handle_presigned_url_request(event):
         file_name = body.get("fileName")
         file_type = body.get("fileType")  # 'waiver', 'wfn', or 'ta'
 
-        print(f"Generating presigned URL for {file_type}: {file_name}")
-
         # Create S3 key with timestamp to avoid collisions
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         s3_key = f"uploads/{file_type}/{timestamp}_{file_name}"
@@ -42,7 +39,6 @@ def handle_presigned_url_request(event):
             },
             ExpiresIn=300,  # 5 minutes
         )
-        print(f"Generated presigned URL for key: {s3_key}")
 
         return {
             "statusCode": 200,
