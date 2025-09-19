@@ -302,6 +302,9 @@ def create_anomalies(df, stapled_df):
         output_df["Due Break Credit (hrs)"] - output_df["Paid Break Credit (hrs)"]
     )
 
+    # Sort for columns correct display in UI
+    output_df = output_df[config.COLS_PRINT10]
+
     return output_df
 
 
