@@ -1,5 +1,5 @@
 # S3 config
-S3_BUCKET = "pp-bartell-demo"
+S3_BUCKET = "pp-client-data"
 
 # API configuration
 CORS_HEADERS = {

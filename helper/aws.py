@@ -23,15 +23,12 @@ def handle_presigned_url_request(event):
         # Parse request body
         body = json.loads(event.get("body", "{}"))
         file_name = body.get("fileName")
-        # file_type = body.get("fileType")  # 'waiver', 'wfn', or 'ta'
         s3_path = body.get("s3Path")  # full S3 path if provided
-        # client_id = body.get("clientId")
-        # pay_date = body.get("payDate")    # string, e.g. "2025-09-19"
+        # client_id = body.get("clientId") For future use
+        # pay_date = body.get("payDate")    # string, e.g. "2025-09-19" For future use
 
         # Create S3 key
         s3_key = f"{s3_path}/{file_name}"
-        # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        # s3_key = f"uploads/{file_type}/{timestamp}_{file_name}"
 
         # Generate presigned URL for PUT
         presigned_url = s3_client.generate_presigned_url(
