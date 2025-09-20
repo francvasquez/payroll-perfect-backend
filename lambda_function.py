@@ -5,7 +5,6 @@ from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
 from helper.aws import read_excel_from_s3, handle_presigned_url_request
-from helper.aux import time_and_run_function
 
 
 def lambda_handler(event, context):
