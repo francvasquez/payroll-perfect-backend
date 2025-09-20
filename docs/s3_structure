@@ -1,0 +1,12 @@
+s3://your-app-data/
+    └── clients/
+         └── clientA/
+              ├── raw/
+              │    └── 2025-09-01/
+              │         ├── ta.xlsx
+              │         └── wfn.xlsx
+              │    └── 2025-09-16/
+              │         ├── ta.xlsx
+              │         └── wfn.xlsx
+              └── waiver/
+                   └── waiver.xlsx
