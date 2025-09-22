@@ -4,7 +4,13 @@ from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
-from helper.aws import read_excel_from_s3, handle_presigned_url_request, save_csv_to_s3
+from helper.aws import (
+    read_excel_from_s3,
+    handle_presigned_url_request,
+    save_csv_to_s3,
+    save_waiver_json_s3,
+    save_table_json_s3,
+)
 
 
 def lambda_handler(event, context):
@@ -109,7 +115,11 @@ def handle_file_processing(event):
         if waiver_df is not None:
             save_csv_to_s3(waiver_df, "waiver", event)
 
-        # Return complete results
+        # Store json files for ready-to-serve front consumption
+        save_waiver_json_s3(waiver_df, "waiver", event)
+        save_table_json_s3(anomalies_df, "anomalies_df", event)
+
+        # Return some results
         result = {
             "success": True,
             "summary": {
@@ -127,7 +137,7 @@ def handle_file_processing(event):
                     "waiver_process_time_ms": waiver_process_time,
                 },
             },
-            "anomalies_df": (
+            "anomalies_df": (  ##TO REMOVE AND REPLACE BY JSON CONSUMPTION
                 anomalies_df.head(200).to_dict("records")  # Cap at 200 rows
                 if len(anomalies_df) > 0
                 else []

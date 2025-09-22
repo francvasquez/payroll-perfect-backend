@@ -95,3 +95,63 @@ def save_csv_to_s3(df, file_type, event, s3_client=None):
 
     print(f"Saved {file_type} as CSV to: s3://{S3_BUCKET}/{s3_key}")
     return s3_key
+
+
+def save_waiver_json_s3(df, file_type, event, s3_client=None):
+
+    if s3_client is None:
+        s3_client = boto3.client("s3")
+
+    body = json.loads(event.get("body", "{}"))
+    clientID = body.get("client_id")
+
+    # Determine S3 path based on file type
+    if file_type == "waiver":
+        s3_key = f"clients/{clientID}/waiver/waiver.json"
+    else:
+        return
+
+    # Convert dataframe to JSON (orient="records" makes an array of dicts)
+    json_body = df.to_json(orient="records", date_format="iso")
+
+    # Upload to S3
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=json_body,
+        ContentType="application/json",
+    )
+
+    print(f"Saved {file_type} as JSON to: s3://{S3_BUCKET}/{s3_key}")
+    return s3_key
+
+
+def save_table_json_s3(
+    df,
+    name,
+    event,
+    ##mask, //To include masks later for other tables.
+    s3_client=None,
+):
+
+    if s3_client is None:
+        s3_client = boto3.client("s3")
+
+    body = json.loads(event.get("body", "{}"))
+    payDate = body.get("pay_date")
+    clientID = body.get("client_id")
+    s3_key = f"clients/{clientID}/processed/{payDate}/{name}.json"
+
+    # Convert dataframe to JSON (orient="records" makes an array of dicts)
+    json_body = df.to_json(orient="records", date_format="iso")
+
+    # Upload to S3
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=json_body,
+        ContentType="application/json",
+    )
+
+    print(f"Saved {name} as JSON to: s3://{S3_BUCKET}/{s3_key}")
+    return s3_key
