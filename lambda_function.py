@@ -4,7 +4,7 @@ from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 from ta.ta_process import process_data_ta
 from config import *
-from helper.aws import read_excel_from_s3, handle_presigned_url_request
+from helper.aws import read_excel_from_s3, handle_presigned_url_request, save_csv_to_s3
 
 
 def lambda_handler(event, context):
@@ -100,6 +100,14 @@ def handle_file_processing(event):
         )
         ta_process_time = round((time.time() - ta_start) * 1000, 2)
         print("TA processed")
+
+        # Store raw files to csv for future reference
+        if ta_df is not None:
+            save_csv_to_s3(ta_df, "ta", event)
+        if wfn_df is not None:
+            save_csv_to_s3(wfn_df, "wfn", event)
+        if waiver_df is not None:
+            save_csv_to_s3(waiver_df, "waiver", event)
 
         # Return complete results
         result = {

@@ -1,8 +1,8 @@
 # lambda_function.py - Add this before lambda_handler
 import json, boto3, io
-from datetime import datetime
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
+from io import StringIO
 
 s3_client = boto3.client("s3")
 
@@ -24,8 +24,6 @@ def handle_presigned_url_request(event):
         body = json.loads(event.get("body", "{}"))
         file_name = body.get("fileName")
         s3_path = body.get("s3Path")  # full S3 path if provided
-        # client_id = body.get("clientId") For future use
-        # pay_date = body.get("payDate")    # string, e.g. "2025-09-19" For future use
 
         # Create S3 key
         s3_key = f"{s3_path}/{file_name}"
@@ -54,3 +52,46 @@ def handle_presigned_url_request(event):
                 {"error": str(e), "s3Key": s3_key if "s3_key" in locals() else None}
             ),
         }
+
+
+def save_csv_to_s3(df, file_type, event, s3_client=None):
+    """
+    Save DataFrame as CSV file to S3 following the folder structure.
+
+    Args:
+        df: pandas DataFrame to save
+        file_type: 'ta', 'wfn', or 'waiver'
+        event: Lambda event containing 'client_id' and 'pay_date'
+        s3_client: boto3 S3 client (optional)
+
+    Returns:
+        str: S3 key where file was saved
+    """
+    if s3_client is None:
+        s3_client = boto3.client("s3")
+
+    body = json.loads(event.get("body", "{}"))
+    payDate = body.get("pay_date")
+    clientID = body.get("client_id")
+
+    # Determine S3 path based on file type
+    if file_type == "waiver":
+        s3_key = f"clients/{clientID}/waiver/waiver.csv"
+    else:
+        # Changed from 'parquet' to 'csv' folder
+        s3_key = f"clients/{clientID}/csv/{payDate}/{file_type}.csv"
+
+    # Convert DataFrame to CSV string
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+
+    # Upload to S3
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=csv_buffer.getvalue(),
+        ContentType="text/csv",
+    )
+
+    print(f"Saved {file_type} as CSV to: s3://{S3_BUCKET}/{s3_key}")
+    return s3_key
