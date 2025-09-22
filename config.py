@@ -1,5 +1,5 @@
 # S3 config
-S3_BUCKET = "pp-client-data"  ## Breaking change - was "payroll-perfect-data"
+S3_BUCKET = "pp-client-data"
 
 # API configuration
 CORS_HEADERS = {
