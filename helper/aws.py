@@ -7,6 +7,38 @@ from io import StringIO
 s3_client = boto3.client("s3")
 
 
+def list_pay_periods(client_id):
+    """List available pay periods in processed folder"""
+    s3 = boto3.client("s3")
+    bucket = "pp-client-data"
+    prefix = f"clients/{client_id}/processed/"
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, Delimiter="/")
+
+    # Extract dates from folder names
+    periods = []
+    for obj in response.get("CommonPrefixes", []):
+        # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
+        date = obj["Prefix"].split("/")[-2]
+        periods.append(date)
+
+    return {"periods": periods}
+
+
+def load_processed_results(client_id, pay_date):
+    """Load the processed JSON from S3"""
+    s3 = boto3.client("s3")
+    bucket = "pp-client-data"
+    key = f"clients/{client_id}/processed/{pay_date}/results.json"
+
+    try:
+        response = s3.get_object(Bucket=bucket, Key=key)
+        results = json.loads(response["Body"].read())
+        return {"results": results}
+    except s3.exceptions.NoSuchKey:
+        return {"error": "No processed data for this period"}
+
+
 def read_excel_from_s3(key, header=0, engine=None):
     """Reads Excel file from S3 into pandas DataFrame"""
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)

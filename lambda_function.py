@@ -11,6 +11,8 @@ from helper.aws import (
     save_waiver_json_s3,
     # save_table_json_s3,
     put_result_to_s3,
+    load_processed_results,
+    list_pay_periods,
 )
 
 
@@ -30,8 +32,14 @@ def lambda_handler(event, context):
         # Parse the body to check for action
         body = json.loads(event.get("body", "{}"))
         action = body.get("action")
+        clientId = body.get("clientId")
+        payDate = body.get("payDate")
 
         # Routing
+        if action == "list-pay-periods":
+            return list_pay_periods(clientId)
+        if action == "load-processed-results":
+            return load_processed_results(clientId, payDate)
         if action == "get-upload-url":
             return handle_presigned_url_request(event)
         else:
