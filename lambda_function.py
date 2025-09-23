@@ -9,7 +9,8 @@ from helper.aws import (
     handle_presigned_url_request,
     save_csv_to_s3,
     save_waiver_json_s3,
-    save_table_json_s3,
+    # save_table_json_s3,
+    put_result_to_s3,
 )
 
 
@@ -117,9 +118,9 @@ def handle_file_processing(event):
 
         # Store json files for ready-to-serve front consumption
         save_waiver_json_s3(waiver_df, "waiver", event)
-        save_table_json_s3(anomalies_df, "anomalies_df", event)
+        # save_table_json_s3(anomalies_df, "anomalies_df", event)
 
-        # Return some results
+        # Return results
         result = {
             "success": True,
             "summary": {
@@ -143,6 +144,9 @@ def handle_file_processing(event):
                 else []
             ),
         }
+
+        # Save result as JSON to S3
+        put_result_to_s3(result, event)
 
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps(result)}
 

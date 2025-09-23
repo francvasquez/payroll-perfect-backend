@@ -55,18 +55,9 @@ def handle_presigned_url_request(event):
 
 
 def save_csv_to_s3(df, file_type, event, s3_client=None):
-    """
-    Save DataFrame as CSV file to S3 following the folder structure.
 
-    Args:
-        df: pandas DataFrame to save
-        file_type: 'ta', 'wfn', or 'waiver'
-        event: Lambda event containing 'client_id' and 'pay_date'
-        s3_client: boto3 S3 client (optional)
+    ## Save DataFrame as CSV file to S3 following the folder structure.
 
-    Returns:
-        str: S3 key where file was saved
-    """
     if s3_client is None:
         s3_client = boto3.client("s3")
 
@@ -123,6 +114,29 @@ def save_waiver_json_s3(df, file_type, event, s3_client=None):
     )
 
     print(f"Saved {file_type} as JSON to: s3://{S3_BUCKET}/{s3_key}")
+    return s3_key
+
+
+def put_result_to_s3(
+    result: dict,
+    event,
+    s3_client=None,
+):
+    if s3_client is None:
+        s3_client = boto3.client("s3")
+
+    body = json.loads(event.get("body", "{}"))
+    payDate = body.get("pay_date")
+    clientID = body.get("client_id")
+    s3_key = f"clients/{clientID}/processed/{payDate}/result.json"
+
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=json.dumps(result),
+        ContentType="application/json",
+    )
+    print(f"Saved 'result' as JSON to: s3://{S3_BUCKET}/{s3_key}")
     return s3_key
 
 
