@@ -17,7 +17,6 @@ from helper.aws import (
 
 
 def lambda_handler(event, context):
-    # Main entry point - routes request to approapriate function
 
     # Handle CORS preflight
     if (
@@ -34,6 +33,8 @@ def lambda_handler(event, context):
         action = body.get("action")
         clientId = body.get("clientId")
         payDate = body.get("payDate")
+
+        print("ACTION: ", action, "RAW EVENT: ", json.dumps(event))
 
         # Routing
         if action == "list-pay-periods":

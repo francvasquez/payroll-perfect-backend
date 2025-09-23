@@ -21,6 +21,7 @@ def list_pay_periods(client_id):
         # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
         date = obj["Prefix"].split("/")[-2]
         periods.append(date)
+        print("AVAILABLE PERIODS: ", periods)
 
     return {"periods": periods}
 
@@ -34,9 +35,37 @@ def load_processed_results(client_id, pay_date):
     try:
         response = s3.get_object(Bucket=bucket, Key=key)
         results = json.loads(response["Body"].read())
-        return {"results": results}
+        print(f"Loaded results for {pay_date}: ", results)
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"results": results}),
+        }
     except s3.exceptions.NoSuchKey:
-        return {"error": "No processed data for this period"}
+        print(f"[DEBUG] NoSuchKey: The object does not exist at key: {key}")
+
+        # Optional: list objects under the prefix to see what exists
+        prefix = f"clients/{client_id}/processed/{pay_date}/"
+        list_response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        existing_keys = [obj["Key"] for obj in list_response.get("Contents", [])]
+        print(f"[DEBUG] Existing objects under prefix {prefix}: {existing_keys}")
+
+        return {
+            "statusCode": 404,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": "No processed data for this period"}),
+        }
+
+    except Exception as e:
+        print(f"[ERROR] Unexpected error loading S3 object {key}: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": str(e)}),
+        }
 
 
 def read_excel_from_s3(key, header=0, engine=None):
@@ -160,7 +189,7 @@ def put_result_to_s3(
     body = json.loads(event.get("body", "{}"))
     payDate = body.get("pay_date")
     clientID = body.get("client_id")
-    s3_key = f"clients/{clientID}/processed/{payDate}/result.json"
+    s3_key = f"clients/{clientID}/processed/{payDate}/results.json"
 
     s3_client.put_object(
         Bucket=S3_BUCKET,
