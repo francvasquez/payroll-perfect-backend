@@ -129,7 +129,7 @@ def handle_file_processing(event):
         # Store json files for ready-to-serve front consumption
         save_waiver_json_s3(waiver_df, "waiver", event)
         # save_table_json_s3(anomalies_df, "anomalies_df", event)
-        print("Before generating result")
+
         # Generate result
         result = generate_results(
             df,
@@ -142,7 +142,7 @@ def handle_file_processing(event):
             wfn_process_time,
             waiver_process_time,
         )
-        print("Result generated:", result)
+
         # Save result as JSON to S3 for ready-to-serve consumption
         put_result_to_s3(result, event)
 
