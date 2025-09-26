@@ -14,6 +14,7 @@ from helper.aws import (
     load_processed_results,
     list_pay_periods,
 )
+from helper.results import filter_and_sort_df, generate_results
 
 
 def lambda_handler(event, context):
@@ -129,34 +130,23 @@ def handle_file_processing(event):
         save_waiver_json_s3(waiver_df, "waiver", event)
         # save_table_json_s3(anomalies_df, "anomalies_df", event)
 
-        # Return results
-        result = {
-            "success": True,
-            "summary": {
-                "rows": {
-                    "ta_rows": len(df),
-                    "anomalies_rows": len(anomalies_df),
-                    "bypunch_rows": len(bypunch_df),
-                    "stapled_rows": len(stapled_df),
-                    "wfn_rows": len(processed_wfn_df),
-                    "waiver_rows": len(processed_waiver_df),
-                },
-                "timing": {
-                    "ta_process_time_ms": ta_process_time,
-                    "wfn_process_time_ms": wfn_process_time,
-                    "waiver_process_time_ms": waiver_process_time,
-                },
-            },
-            "anomalies_df": (  ##TO REMOVE AND REPLACE BY JSON CONSUMPTION
-                anomalies_df.head(200).to_dict("records")  # Cap at 200 rows
-                if len(anomalies_df) > 0
-                else []
-            ),
-        }
+        # Generate result
+        result = generate_results(
+            df,
+            anomalies_df,
+            bypunch_df,
+            stapled_df,
+            processed_wfn_df,
+            processed_waiver_df,
+            ta_process_time,
+            wfn_process_time,
+            waiver_process_time,
+        )
 
-        # Save result as JSON to S3
+        # Save result as JSON to S3 for ready-to-serve consumption
         put_result_to_s3(result, event)
 
+        # Return to front end upon uploading files
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps(result)}
 
     except Exception as e:
