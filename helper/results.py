@@ -41,6 +41,9 @@ def filter_and_sort_df_to_dict(
     # Convert Pandas datetime object to ISO
     safe_df_check = convert_datetime_columns_to_iso(df_check)
 
+    # Convert NaN → None for JSON safety
+    df_check = df_check.where(pd.notnull(df_check), None)
+
     return safe_df_check.to_dict("records")
 
 
