@@ -1,6 +1,5 @@
 import utility
 from . import ta_utility
-import time
 
 
 def process_data_ta(
