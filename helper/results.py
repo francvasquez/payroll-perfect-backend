@@ -13,6 +13,11 @@ def filter_and_sort_df_to_dict(
     ascending=True,
     max_rows=None,
 ):
+    """
+    Filter, select, rename, sort, and cap a DataFrame, then convert
+    datetimes to ISO strings and NaNs to None for JSON serialization.
+    Returns a list of dicts.
+    """
     # Default to all rows if no filter
     if base_filter is None:
         mask = pd.Series(True, index=df.index)
@@ -42,7 +47,7 @@ def filter_and_sort_df_to_dict(
     safe_df_check = convert_datetime_columns_to_iso(df_check)
 
     # Convert NaN → None for JSON safety
-    df_check = df_check.where(pd.notnull(df_check), None)
+    safe_df_check = safe_df_check.where(pd.notnull(safe_df_check), None)
 
     return safe_df_check.to_dict("records")
 
