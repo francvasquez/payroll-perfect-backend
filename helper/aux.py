@@ -1,4 +1,19 @@
 import time
+import pandas as pd
+import numpy as np
+
+
+def json_default(o):
+    ## Handles pandas/numpy datetime objects
+    if isinstance(o, pd.Timestamp):
+        return o.isoformat()
+    if isinstance(o, pd.Timedelta):
+        return str(o)
+    if isinstance(o, (np.integer,)):
+        return int(o)
+    if isinstance(o, (np.floating,)):
+        return float(o)
+    return str(o)  # fallback for any other object
 
 
 def time_and_run_function(func, logs, *args, **kwargs):

@@ -14,6 +14,7 @@ from helper.aws import (
     load_processed_results,
     list_pay_periods,
 )
+from helper.aux import json_default
 from helper.results import generate_results
 
 
@@ -143,11 +144,18 @@ def handle_file_processing(event):
             waiver_process_time,
         )
 
+        # Normalize result for safe JSON encoding
+        norm_result = json_default(result)
+
         # Save result as JSON to S3 for ready-to-serve consumption
-        put_result_to_s3(result, event)
+        put_result_to_s3(norm_result, event)
 
         # Return to front end upon uploading files
-        return {"statusCode": 200, "headers": CORS_HEADERS, "body": json.dumps(result)}
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps(norm_result),
+        }
 
     except Exception as e:
         print(f"Error processing files: {str(e)}")
