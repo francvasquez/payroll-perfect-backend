@@ -1,6 +1,7 @@
 import pandas as pd
 from ta import ta_masks
 import config
+from helper.aux import convert_datetime_columns_to_iso
 
 
 def filter_and_sort_df_to_dict(
@@ -37,7 +38,10 @@ def filter_and_sort_df_to_dict(
     if max_rows is not None:
         df_check = df_check.head(max_rows)
 
-    return df_check.to_dict("records")
+    # Convert Pandas datetime object to ISO
+    safe_df_check = convert_datetime_columns_to_iso(df_check)
+
+    return safe_df_check.to_dict("records")
 
 
 def generate_results(
