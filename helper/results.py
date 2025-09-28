@@ -69,25 +69,27 @@ def generate_results(
                 "waiver_process_time_ms": waiver_process_time,
             },
         },
-        ## "1. Break Credit Summary"
-        "break_credit_summary": filter_and_sort_df_to_dict(
-            df=anomalies_df,
-            sort_col="Paid Break Credit (hrs)",
-            ascending=False,
-            max_rows=200,
-        ),
-        ##1a. Short Break: Earned credits
-        "short_break_earned_credits": filter_and_sort_df_to_dict(
-            df=stapled_df,
-            sort_col="Employee",
-            ascending=True,
-            base_filter=ta_masks.short_break(stapled_df),
-            max_rows=200,
-            cols=config.COLS_PRINT3,
-            rename_map={
-                "Regular Rate Paid": "Straight Rate ($)",
-                "Totaled Amount": "Hours Worked",
-            },
-        ),
+        "ta": {
+            ## "1. Break Credit Summary"
+            "break_credit_summary": filter_and_sort_df_to_dict(
+                df=anomalies_df,
+                sort_col="Paid Break Credit (hrs)",
+                ascending=False,
+                max_rows=200,
+            ),
+            ##1a. Short Break: Earned credits
+            "short_break_earned_credits": filter_and_sort_df_to_dict(
+                df=stapled_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=ta_masks.short_break(stapled_df),
+                max_rows=200,
+                cols=config.COLS_PRINT3,
+                rename_map={
+                    "Regular Rate Paid": "Straight Rate ($)",
+                    "Totaled Amount": "Hours Worked",
+                },
+            ),
+        },
     }
     return result
