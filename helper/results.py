@@ -1,4 +1,6 @@
 import pandas as pd
+from ..ta import ta_masks
+import config
 
 
 def filter_and_sort_df_to_dict(
@@ -74,10 +76,18 @@ def generate_results(
             ascending=False,
             max_rows=200,
         ),
-        # "anomalies_df": (
-        #     anomalies_df.head(200).to_dict("records")  # Cap at 200 rows
-        #     if len(anomalies_df) > 0
-        #     else []
-        # ),
+        ##1a. Short Break: Earned credits
+        "short_break_earned_credits": filter_and_sort_df_to_dict(
+            df=stapled_df,
+            sort_col="Employee",
+            ascending=True,
+            base_filter=ta_masks.short_break(stapled_df),
+            max_rows=200,
+            cols=config.COLS_PRINT3,
+            rename_map={
+                "Regular Rate Paid": "Straight Rate ($)",
+                "Totaled Amount": "Hours Worked",
+            },
+        ),
     }
     return result
