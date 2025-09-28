@@ -37,19 +37,6 @@ def filter_and_sort_df_to_dict(
     if max_rows is not None:
         df_check = df_check.head(max_rows)
 
-    # 🔑 Normalize columns for JSON export
-    # Convert datetime to ISO8601 strings
-    for col in df_check.select_dtypes(include=["datetime"]).columns:
-        df_check[col] = df_check[col].dt.isoformat()
-
-    # Convert timedelta to strings
-    for col in df_check.select_dtypes(include=["timedelta"]).columns:
-        df_check[col] = df_check[col].astype(str)
-
-    # Convert numpy numbers to native Python
-    for col in df_check.select_dtypes(include=["int64", "float64"]).columns:
-        df_check[col] = df_check[col].astype(object)
-
     return df_check.to_dict("records")
 
 
