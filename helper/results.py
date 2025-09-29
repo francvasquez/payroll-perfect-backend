@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from ta import ta_masks
+from wfn import wfn_masks
 import config
 from helper.aux import convert_datetime_columns_to_iso
 
@@ -81,6 +82,92 @@ def generate_results(
                 "wfn_process_time_ms": wfn_process_time,
                 "waiver_process_time_ms": waiver_process_time,
             },
+        },
+        "wfn": {
+            ##Overtime Checks Variances
+            "overtime_checks_variances": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance"),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW,
+            ),
+            ##Double Time Checks Variances
+            "doubletime_checks_variances": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Dble"),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_DBLE,
+            ),
+            ##Break Credit Variances
+            "break_credit_variances": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance BrkCrd"),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_BRKCRD,
+                rename_map={
+                    "Actual Pay BrkCrd": "Actual Paid Break Credit",
+                    "Variance BrkCrd": "Variance Break Credit",
+                },
+            ),
+            ##Rest Credit Variances
+            "rest_credit_variances": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance RestCrd"),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_REST,
+                rename_map={
+                    "Actual Pay RestCrd": "Actual Paid Rest Credit",
+                    "Variance RestCrd": "Variance Rest Credit",
+                },
+            ),
+            ##Sick Credit Variances
+            "sick_credit_variances": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Sick"),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_SICK,
+                rename_map={
+                    "Sick Paid": "Actual Paid Sick Credit",
+                    "Variance BrkCrd": "Variance Sick Credit",
+                },
+            ),
+            ##FLSA Check
+            "flsa_check": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.flsa(processed_wfn_df),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_FLSA,
+            ),
+            ##Minimum Wage Check
+            "min_wage_check": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.min_wage_check(processed_wfn_df),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_MINWAGE,
+            ),
+            ##Non-Active Check
+            "non_active_check": filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.non_active_check(processed_wfn_df),
+                max_rows=200,
+                cols=config.COLUMNS_TO_SHOW_NONACTIVE,
+            ),
         },
         "ta": {
             ## "1. Break Credit Summary"
