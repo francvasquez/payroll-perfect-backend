@@ -103,6 +103,29 @@ def generate_results(
                     "Totaled Amount": "Hours Worked",
                 },
             ),
+            ##1b. Short Break: Cases to investigate further
+            "short_break_to_investigate": filter_and_sort_df_to_dict(
+                df=stapled_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=ta_masks.short_break_possible(stapled_df),
+                max_rows=200,
+                cols=config.COLS_PRINT3,
+                rename_map={
+                    "Regular Rate Paid": "Straight Rate ($)",
+                    "Totaled Amount": "Hours Worked",
+                },
+            ),
+            ##1c. Did not take break: Earned credits
+            "did_not_break_earned_credits": filter_and_sort_df_to_dict(
+                df=stapled_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=ta_masks.did_not_break(stapled_df),
+                max_rows=200,
+                cols=config.COLS_PRINT2_A,
+                rename_map={"Totaled Amount": "Hours Worked"},
+            ),
         },
     }
     return result
