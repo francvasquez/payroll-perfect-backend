@@ -108,7 +108,7 @@ def handle_file_processing(event):
         ta_df = read_excel_from_s3(body["ta_key"], header=7)
         print(f"TA read from Excel: {len(ta_df)} rows")
         ta_start = time.time()
-        df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
+        processed_ta_df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
             ta_df,
             min_wage,
             ot_day_max,
@@ -131,7 +131,7 @@ def handle_file_processing(event):
 
         # Generate result
         result = generate_results(
-            df,
+            processed_ta_df,
             anomalies_df,
             bypunch_df,
             stapled_df,
