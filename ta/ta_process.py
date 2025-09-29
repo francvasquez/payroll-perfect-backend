@@ -65,7 +65,7 @@ def process_data_ta(
 
     #  = time.time()
     # Updated df: Adds col "Hours in Seven Consecutive Days" and "First day of Seven".
-    # bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
+    bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
     # print(f"7th day hours: {time.time()-t7:.2f}s")
 
     # Updated df: Add OT and DT columns from WFN

@@ -145,6 +145,58 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLS_PRINT7,
             ),
+            ## NEW ##
+            ##2. Employees with Seven Consecutive Days
+            "seven_consecutive": filter_and_sort_df_to_dict(
+                df=bypunch_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=ta_masks.check_seven_consec(bypunch_df),
+                max_rows=200,
+                cols=config.COLS_PRINT8,
+                rename_map={
+                    "Totaled Amount": "Hours Worked on Seventh Day",
+                },
+            ),
+            ##3. Check Overtime (OT) hours versus WFN
+            "ot_vs_wfn": filter_and_sort_df_to_dict(
+                df=bypunch_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=(
+                    ta_masks.unique_ids(bypunch_df)
+                    & ~ta_masks.zero_rows_bypunch(bypunch_df)
+                    & ta_masks.OT_var_mask(bypunch_df)
+                ),
+                max_rows=200,
+                cols=config.COLS_PRINT9,
+                rename_map={"Total OT Hours Pay Period": "OT Hours on Time Card"},
+            ),
+            ##3a. Check Doubletime (DT) hours versus WFN
+            "dt_vs_wfn": filter_and_sort_df_to_dict(
+                df=bypunch_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=(
+                    ta_masks.unique_ids(bypunch_df)
+                    & ~ta_masks.zero_rows_bypunch(bypunch_df)
+                    & ta_masks.DT_var_mask(bypunch_df)
+                ),
+                max_rows=200,
+                cols=config.COLS_PRINT9a,
+                rename_map={"Total DT Hours Pay Period": "DT Hours on Time Card"},
+            ),
+            ##4. Split Shift Check
+            "split_shift": filter_and_sort_df_to_dict(
+                df=stapled_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=ta_masks.split_shift(stapled_df),
+                max_rows=200,
+                cols=config.COLS_PRINT5,
+                rename_map={"Regular Rate Paid": "Straight Rate ($)"},
+            ),
         },
     }
+    print("result.ta.split_shift: ", result["ta"]["split_shift"])
     return result
