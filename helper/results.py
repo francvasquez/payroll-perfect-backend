@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from ta import ta_masks
 import config
 from helper.aux import convert_datetime_columns_to_iso
@@ -47,7 +48,7 @@ def filter_and_sort_df_to_dict(
     safe_df_check = convert_datetime_columns_to_iso(df_check)
 
     # Convert NaN → None for JSON safety
-    safe_df_check = safe_df_check.where(pd.notnull(safe_df_check), None)
+    safe_df_check = safe_df_check.replace({np.nan: None})
 
     return safe_df_check.to_dict("records")
 
