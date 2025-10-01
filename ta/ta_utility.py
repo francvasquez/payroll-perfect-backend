@@ -155,6 +155,12 @@ def add_waiver_check(df, processed_waiver_df):
     return df
 
 
+def apply_override_else_global(df, param_name, global_value, locations_config):
+    return df["Location"].map(
+        lambda x: locations_config.get(x, {}).get(param_name, global_value)
+    )
+
+
 def create_bypunch(df, locations_config, ot_day_max, ot_week_max, dt_day_max):
     # Calculate total sum for each date and ID combination
     bypunch_df = df[
@@ -188,22 +194,21 @@ def create_bypunch(df, locations_config, ot_day_max, ot_week_max, dt_day_max):
         "Totaled Amount"
     ].transform("sum")
 
-    ## OVERRIDE COLUMNS ##
-    override_start = time.time()
+    ## OVERRIDE COLUMNS ## process time 0.02 seconds
+
     # Is there a location based day overtime trigger? Else take global "ot_day_max"
-    bypunch_df["OT Day Max"] = bypunch_df["Location"].map(
-        lambda x: locations_config.get(x, {}).get("ot_day_max", ot_day_max)
+    bypunch_df["OT Day Max"] = apply_override_else_global(
+        bypunch_df, "ot_day_max", ot_day_max, locations_config
     )
     # Is there a location based week overtime trigger? Else take global "ot_week_max"
-    bypunch_df["OT Week Max"] = bypunch_df["Location"].map(
-        lambda x: locations_config.get(x, {}).get("ot_week_max", ot_week_max)
+    bypunch_df["OT Week Max"] = apply_override_else_global(
+        bypunch_df, "ot_week_max", ot_week_max, locations_config
     )
     # Is there a location based day doubletime trigger? Else take global "dt_day_max"
-    bypunch_df["DT Day Max"] = bypunch_df["Location"].map(
-        lambda x: locations_config.get(x, {}).get("dt_day_max", dt_day_max)
+    bypunch_df["DT Day Max"] = apply_override_else_global(
+        bypunch_df, "dt_day_max", dt_day_max, locations_config
     )
-    override_process_time = round((time.time() - override_start) * 1000, 2)
-    print("Override process time: ", override_process_time)
+
     #######################
 
     # Overtime per workday (exclude DT hours)
