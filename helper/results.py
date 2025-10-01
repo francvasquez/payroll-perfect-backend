@@ -94,6 +94,8 @@ def generate_results(
                 cols=config.COLUMNS_TO_SHOW,
                 rename_map={
                     "Variance": "Variance ($)",
+                    "1.5 OT Earnings Due": "1.5 OT Earnings Due ($)",
+                    "Actual Pay Check": "Actual Pay Check ($)",
                 },
             ),
             ##Double Time Checks Variances
