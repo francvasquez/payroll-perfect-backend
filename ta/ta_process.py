@@ -12,8 +12,6 @@ def process_data_ta(
     processed_waiver_df=None,
     processed_wfn_df=None,
 ):
-    # Import Excel file to df with only specific files
-    # df = utility.import_excel(ta_file, config.TA_KEY_COLS, config.TA_COLS)
 
     # Updated df: Assure timestamps are in Panda's datetime format
 

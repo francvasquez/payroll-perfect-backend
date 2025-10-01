@@ -120,7 +120,9 @@ def handle_file_processing(event):
         wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
         print(f"WFN read from Excel: {len(wfn_df)} rows")
         wfn_start = time.time()
-        processed_wfn_df = process_data_wfn(wfn_df, min_wage, min_wage_40)
+        processed_wfn_df = process_data_wfn(
+            wfn_df, locations_config, min_wage, min_wage_40
+        )
         wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 

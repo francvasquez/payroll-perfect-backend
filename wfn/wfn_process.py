@@ -1,9 +1,8 @@
 import numpy as np
+import utility
 
 
-def process_data_wfn(df, min_wage, min_wage_40):
-    # Import Excel file to df LAMBDA WILL PASS DF
-    # df = utility.import_excel(wfn_file, config.WFN_KEY_COLS)
+def process_data_wfn(df, locations_config, min_wage, min_wage_40):
 
     # Variables
     MinE = 100
@@ -90,7 +89,19 @@ def process_data_wfn(df, min_wage, min_wage_40):
         df["Sick Credit Due"] / df["Sick Credit Hours"]
     ).round(2)
 
+    ## OVERRIDE COLUMN CREATION ###
+    # Is there a location based minimum wage? Else take global "min_wage"
+    df["Min Wage"] = utility.apply_override_else_global(
+        df, "CO.", "min_wage", min_wage, locations_config
+    )
+    # Is there a location based minimum wage 40? Else take global "min_wage_40"
+    df["Min Wage 40"] = utility.apply_override_else_global(
+        df, "CO.", "min_wage_40", min_wage_40, locations_config
+    )
+    ####
+
     # FLSA, Min Wage, Non-Active Checks
+
     df["FLSA Check"] = np.where(
         (df["Regular Rate Paid"] < MinE) & (df["FLSA Code"] == "E"), "CHECK", ""
     )
@@ -98,7 +109,7 @@ def process_data_wfn(df, min_wage, min_wage_40):
         (df["Position Status"] == "Leave"),
         "",
         np.where(
-            (df["FLSA Code"] == "N") & (df["Base Rate"].round(2) >= min_wage),
+            (df["FLSA Code"] == "N") & (df["Base Rate"].round(2) >= df["Min Wage"]),
             "",
             np.where(
                 (df["FLSA Code"] == "E")
@@ -106,7 +117,7 @@ def process_data_wfn(df, min_wage, min_wage_40):
                     df["Regular Rate Paid"]
                     + df["S_Sick Pay_Earnings"]
                     + df["V_Vacation_Earnings"]
-                    >= min_wage_40
+                    >= df["Min Wage 40"]
                 ),
                 "",
                 "CHECK",
