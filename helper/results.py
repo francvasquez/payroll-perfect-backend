@@ -92,6 +92,9 @@ def generate_results(
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance"),
                 max_rows=200,
                 cols=config.COLUMNS_TO_SHOW,
+                rename_map={
+                    "Variance": "Variance ($)",
+                },
             ),
             ##Double Time Checks Variances
             "doubletime_checks_variances": filter_and_sort_df_to_dict(
