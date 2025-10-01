@@ -15,8 +15,8 @@ def add_time_helper_cols(df):
         "Next Out Punch": ("Out Punch", -1),
         "Prev Date": ("Date", 1),
         "Next Date": ("Date", -1),
-        "Prev Totaled Amount": ("Totaled Amount", 1),
-        "Next Totaled Amount": ("Totaled Amount", -1),
+        "Prev Punch Length (hrs)": ("Totaled Amount", 1),
+        "Next Punch Length (hrs)": ("Totaled Amount", -1),
     }
 
     # Apply all shifts in one loop
@@ -95,7 +95,7 @@ def add_shift_length(df):
 
     df["Shift Length (hrs)"] = np.where(
         df["Next Break Time (min)"] < 60,  # Case a
-        df["Totaled Amount"] + df["Next Totaled Amount"],
+        df["Totaled Amount"] + df["Next Punch Length (hrs)"],
         np.where(
             df["Next Break Time (min)"] >= 60,  # Case b
             df["Totaled Amount"],
@@ -119,11 +119,11 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     )
     # Auxiliary: Current plus previous totaled hours x straight rate paid
     df["Split Paid ($)"] = df["Regular Rate Paid"] * (
-        df["Totaled Amount"] + df["Prev Totaled Amount"]
+        df["Totaled Amount"] + df["Prev Punch Length (hrs)"]
     )
     # Auxiliary: Current and previous totaled hours x min wage
     df["Split at Min Wage ($)"] = min_wage * (
-        1 + df["Totaled Amount"] + df["Prev Totaled Amount"]
+        1 + df["Totaled Amount"] + df["Prev Punch Length (hrs)"]
     )
     # Split Shift Due ($) (applicable if Master boolean above)
     df["Split Shift Due ($)"] = df["Split at Min Wage ($)"] - df["Split Paid ($)"]

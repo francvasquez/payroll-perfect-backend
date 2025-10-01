@@ -141,7 +141,7 @@ COLS_PRINT2_A = [
     "Next In Punch",
     # "Next Out Punch",
     "Next Out Punch",
-    "Next Totaled Amount",
+    "Next Punch Length (hrs)",
     "Paid Break Credit (hrs)",
     "Waiver on File?",
     # "Flag",
