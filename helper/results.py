@@ -187,7 +187,7 @@ def generate_results(
                 cols=config.COLS_PRINT3,
                 rename_map={
                     "Regular Rate Paid": "Straight Rate ($)",
-                    "Totaled Amount": "Hours Worked",
+                    "Totaled Amount": "Punch Length (hrs)",
                 },
             ),
             ##1b. Short Break: Cases to investigate further
@@ -200,7 +200,7 @@ def generate_results(
                 cols=config.COLS_PRINT3,
                 rename_map={
                     "Regular Rate Paid": "Straight Rate ($)",
-                    "Totaled Amount": "Hours Worked",
+                    "Totaled Amount": "Punch Length (hrs)",
                 },
             ),
             ##1c. Did not take break: Earned credits
@@ -211,7 +211,7 @@ def generate_results(
                 base_filter=ta_masks.did_not_break(stapled_df),
                 max_rows=200,
                 cols=config.COLS_PRINT2_A,
-                rename_map={"Totaled Amount": "Hours Worked"},
+                rename_map={"Totaled Amount": "Punch Length (hrs)"},
             ),
             ##1d. Did not take break: Cases to investigate further
             "did_not_break_to_investigate": filter_and_sort_df_to_dict(
@@ -221,7 +221,7 @@ def generate_results(
                 base_filter=ta_masks.did_not_break_possible(stapled_df),
                 max_rows=200,
                 cols=config.COLS_PRINT2_A,
-                rename_map={"Totaled Amount": "Hours Worked"},
+                rename_map={"Totaled Amount": "Punch Length (hrs)"},
             ),
             ##1e. Over 12 hours Check
             "over_12_hours": filter_and_sort_df_to_dict(
