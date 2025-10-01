@@ -3,6 +3,7 @@ import config
 import pandas as pd
 from . import ta_masks
 import datetime
+import time
 
 
 def add_time_helper_cols(df):
@@ -139,8 +140,8 @@ def add_col_from_another_df(
 
 
 def add_waiver_check(df, processed_waiver_df):
-    df["Short_ID"] = df["ID"].str[:3]
-    df["Waiver Lookup"] = df["Short_ID"] + " " + df["Employee"]
+    df["Location"] = df["ID"].str[:3]
+    df["Waiver Lookup"] = df["Location"] + " " + df["Employee"]
 
     add_col_from_another_df(
         home_new_col="Waiver on File?",
@@ -154,13 +155,13 @@ def add_waiver_check(df, processed_waiver_df):
     return df
 
 
-def create_bypunch(df, ot_day_max):
+def create_bypunch(df, locations_config, ot_day_max, ot_week_max, dt_day_max):
     # Calculate total sum for each date and ID combination
     bypunch_df = df[
         [
             "Employee",
             "ID",
-            "Short_ID",
+            "Location",
             "Date",
             "Totaled Amount",
             "In Punch",
@@ -187,14 +188,29 @@ def create_bypunch(df, ot_day_max):
         "Totaled Amount"
     ].transform("sum")
 
-    # Is it 8 or a CBA Day max e.g. 7.5?
-    bypunch_df["OT Day Max"] = bypunch_df["Short_ID"].map(
-        lambda x: config.OT_EXCEPTIONS.get(x, {"Hours": ot_day_max})["Hours"]
+    ## OVERRIDE COLUMNS ##
+    override_start = time.time()
+    # Is there a location based day overtime trigger? Else take global "ot_day_max"
+    bypunch_df["OT Day Max"] = bypunch_df["Location"].map(
+        lambda x: locations_config.get(x, {}).get("ot_day_max", ot_day_max)
     )
+    # Is there a location based week overtime trigger? Else take global "ot_week_max"
+    bypunch_df["OT Week Max"] = bypunch_df["Location"].map(
+        lambda x: locations_config.get(x, {}).get("ot_week_max", ot_week_max)
+    )
+    # Is there a location based day doubletime trigger? Else take global "dt_day_max"
+    bypunch_df["DT Day Max"] = bypunch_df["Location"].map(
+        lambda x: locations_config.get(x, {}).get("dt_day_max", dt_day_max)
+    )
+    override_process_time = round((time.time() - override_start) * 1000, 2)
+    print("Override process time: ", override_process_time)
+    #######################
 
     # Overtime per workday (exclude DT hours)
     bypunch_df["Workday OT Hours"] = np.maximum(
-        np.minimum(bypunch_df["Workday Hours"], 12) - bypunch_df["OT Day Max"], 0
+        np.minimum(bypunch_df["Workday Hours"], bypunch_df["DT Day Max"])
+        - bypunch_df["OT Day Max"],
+        0,
     )
 
     # Add individual Workday OT hours per week
@@ -208,8 +224,8 @@ def create_bypunch(df, ot_day_max):
 
     # Double time per workday
     bypunch_df["Workday DT Hours"] = np.maximum(
-        bypunch_df["Workday Hours"] - 12, 0
-    )  # DT hours per day
+        bypunch_df["Workday Hours"] - bypunch_df["DT Day Max"], 0
+    )
 
     # Add individual Workday DT hours per week
     bypunch_df["Sum of Workday DT Hours"] = bypunch_df.set_index(
@@ -222,7 +238,7 @@ def create_bypunch(df, ot_day_max):
 
     # Gross and Net Week Overtime (double dipping check)
     bypunch_df["Week OT Hours Gross"] = np.maximum(
-        0, bypunch_df["Week Hours"] - config.DEFAULT_OT_WEEK
+        0, bypunch_df["Week Hours"] - bypunch_df["OT Week Max"]
     )
     bypunch_df["Week OT Hours Net"] = np.maximum(
         0,

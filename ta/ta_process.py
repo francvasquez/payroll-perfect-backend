@@ -3,7 +3,14 @@ from . import ta_utility
 
 
 def process_data_ta(
-    df, min_wage, ot_day_max, processed_waiver_df=None, processed_wfn_df=None
+    df,
+    locations_config,
+    min_wage,
+    ot_day_max,
+    ot_week_max,
+    dt_day_max,
+    processed_waiver_df=None,
+    processed_wfn_df=None,
 ):
     # Import Excel file to df with only specific files
     # df = utility.import_excel(ta_file, config.TA_KEY_COLS, config.TA_COLS)
@@ -61,7 +68,9 @@ def process_data_ta(
     # BY PUNCH DF ######################################
 
     # New df: A reduced col df with daily and add DT and OT calc cols
-    bypunch_df = ta_utility.create_bypunch(df, ot_day_max)
+    bypunch_df = ta_utility.create_bypunch(
+        df, locations_config, ot_day_max, ot_week_max, dt_day_max
+    )
 
     #  = time.time()
     # Updated df: Adds col "Hours in Seven Consecutive Days" and "First day of Seven".

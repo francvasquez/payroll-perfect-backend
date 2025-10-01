@@ -8,9 +8,18 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
 }
 
-# Client specific configuration
+# These are fallbacks in case the front doesn't pass default (global) parameters
+# Consider different approach?
 DEFAULT_MIN_WAGE = 17.25
 DEFAULT_MIN_WAGE_40 = 2640.00
+DEFAULT_OT_DAY_MAX = 8.0
+DEFAULT_OT_WEEK_MAX = 40
+DEFAULT_DT_DAY_MAX = 12
+DEFAULT_WORKWEEK_START = "Sunday"
+DEFAULT_EXEMPT_MIN_ANNUAL_WAGE = 68640
+DEFAULT_CONSEC_DAYS = False
+DEFAULT_CONSEC_DAYS_WORKWEEK = 6
+
 WEEKDAYS = [
     "Sunday",
     "Monday",
@@ -20,10 +29,10 @@ WEEKDAYS = [
     "Friday",
     "Saturday",
 ]
-DEFAULT_OT_DAY_MAX = 8.0
-DEFAULT_OT_WEEK = 40
-OT_EXCEPTIONS = {"2JT": {"Name": "Hilton Bayside Inn", "Hours": 7.5}}
-DBLT_HOURS = 12
+
+# TO REPLACE BY DATA PASSED BY THE FRONT END
+# OT_EXCEPTIONS = {"2JT": {"Name": "Hilton Bayside Inn", "Hours": 7.5}}
+# DBLT_HOURS = 12
 
 # COLS for reducing dataframe at import
 TA_COLS = [

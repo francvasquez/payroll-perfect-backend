@@ -9,7 +9,6 @@ from helper.aws import (
     handle_presigned_url_request,
     save_csv_to_s3,
     save_waiver_json_s3,
-    # save_table_json_s3,
     put_result_to_s3,
     load_processed_results,
     list_pay_periods,
@@ -69,12 +68,34 @@ def handle_file_processing(event):
         body = json.loads(event.get("body", "{}"))
 
         # Get processing parameters
-        min_wage = body.get("min_wage", DEFAULT_MIN_WAGE)
-        min_wage_40 = body.get("min_wage_40", DEFAULT_MIN_WAGE_40)
-        ot_day_max = body.get("ot_day_max", DEFAULT_OT_DAY_MAX)
+        # min_wage = body.get("min_wage", DEFAULT_MIN_WAGE)
+        # min_wage_40 = body.get("min_wage_40", DEFAULT_MIN_WAGE_40)
+        # ot_day_max = body.get("ot_day_max", DEFAULT_OT_DAY_MAX)
+
+        # Extract client_config from request body
+        client_config = body.get("client_config", {})
+        global_config = client_config.get("global", {})
+        locations_config = client_config.get("locations", {})  ## overrides
+
+        # Extract global parameters with default fallback
+        min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
+        min_wage_40 = global_config.get("min_wage_40", DEFAULT_MIN_WAGE_40)
+        ot_day_max = global_config.get("ot_day_max", DEFAULT_OT_DAY_MAX)
+        ot_week_max = global_config.get("ot_week_max", DEFAULT_OT_WEEK_MAX)
+        dt_day_max = global_config.get("dt_day_max", DEFAULT_DT_DAY_MAX)
+        workweek_start = global_config.get("workweek_start", DEFAULT_WORKWEEK_START)
+        exempt_min_annual_wage = global_config.get(
+            "exempt_min_annual_wage", DEFAULT_EXEMPT_MIN_ANNUAL_WAGE
+        )
+        number_of_consec_days_before_ot = global_config.get(
+            "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS
+        )
+        consec_days_workweek = global_config.get(
+            "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
+        )
 
         print(
-            f"Processing with parameters: min_wage={min_wage}, min_wage_40={min_wage_40}, ot_day_max={ot_day_max}"
+            f"Processing with parameters: client_config={client_config}, min_wage={min_wage}"
         )
 
         # Verify all three files are provided (they should be from frontend)
@@ -110,8 +131,11 @@ def handle_file_processing(event):
         ta_start = time.time()
         processed_ta_df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
             ta_df,
+            locations_config,
             min_wage,
             ot_day_max,
+            ot_week_max,
+            dt_day_max,
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )
