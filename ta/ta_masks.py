@@ -72,11 +72,11 @@ def is_second_half_of_shift(df):
 
 
 def shift_bet_5_and_6(df):
-    return (df["Shift Length"] > 5) & (df["Shift Length"] <= 6)
+    return (df["Shift Length (hrs)"] > 5) & (df["Shift Length (hrs)"] <= 6)
 
 
 def shift_greater_than_6(df):
-    return df["Shift Length"] > 6
+    return df["Shift Length (hrs)"] > 6
 
 
 def did_not_break(df):

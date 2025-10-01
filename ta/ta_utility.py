@@ -90,10 +90,10 @@ def add_next_break_time(df):
 
 
 def add_shift_length(df):
-    # Positive calculation of shift length (e.g. only when have all the data, else na)
+    # Positive calculation of Shift Length (hrs) (e.g. only when have all the data, else na)
     eleven_pm = datetime.time(23, 0)
 
-    df["Shift Length"] = np.where(
+    df["Shift Length (hrs)"] = np.where(
         df["Next Break Time (min)"] < 60,  # Case a
         df["Totaled Amount"] + df["Next Totaled Amount"],
         np.where(

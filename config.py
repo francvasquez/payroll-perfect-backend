@@ -135,7 +135,7 @@ COLS_PRINT2_A = [
     "In Punch",
     "Out Punch",
     "Totaled Amount",
-    "Shift Length",
+    "Shift Length (hrs)",
     # "Total Worked Hours Workday",
     "Next Break Time (min)",
     "Next In Punch",
