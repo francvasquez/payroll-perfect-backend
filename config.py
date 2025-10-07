@@ -156,6 +156,8 @@ COLS_PRINT3 = [
     "Totaled Amount",
     "Next Break Time (min)",
     "Paid Break Credit (hrs)",
+    "Shift Length (hrs)",
+    "Waiver on File?",
 ]
 COLS_PRINT5 = [
     "Employee",
