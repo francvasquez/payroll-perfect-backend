@@ -45,7 +45,7 @@ def lambda_handler(event, context):
         if action == "get-upload-url":
             return handle_presigned_url_request(event)
         else:
-            return handle_file_processing(event, payDate)
+            return handle_file_processing(event)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
@@ -59,7 +59,7 @@ def lambda_handler(event, context):
         }
 
 
-def handle_file_processing(event, payDate):
+def handle_file_processing(event):
     """
     Processes all three files in sequence: Waiver → WFN → TA
     Frontend ensures all three files are provided
@@ -92,11 +92,11 @@ def handle_file_processing(event, payDate):
         #     "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
         # )
 
-        # Convert First date of pay period to pandas
-        first_date = pd.to_datetime(payDate)
+        # Extract First date of pay period and convert to pandas
+        first_date = pd.to_datetime(body.get("pay_date"))
 
         print(
-            f"Processing with parameters: client_config={client_config}, min_wage={min_wage}"
+            f"Processing with parameters: client_config={client_config}, min_wage={min_wage}, first date ={first_date}"
         )
 
         # Verify all three files are provided (they should be from frontend)
