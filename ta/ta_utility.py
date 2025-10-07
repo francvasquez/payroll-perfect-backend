@@ -156,7 +156,9 @@ def add_waiver_check(df, processed_waiver_df):
     return df
 
 
-def create_bypunch(df, locations_config, ot_day_max, ot_week_max, dt_day_max):
+def create_bypunch(
+    df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+):
     # Calculate total sum for each date and ID combination
     bypunch_df = df[
         [
@@ -177,9 +179,7 @@ def create_bypunch(df, locations_config, ot_day_max, ot_week_max, dt_day_max):
     ].transform("sum")
 
     # Add "Add Week Hours" column. Creates a helper label 1 or 2.
-    start_date = bypunch_df["Date"].min()  # This is a Pandas timestamp
-    days_diff = (bypunch_df["Date"] - start_date).dt.days
-    bypunch_df["Work Week"] = (days_diff // 7) + 1
+    bypunch_df["Work Week"] = ((bypunch_df["Date"] - first_date).dt.days // 7) + 1
     bypunch_df["Week Hours"] = bypunch_df.groupby(["ID", "Work Week"])[
         "Totaled Amount"
     ].transform("sum")

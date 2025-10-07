@@ -14,6 +14,7 @@ from helper.aws import (
     list_pay_periods,
 )
 from helper.results import generate_results
+import pandas as pd
 
 
 def lambda_handler(event, context):
@@ -44,7 +45,7 @@ def lambda_handler(event, context):
         if action == "get-upload-url":
             return handle_presigned_url_request(event)
         else:
-            return handle_file_processing(event)
+            return handle_file_processing(event, payDate)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
@@ -58,7 +59,7 @@ def lambda_handler(event, context):
         }
 
 
-def handle_file_processing(event):
+def handle_file_processing(event, payDate):
     """
     Processes all three files in sequence: Waiver → WFN → TA
     Frontend ensures all three files are provided
@@ -66,11 +67,6 @@ def handle_file_processing(event):
     try:
         # Parse request body
         body = json.loads(event.get("body", "{}"))
-
-        # Get processing parameters
-        # min_wage = body.get("min_wage", DEFAULT_MIN_WAGE)
-        # min_wage_40 = body.get("min_wage_40", DEFAULT_MIN_WAGE_40)
-        # ot_day_max = body.get("ot_day_max", DEFAULT_OT_DAY_MAX)
 
         # Extract client_config from request body
         client_config = body.get("client_config", {})
@@ -83,16 +79,21 @@ def handle_file_processing(event):
         ot_day_max = global_config.get("ot_day_max", DEFAULT_OT_DAY_MAX)
         ot_week_max = global_config.get("ot_week_max", DEFAULT_OT_WEEK_MAX)
         dt_day_max = global_config.get("dt_day_max", DEFAULT_DT_DAY_MAX)
-        workweek_start = global_config.get("workweek_start", DEFAULT_WORKWEEK_START)
-        exempt_min_annual_wage = global_config.get(
-            "exempt_min_annual_wage", DEFAULT_EXEMPT_MIN_ANNUAL_WAGE
-        )
-        number_of_consec_days_before_ot = global_config.get(
-            "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS
-        )
-        consec_days_workweek = global_config.get(
-            "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
-        )
+
+        # Variables for future use
+        # workweek_start = global_config.get("workweek_start", DEFAULT_WORKWEEK_START)
+        # exempt_min_annual_wage = global_config.get(
+        #     "exempt_min_annual_wage", DEFAULT_EXEMPT_MIN_ANNUAL_WAGE
+        # )
+        # number_of_consec_days_before_ot = global_config.get(
+        #     "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS
+        # )
+        # consec_days_workweek = global_config.get(
+        #     "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
+        # )
+
+        # Convert First date of pay period to pandas
+        first_date = pd.to_datetime(payDate)
 
         print(
             f"Processing with parameters: client_config={client_config}, min_wage={min_wage}"
@@ -138,6 +139,7 @@ def handle_file_processing(event):
             ot_day_max,
             ot_week_max,
             dt_day_max,
+            first_date,
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )

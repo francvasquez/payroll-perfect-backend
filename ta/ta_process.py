@@ -9,6 +9,7 @@ def process_data_ta(
     ot_day_max,
     ot_week_max,
     dt_day_max,
+    first_date,
     processed_waiver_df=None,
     processed_wfn_df=None,
 ):
@@ -67,7 +68,7 @@ def process_data_ta(
 
     # New df: A reduced col df with daily and add DT and OT calc cols
     bypunch_df = ta_utility.create_bypunch(
-        df, locations_config, ot_day_max, ot_week_max, dt_day_max
+        df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
     )
 
     #  = time.time()
