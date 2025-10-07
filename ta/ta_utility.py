@@ -92,9 +92,9 @@ def add_shift_length(df):
     # Positive calculation of shift length (e.g. only when have all the data, else na)
     # eleven_pm = datetime.time(23, 0)
 
-    df["Shift Length"] = np.where(
+    df["Shift Length (hrs)"] = np.where(
         df["Next Break Time (min)"] < 60,  # Case a - next punch is part of shift
-        df["Totaled Amount"] + df["Next Totaled Amount"],
+        df["Totaled Amount"] + df["Next Punch Length (hrs)"],
         np.where(
             df["Next Break Time (min)"]
             >= 60,  # Case b - nexr punch is not part of shift
