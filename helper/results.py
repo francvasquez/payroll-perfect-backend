@@ -106,6 +106,11 @@ def generate_results(
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Dble"),
                 max_rows=200,
                 cols=config.COLUMNS_TO_SHOW_DBLE,
+                rename_map={
+                    "Double Time Due": "Double Time Due ($)",
+                    "Actual Pay Check Double": "Actual Pay Check Double ($)",
+                    "Variance Dble": "Variance Dble ($)",
+                },
             ),
             ##Break Credit Variances
             "break_credit_variances": filter_and_sort_df_to_dict(
@@ -129,8 +134,8 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLUMNS_TO_SHOW_REST,
                 rename_map={
-                    "Actual Pay RestCrd": "Actual Paid Rest Credit",
-                    "Variance RestCrd": "Variance Rest Credit",
+                    "Actual Pay RestCrd": "Actual Paid Rest Credit ($)",
+                    "Variance RestCrd": "Variance Rest Credit ($)",
                 },
             ),
             ##Sick Credit Variances
@@ -142,8 +147,10 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLUMNS_TO_SHOW_SICK,
                 rename_map={
-                    "Sick Paid": "Actual Paid Sick Credit",
-                    "Variance BrkCrd": "Variance Sick Credit",
+                    "Sick Credit Due": "Sick Credit Due ($)",
+                    "Sick Paid": "Actual Paid Sick Credit ($)",
+                    "Variance Sick": "Variance Sick Credit ($)",
+                    "Regular Rate Paid": "Regular Rate Paid ($)",
                 },
             ),
             ##FLSA Check
@@ -172,6 +179,12 @@ def generate_results(
                 base_filter=wfn_masks.non_active_check(processed_wfn_df),
                 max_rows=200,
                 cols=config.COLUMNS_TO_SHOW_NONACTIVE,
+                rename_map={
+                    "V_Vacation_Hours": "Vacation Hours",
+                    "REG": "Straight Hours Worked",
+                    "Variance Sick": "Variance Sick Credit ($)",
+                    "Regular Rate Paid": "Regular Rate Paid ($)",
+                },
             ),
         },
         "ta": {
