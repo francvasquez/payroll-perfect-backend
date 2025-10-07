@@ -90,14 +90,25 @@ def did_not_break(df):
 
 
 def did_not_break_possible(df):
+    eleven_pm = datetime.time(23, 0)
     mask = (
-        ~did_not_break(df)  # not positively identified
-        & greater_than_five(df)  # universe
-        & ~is_second_half_of_shift(df)  # true for NAs break shift and id as first half
-        & ~(
-            (shift_bet_5_and_6(df) & waiver_on_file(df)) | shift_greater_than_6(df)
-        )  # not waived or shift > 6
-        # Add 60 minute front and/or tail logic
+        (
+            ~did_not_break(df)  # not positively identified
+            & greater_than_five(df)  # universe
+            & ~is_second_half_of_shift(
+                df
+            )  # true for NAs break shift and id as first half
+            & ~(
+                (shift_bet_5_and_6(df) & waiver_on_file(df)) | shift_greater_than_6(df)
+            )  # not (waived or shift > 6)
+            # Add 60 minute front and/or tail logic
+        )
+    ) | (  # Or cases where emp clocked out late and no info on foll punch
+        ~did_not_break(df)
+        & greater_than_five(df)
+        & ~is_second_half_of_shift(df)
+        & (df["Out Punch"].dt.time > eleven_pm)
+        & df["Next Break Time (min)"].isna()
     )
 
     return mask

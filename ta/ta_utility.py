@@ -2,7 +2,6 @@ import numpy as np
 import config
 import pandas as pd
 from . import ta_masks
-import datetime
 import utility
 
 
@@ -90,18 +89,20 @@ def add_next_break_time(df):
 
 
 def add_shift_length(df):
-    # Positive calculation of Shift Length (hrs) (e.g. only when have all the data, else na)
-    eleven_pm = datetime.time(23, 0)
+    # Positive calculation of shift length (e.g. only when have all the data, else na)
+    # eleven_pm = datetime.time(23, 0)
 
-    df["Shift Length (hrs)"] = np.where(
-        df["Next Break Time (min)"] < 60,  # Case a
-        df["Totaled Amount"] + df["Next Punch Length (hrs)"],
+    df["Shift Length"] = np.where(
+        df["Next Break Time (min)"] < 60,  # Case a - next punch is part of shift
+        df["Totaled Amount"] + df["Next Totaled Amount"],
         np.where(
-            df["Next Break Time (min)"] >= 60,  # Case b
+            df["Next Break Time (min)"]
+            >= 60,  # Case b - nexr punch is not part of shift
             df["Totaled Amount"],
             np.where(
                 df["Next Break Time (min)"].isna()
-                & (df["Out Punch"].dt.time < eleven_pm),  # Case c
+                # & (df["Out Punch"].dt.time < eleven_pm),  # Case c - no info on next shift - by removing this we assume this shift has no subsequent punches
+                ,
                 df["Totaled Amount"],
                 np.nan,  # default: NA
             ),
