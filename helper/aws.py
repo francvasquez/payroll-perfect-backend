@@ -3,17 +3,16 @@ import json, boto3, io
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
 from io import StringIO
+from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
 
 
 def list_pay_periods(client_id):
     """List available pay periods in processed folder"""
-    s3 = boto3.client("s3")
-    bucket = "pp-client-data"
     prefix = f"clients/{client_id}/processed/"
 
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix, Delimiter="/")
+    response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix, Delimiter="/")
 
     # Extract dates from folder names
     periods = []
@@ -28,12 +27,10 @@ def list_pay_periods(client_id):
 
 def load_processed_results(client_id, pay_date):
     """Load the processed JSON from S3"""
-    s3 = boto3.client("s3")
-    bucket = "pp-client-data"
     key = f"clients/{client_id}/processed/{pay_date}/results.json"
 
     try:
-        response = s3.get_object(Bucket=bucket, Key=key)
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
         results = json.loads(response["Body"].read())
         print(f"Loaded results for {pay_date}: ", results)
         return {
@@ -41,12 +38,12 @@ def load_processed_results(client_id, pay_date):
             "headers": CORS_HEADERS,
             "body": json.dumps({"results": results}),
         }
-    except s3.exceptions.NoSuchKey:
+    except s3_client.exceptions.NoSuchKey:
         print(f"[DEBUG] NoSuchKey: The object does not exist at key: {key}")
 
         # Optional: list objects under the prefix to see what exists
         prefix = f"clients/{client_id}/processed/{pay_date}/"
-        list_response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
         existing_keys = [obj["Key"] for obj in list_response.get("Contents", [])]
         print(f"[DEBUG] Existing objects under prefix {prefix}: {existing_keys}")
 
@@ -205,7 +202,6 @@ def save_table_json_s3(
     df,
     name,
     event,
-    ##mask, //To include masks later for other tables.
     s3_client=None,
 ):
 
@@ -230,3 +226,85 @@ def save_table_json_s3(
 
     print(f"Saved {name} as JSON to: s3://{S3_BUCKET}/{s3_key}")
     return s3_key
+
+
+def handle_get_client_config(body):
+    """Fetch client configuration from S3"""
+    client_id = body.get("clientId")
+
+    if not client_id:
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps({"error": "clientId is required"}),
+        }
+
+    try:
+        # Build S3 key path
+        config_key = f"clients/{client_id}/config.json"
+
+        print(f"Fetching config from S3: s3://{S3_BUCKET}/{config_key}")
+
+        # Fetch from S3
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=config_key)
+        config_data = json.loads(response["Body"].read().decode("utf-8"))
+
+        print(f"Successfully loaded config for client: {client_id}")
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"config": config_data}),
+        }
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+
+        if error_code == "NoSuchKey":
+            print(f"Config file not found for client: {client_id} at {config_key}")
+            return {
+                "statusCode": 404,
+                "headers": CORS_HEADERS,
+                "body": json.dumps(
+                    {"error": f"Configuration not found for client: {client_id}"}
+                ),
+            }
+        elif error_code == "NoSuchBucket":
+            print(f"Bucket not found: {S3_BUCKET}")
+            return {
+                "statusCode": 500,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"error": "Storage bucket not configured"}),
+            }
+        else:
+            print(f"S3 error: {str(e)}")
+            return {
+                "statusCode": 500,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"error": f"Failed to fetch config: {str(e)}"}),
+            }
+
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON in config file: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps({"error": "Invalid configuration file format"}),
+        }
+
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }
