@@ -308,3 +308,62 @@ def handle_get_client_config(body):
             },
             "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
         }
+
+
+def handle_save_client_config(body):
+    """Save client configuration to S3"""
+    client_id = body.get("clientId")
+    config = body.get("config")
+
+    if not client_id:
+        return {
+            "statusCode": 400,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": "clientId is required"}),
+        }
+
+    if not config:
+        return {
+            "statusCode": 400,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": "config is required"}),
+        }
+
+    try:
+        # Build S3 key path
+        config_key = f"clients/{client_id}/config.json"
+
+        print(f"Saving config to S3: s3://{S3_BUCKET}/{config_key}")
+
+        # Save to S3
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=config_key,
+            Body=json.dumps(config, indent=2),  # Pretty print with indent
+            ContentType="application/json",
+        )
+
+        print(f"Successfully saved config for client: {client_id}")
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"message": "Configuration saved successfully"}),
+        }
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        print(f"S3 error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Failed to save config: {str(e)}"}),
+        }
+
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }

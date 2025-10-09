@@ -6,6 +6,7 @@ from ta.ta_process import process_data_ta
 from config import *
 from helper.aws import (
     handle_get_client_config,
+    handle_save_client_config,
     read_excel_from_s3,
     handle_presigned_url_request,
     save_csv_to_s3,
@@ -41,6 +42,8 @@ def lambda_handler(event, context):
         # Routing
         if action == "get-client-config":
             return handle_get_client_config(body)
+        if action == "save-client-config":
+            return handle_save_client_config(body)
         if action == "list-pay-periods":
             return list_pay_periods(clientId)
         if action == "load-processed-results":
