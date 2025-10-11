@@ -14,6 +14,9 @@ from helper.aws import (
     put_result_to_s3,
     load_processed_results,
     list_pay_periods,
+    save_annotations,
+    load_annotations,
+    delete_annotations,
 )
 from helper.results import generate_results
 import pandas as pd
@@ -50,8 +53,14 @@ def lambda_handler(event, context):
             return load_processed_results(clientId, payDate)
         if action == "get-upload-url":
             return handle_presigned_url_request(event)
+        if action == "save-annotations":
+            return save_annotations(clientId, payDate, body.get("annotations"))
+        if action == "load-annotations":
+            return load_annotations(clientId, payDate)
+        if action == "delete-annotations":
+            return delete_annotations(clientId, payDate)
         else:
-            return handle_file_processing(event)
+            return handle_file_processing(event, clientId, payDate)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
@@ -65,7 +74,7 @@ def lambda_handler(event, context):
         }
 
 
-def handle_file_processing(event):
+def handle_file_processing(event, clientId, payDate):
     """
     Processes all three files in sequence: Waiver → WFN → TA
     Frontend ensures all three files are provided
@@ -114,6 +123,13 @@ def handle_file_processing(event):
                     {"error": "All three files (waiver, wfn, ta) are required"}
                 ),
             }
+
+        # Delete existing annotations before reprocessing
+        if clientId and payDate:
+            print(
+                f"Deleting annotations for {clientId}/{payDate} before reprocessing..."
+            )
+            delete_result = delete_annotations(clientId, payDate)
 
         # Process Waiver FIRST
         waiver_df = read_excel_from_s3(body["waiver_key"])

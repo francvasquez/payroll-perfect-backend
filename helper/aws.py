@@ -8,6 +8,157 @@ from botocore.exceptions import ClientError
 s3_client = boto3.client("s3")
 
 
+def save_annotations(client_id, pay_date, annotations_data):
+    """
+    Save annotations to S3
+    Path: clients/{client_id}/processed/{pay_date}/annotations.json
+    """
+    s3_key = f"clients/{client_id}/processed/{pay_date}/annotations.json"
+
+    try:
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=s3_key,
+            Body=json.dumps(annotations_data, indent=2),
+            ContentType="application/json",
+        )
+
+        print(f"Saved annotations to: s3://{S3_BUCKET}/{s3_key}")
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"message": "Annotations saved successfully"}),
+        }
+
+    except ClientError as e:
+        print(f"S3 error saving annotations: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Failed to save annotations: {str(e)}"}),
+        }
+    except Exception as e:
+        print(f"Unexpected error saving annotations: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }
+
+
+def load_annotations(client_id, pay_date):
+    """
+    Load annotations from S3
+    Path: clients/{client_id}/processed/{pay_date}/annotations.json
+    """
+    s3_key = f"clients/{client_id}/processed/{pay_date}/annotations.json"
+
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
+        annotations_data = json.loads(response["Body"].read().decode("utf-8"))
+
+        print(f"Loaded annotations from: s3://{S3_BUCKET}/{s3_key}")
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"annotations": annotations_data}),
+        }
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+
+        if error_code == "NoSuchKey":
+            print(f"No annotations found for {client_id}/{pay_date}")
+            return {
+                "statusCode": 404,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"error": "No annotations found"}),
+            }
+        else:
+            print(f"S3 error loading annotations: {str(e)}")
+            return {
+                "statusCode": 500,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"error": f"Failed to load annotations: {str(e)}"}),
+            }
+
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON in annotations file: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": "Invalid annotations file format"}),
+        }
+
+    except Exception as e:
+        print(f"Unexpected error loading annotations: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }
+
+
+def delete_annotations(client_id, pay_date):
+    """
+    Delete annotations from S3
+    Path: clients/{client_id}/processed/{pay_date}/annotations.json
+    Called before reprocessing files
+    """
+    s3_key = f"clients/{client_id}/processed/{pay_date}/annotations.json"
+
+    try:
+        s3_client.delete_object(Bucket=S3_BUCKET, Key=s3_key)
+
+        print(f"Deleted annotations from: s3://{S3_BUCKET}/{s3_key}")
+
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"message": "Annotations deleted successfully"}),
+        }
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+
+        # If file doesn't exist, that's fine - nothing to delete
+        if error_code == "NoSuchKey":
+            print(f"No annotations to delete for {client_id}/{pay_date}")
+            return {
+                "statusCode": 200,
+                "headers": CORS_HEADERS,
+                "body": json.dumps({"message": "No annotations to delete"}),
+            }
+        else:
+            print(f"S3 error deleting annotations: {str(e)}")
+            return {
+                "statusCode": 500,
+                "headers": CORS_HEADERS,
+                "body": json.dumps(
+                    {"error": f"Failed to delete annotations: {str(e)}"}
+                ),
+            }
+
+    except Exception as e:
+        print(f"Unexpected error deleting annotations: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }
+
+
 def list_pay_periods(client_id):
     """List available pay periods in processed folder"""
     prefix = f"clients/{client_id}/processed/"
