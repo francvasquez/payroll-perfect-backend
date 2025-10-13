@@ -17,6 +17,7 @@ from helper.aws import (
     save_annotations,
     load_annotations,
     delete_annotations,
+    delete_pay_period,
 )
 from helper.results import generate_results
 import pandas as pd
@@ -59,6 +60,8 @@ def lambda_handler(event, context):
             return load_annotations(clientId, payDate)
         if action == "delete-annotations":
             return delete_annotations(clientId, payDate)
+        if action == "delete-pay-period":
+            return delete_pay_period(clientId, payDate)
         else:
             return handle_file_processing(event, clientId, payDate)
 

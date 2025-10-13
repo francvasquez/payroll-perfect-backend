@@ -8,6 +8,109 @@ from botocore.exceptions import ClientError
 s3_client = boto3.client("s3")
 
 
+def delete_pay_period(client_id, pay_date):
+    """
+    Delete all data for a specific pay period
+    Removes: processed/, raw/, and csv/ folders for the given pay_date
+    """
+
+    # Define all the prefixes (folders) to delete
+    prefixes_to_delete = [
+        f"clients/{client_id}/processed/{pay_date}/",
+        f"clients/{client_id}/raw/{pay_date}/",
+        f"clients/{client_id}/csv/{pay_date}/",
+    ]
+
+    deleted_files = []
+    errors = []
+
+    try:
+        for prefix in prefixes_to_delete:
+            print(f"Deleting all objects under: s3://{S3_BUCKET}/{prefix}")
+
+            # List all objects under this prefix
+            paginator = s3_client.get_paginator("list_objects_v2")
+            pages = paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix)
+
+            objects_to_delete = []
+            for page in pages:
+                if "Contents" in page:
+                    for obj in page["Contents"]:
+                        objects_to_delete.append({"Key": obj["Key"]})
+
+            # Delete objects in batches (S3 delete_objects supports up to 1000 at a time)
+            if objects_to_delete:
+                # Delete in chunks of 1000
+                for i in range(0, len(objects_to_delete), 1000):
+                    chunk = objects_to_delete[i : i + 1000]
+                    delete_response = s3_client.delete_objects(
+                        Bucket=S3_BUCKET, Delete={"Objects": chunk}
+                    )
+
+                    # Track successful deletions
+                    if "Deleted" in delete_response:
+                        for deleted in delete_response["Deleted"]:
+                            deleted_files.append(deleted["Key"])
+                            print(f"Deleted: {deleted['Key']}")
+
+                    # Track errors
+                    if "Errors" in delete_response:
+                        for error in delete_response["Errors"]:
+                            errors.append(f"{error['Key']}: {error['Message']}")
+                            print(f"Error deleting {error['Key']}: {error['Message']}")
+
+                print(f"Deleted {len(deleted_files)} files from {prefix}")
+            else:
+                print(f"No files found under {prefix}")
+
+        # Prepare response
+        if errors:
+            return {
+                "statusCode": 207,  # Multi-Status (partial success)
+                "headers": CORS_HEADERS,
+                "body": json.dumps(
+                    {
+                        "message": "Pay period partially deleted with some errors",
+                        "deleted_count": len(deleted_files),
+                        "deleted_files": deleted_files,
+                        "errors": errors,
+                    }
+                ),
+            }
+        else:
+            return {
+                "statusCode": 200,
+                "headers": CORS_HEADERS,
+                "body": json.dumps(
+                    {
+                        "message": f"Pay period {pay_date} deleted successfully",
+                        "deleted_count": len(deleted_files),
+                        "deleted_files": deleted_files,
+                    }
+                ),
+            }
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        print(f"S3 error deleting pay period: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Failed to delete pay period: {str(e)}"}),
+        }
+
+    except Exception as e:
+        print(f"Unexpected error deleting pay period: {str(e)}")
+        import traceback
+
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
+        }
+
+
 def save_annotations(client_id, pay_date, annotations_data):
     """
     Save annotations to S3
