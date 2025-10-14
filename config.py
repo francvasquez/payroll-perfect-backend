@@ -30,27 +30,6 @@ WEEKDAYS = [
     "Saturday",
 ]
 
-# TO REPLACE BY DATA PASSED BY THE FRONT END
-# OT_EXCEPTIONS = {"2JT": {"Name": "Hilton Bayside Inn", "Hours": 7.5}}
-# DBLT_HOURS = 12
-
-# COLS for reducing dataframe at import
-TA_COLS = [
-    "Employee",
-    "ID",
-    "Status",
-    "Start",
-    "Date/Time",
-    "In Punch",
-    "Out Punch",
-    "Totaled Amount",
-]
-
-# COLS for finding header row
-TA_KEY_COLS = ["Employee", "ID", "Status"]
-WFN_KEY_COLS = ["CO.", "PAY DATE", "Payroll Nameame"]
-WAIVER_KEY_COLS = ["Name", "Check"]
-
 # COLS for printing waiver
 WAIVER_PRINT_COLS = ["Name", "Check_Pure"]
 
