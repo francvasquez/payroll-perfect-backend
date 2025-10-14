@@ -1,5 +1,5 @@
 # lambda_function.py - Add this before lambda_handler
-import json, boto3, io
+import json, boto3, io, datetime
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
 from io import StringIO
@@ -113,16 +113,27 @@ def delete_pay_period(client_id, pay_date):
 
 def save_annotations(client_id, pay_date, annotations_data):
     """
-    Save annotations to S3
+    Save annotations to S3 with full payload structure
     Path: clients/{client_id}/processed/{pay_date}/annotations.json
+
+    [NEW] Frontend sends just Record<string, TableAnnotations>
+    Lambda constructs the full AnnotationsPayload before saving
     """
     s3_key = f"clients/{client_id}/processed/{pay_date}/annotations.json"
 
     try:
+        # [NEW] Construct the full AnnotationsPayload with metadata
+        payload = {
+            "clientId": client_id,
+            "payDate": pay_date,
+            "annotations": annotations_data,
+            "savedAt": datetime.utcnow().isoformat() + "Z",
+        }
+
         s3_client.put_object(
             Bucket=S3_BUCKET,
             Key=s3_key,
-            Body=json.dumps(annotations_data, indent=2),
+            Body=json.dumps(payload, indent=2),
             ContentType="application/json",
         )
 
@@ -157,19 +168,23 @@ def load_annotations(client_id, pay_date):
     """
     Load annotations from S3
     Path: clients/{client_id}/processed/{pay_date}/annotations.json
+
+    [NEW] Returns full AnnotationsPayload (with metadata)
     """
     s3_key = f"clients/{client_id}/processed/{pay_date}/annotations.json"
 
     try:
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=s3_key)
-        annotations_data = json.loads(response["Body"].read().decode("utf-8"))
+        # [NEW] Load the full AnnotationsPayload
+        annotations_payload = json.loads(response["Body"].read().decode("utf-8"))
 
         print(f"Loaded annotations from: s3://{S3_BUCKET}/{s3_key}")
 
+        # [NEW] Return the entire payload, not wrapped in another "annotations" key
         return {
             "statusCode": 200,
             "headers": CORS_HEADERS,
-            "body": json.dumps({"annotations": annotations_data}),
+            "body": json.dumps(annotations_payload),
         }
 
     except ClientError as e:
