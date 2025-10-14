@@ -1,5 +1,6 @@
 # lambda_function.py - Add this before lambda_handler
-import json, boto3, io, datetime
+import json, boto3, io
+from datetime import datetime, timezone
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
 from io import StringIO
@@ -127,7 +128,7 @@ def save_annotations(client_id, pay_date, annotations_data):
             "clientId": client_id,
             "payDate": pay_date,
             "annotations": annotations_data,
-            "savedAt": datetime.utcnow().isoformat() + "Z",
+            "savedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
 
         s3_client.put_object(
