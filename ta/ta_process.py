@@ -18,9 +18,8 @@ def process_data_ta(
 
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Date/Time")
 
-    # Normalize Date in case it came with hours - converts the time to midnight (00:00:00). Rename.
-    df["Date/Time"] = df["Date/Time"].dt.normalize()
-    df = df.rename(columns={"Date/Time": "Date"})
+    # Normalize and create new Date column
+    df["Date"] = df["In Punch"].dt.normalize()
 
     # Updated df: Adds "Total Worked Hours Workday" col.
     df = ta_utility.add_total_hours_workday(df)
