@@ -90,6 +90,7 @@ def handle_file_processing(event, clientId, payDate):
         client_config = body.get("client_config", {})
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
+        print("locations_config: ", locations_config)
 
         # Extract global parameters with default fallback
         min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
