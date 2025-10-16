@@ -261,7 +261,7 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLS_PRINT8,
                 rename_map={
-                    "Totaled Amount": "Hours Worked on Seventh Day",
+                    "Totaled Amount": "Hours Worked on Trigger Date",
                 },
             ),
             ##3. Check Overtime (OT) hours versus WFN
