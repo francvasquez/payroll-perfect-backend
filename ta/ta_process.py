@@ -71,7 +71,7 @@ def process_data_ta(
     )
 
     #  = time.time()
-    # Updated df: Adds col "Hours in Seven Consecutive Days" and "First day of Seven".
+    # Updated df: Adds col "Hours in Consecutive Days" and "First day of Streak".
     bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
     # print(f"7th day hours: {time.time()-t7:.2f}s")
 

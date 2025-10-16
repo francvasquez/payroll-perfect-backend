@@ -165,7 +165,7 @@ def over_twelve(df):
 
 
 def check_seven_consec(df):
-    return df["Hours in Seven Consecutive Days"] > 0
+    return df["Hours in Consecutive Days"] > 0
 
 
 def OT_var_mask(df):
@@ -179,4 +179,4 @@ def DT_var_mask(df):
 
 
 def first_day_matches_first_workweek_day(df, start_of_week):
-    return df["First day of Seven"].dt.day_name() == start_of_week
+    return df["First day of Streak"].dt.day_name() == start_of_week

@@ -369,27 +369,40 @@ def merge_source_into_target_auto(source_df, target_df, key_col="ID"):
     return merged
 
 
-def add_seventh_day_hours(df):
+def add_seventh_day_hours(df, locations_config, number_of_consec_days_before_ot):
+    # Is there a location based day overtime trigger? Else take global "ot_day_max"
+    df["Number of Consec Days Before OT"] = utility.apply_override_else_global(
+        df,
+        "Location",
+        "number_of_consec_days_before_ot",
+        number_of_consec_days_before_ot,
+        locations_config,
+    )
+
     # Ensure data is sorted by ID and Date
     df = df.sort_values(["ID", "Date"]).copy()
 
     def compute_group(g):
+        # Each ID group has a consistent threshold
+        consec_days = int(g["Number of Consec Days Before OT"].iloc[0]) + 1
         # Difference in days
         diff = g["Date"].diff().dt.days.fillna(0)
         # Identify consecutive sequences
         consec_group = (diff != 1).cumsum()
         # Compute streak length within each sequence
         streak = g.groupby(consec_group).cumcount() + 1
-        # Rolling sum of 7 days
-        rolling_sum = g["Totaled Amount"].rolling(7, min_periods=7).sum()
-        # Keep only sums where streak >= 7
-        return rolling_sum.where(streak >= 7).fillna(0)
+        # Rolling sum based on that employee's rule
+        rolling_sum = (
+            g["Totaled Amount"].rolling(consec_days, min_periods=consec_days).sum()
+        )
+        # Keep only sums where streak >= thresold
+        return rolling_sum.where(streak >= consec_days).fillna(0)
 
     # Apply per ID group
-    df["Hours in Seven Consecutive Days"] = df.groupby("ID", group_keys=False).apply(
+    df["Hours in Consecutive Days"] = df.groupby("ID", group_keys=False).apply(
         compute_group
     )
-    df["First day of Seven"] = df["Date"] - pd.Timedelta(days=6)
+    df["First day of Streak"] = df["Date"] - pd.Timedelta(days=6)
 
     return df
 
