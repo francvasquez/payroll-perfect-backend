@@ -5,6 +5,7 @@ from . import ta_utility
 def process_data_ta(
     df,
     locations_config,
+    number_of_consec_days_before_ot,
     min_wage,
     ot_day_max,
     ot_week_max,
@@ -72,7 +73,9 @@ def process_data_ta(
 
     #  = time.time()
     # Updated df: Adds col "Hours in Consecutive Days" and "First day of Streak".
-    bypunch_df = ta_utility.add_seventh_day_hours(bypunch_df)  # SLOWWW
+    bypunch_df = ta_utility.add_seventh_day_hours(
+        bypunch_df, locations_config, number_of_consec_days_before_ot
+    )  # SLOWWW
     # print(f"7th day hours: {time.time()-t7:.2f}s")
 
     # Updated df: Add OT and DT columns from WFN

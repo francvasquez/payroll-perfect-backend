@@ -98,14 +98,13 @@ def handle_file_processing(event, clientId, payDate):
         ot_day_max = global_config.get("ot_day_max", DEFAULT_OT_DAY_MAX)
         ot_week_max = global_config.get("ot_week_max", DEFAULT_OT_WEEK_MAX)
         dt_day_max = global_config.get("dt_day_max", DEFAULT_DT_DAY_MAX)
-
+        number_of_consec_days_before_ot = global_config.get(
+            "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS_BEFORE_OT
+        )
         # Variables for future use
         # workweek_start = global_config.get("workweek_start", DEFAULT_WORKWEEK_START)
         # exempt_min_annual_wage = global_config.get(
         #     "exempt_min_annual_wage", DEFAULT_EXEMPT_MIN_ANNUAL_WAGE
-        # )
-        # number_of_consec_days_before_ot = global_config.get(
-        #     "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS
         # )
         # consec_days_workweek = global_config.get(
         #     "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
@@ -161,6 +160,7 @@ def handle_file_processing(event, clientId, payDate):
         processed_ta_df, bypunch_df, stapled_df, anomalies_df = process_data_ta(
             ta_df,
             locations_config,
+            number_of_consec_days_before_ot,
             min_wage,
             ot_day_max,
             ot_week_max,
