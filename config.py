@@ -160,7 +160,7 @@ COLS_PRINT7 = [
 COLS_PRINT8 = [
     "Employee",
     "ID",
-    "Hours in Consecutive Days",
+    "In Punch" "Hours in Consecutive Days",
     "Totaled Amount",
     "First day of Streak",
 ]

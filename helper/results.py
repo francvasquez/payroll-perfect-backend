@@ -262,6 +262,7 @@ def generate_results(
                 cols=config.COLS_PRINT8,
                 rename_map={
                     "Totaled Amount": "Hours Worked on Trigger Date",
+                    "In Punch": "Trigger Date",
                 },
             ),
             ##3. Check Overtime (OT) hours versus WFN
