@@ -3,7 +3,7 @@ import utility
 
 
 def process_data_wfn(
-    df, locations_config, min_wage, cal_min_wage, pay_periods_per_year
+    df, locations_config, min_wage, state_min_wage, pay_periods_per_year
 ):
 
     # Variables
@@ -96,11 +96,16 @@ def process_data_wfn(
     df["Min Wage"] = utility.apply_override_else_global(
         df, "CO.", "min_wage", min_wage, locations_config
     )
-    # Is there a location based minimum wage 40? Else take global "min_wage_40"
-    min_wage_40 = (cal_min_wage * 40 * 52 * 2) / pay_periods_per_year
-    df["Min Wage 40"] = utility.apply_override_else_global(
-        df, "CO.", "min_wage_40", min_wage_40, locations_config
+    # Is there a location based california minimum wage? Else take global "state_min_wage"
+    df["Cal Min Wage"] = utility.apply_override_else_global(
+        df, "CO.", "state_min_wage", state_min_wage, locations_config
     )
+    # Is there a location based pay periods per year? Else take global "pay_periods_per_year"
+    df["Pay Periods per Year"] = utility.apply_override_else_global(
+        df, "CO.", "pay_periods_per_year", pay_periods_per_year, locations_config
+    )
+    # Is there a location based minimum wage 40? Else take global "min_wage_40"
+    df["Min Wage 40"] = (df["Cal Min Wage"] * 40 * 52 * 2) / df["Pay Periods per Year"]
     ####
 
     # FLSA, Min Wage, Non-Active Checks

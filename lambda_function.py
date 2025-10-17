@@ -95,7 +95,7 @@ def handle_file_processing(event, clientId, payDate):
         # Extract global parameters with default fallback
         min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
         # min_wage_40 = global_config.get("min_wage_40", DEFAULT_MIN_WAGE_40)
-        cal_min_wage = global_config.get("cal_min_wage", DEFAULT_CAL_MIN_WAGE)
+        state_min_wage = global_config.get("state_min_wage", DEFAULT_STATE_MIN_WAGE)
         pay_periods_per_year = global_config.get(
             "pay_periods_per_year", DEFAULT_PAY_PERIODS_PER_YEAR
         )
@@ -143,7 +143,7 @@ def handle_file_processing(event, clientId, payDate):
         print(f"WFN read from Excel: {len(wfn_df)} rows")
         wfn_start = time.time()
         processed_wfn_df = process_data_wfn(
-            wfn_df, locations_config, min_wage, cal_min_wage, pay_periods_per_year
+            wfn_df, locations_config, min_wage, state_min_wage, pay_periods_per_year
         )
         wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
         print(f"WFN processed: {len(processed_wfn_df)} rows")
