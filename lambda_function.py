@@ -94,21 +94,17 @@ def handle_file_processing(event, clientId, payDate):
 
         # Extract global parameters with default fallback
         min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
-        min_wage_40 = global_config.get("min_wage_40", DEFAULT_MIN_WAGE_40)
+        # min_wage_40 = global_config.get("min_wage_40", DEFAULT_MIN_WAGE_40)
+        cal_min_wage = global_config.get("cal_min_wage", DEFAULT_CAL_MIN_WAGE)
+        pay_periods_per_year = global_config.get(
+            "pay_periods_per_year", DEFAULT_PAY_PERIODS_PER_YEAR
+        )
         ot_day_max = global_config.get("ot_day_max", DEFAULT_OT_DAY_MAX)
         ot_week_max = global_config.get("ot_week_max", DEFAULT_OT_WEEK_MAX)
         dt_day_max = global_config.get("dt_day_max", DEFAULT_DT_DAY_MAX)
         number_of_consec_days_before_ot = global_config.get(
             "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS_BEFORE_OT
         )
-        # Variables for future use
-        # workweek_start = global_config.get("workweek_start", DEFAULT_WORKWEEK_START)
-        # exempt_min_annual_wage = global_config.get(
-        #     "exempt_min_annual_wage", DEFAULT_EXEMPT_MIN_ANNUAL_WAGE
-        # )
-        # consec_days_workweek = global_config.get(
-        #     "consec_days_workweek", DEFAULT_CONSEC_DAYS_WORKWEEK
-        # )
 
         # Extract First date of pay period and convert to pandas
         first_date = pd.to_datetime(body.get("pay_date"))
@@ -147,7 +143,7 @@ def handle_file_processing(event, clientId, payDate):
         print(f"WFN read from Excel: {len(wfn_df)} rows")
         wfn_start = time.time()
         processed_wfn_df = process_data_wfn(
-            wfn_df, locations_config, min_wage, min_wage_40
+            wfn_df, locations_config, min_wage, cal_min_wage, pay_periods_per_year
         )
         wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
         print(f"WFN processed: {len(processed_wfn_df)} rows")

@@ -2,7 +2,9 @@ import numpy as np
 import utility
 
 
-def process_data_wfn(df, locations_config, min_wage, min_wage_40):
+def process_data_wfn(
+    df, locations_config, min_wage, cal_min_wage, pay_periods_per_year
+):
 
     # Variables
     MinE = 100
@@ -95,6 +97,7 @@ def process_data_wfn(df, locations_config, min_wage, min_wage_40):
         df, "CO.", "min_wage", min_wage, locations_config
     )
     # Is there a location based minimum wage 40? Else take global "min_wage_40"
+    min_wage_40 = (cal_min_wage * 40 * 52 * 2) / pay_periods_per_year
     df["Min Wage 40"] = utility.apply_override_else_global(
         df, "CO.", "min_wage_40", min_wage_40, locations_config
     )
