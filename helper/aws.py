@@ -196,7 +196,7 @@ def load_annotations(client_id, pay_date):
             return {
                 "statusCode": 200,
                 "headers": CORS_HEADERS,
-                "body": json.dumps({"annotations": []}),
+                "body": json.dumps(None),
             }
         else:
             print(f"S3 error loading annotations: {str(e)}")
