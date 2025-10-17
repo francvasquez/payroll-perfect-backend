@@ -194,9 +194,9 @@ def load_annotations(client_id, pay_date):
         if error_code == "NoSuchKey":
             print(f"No annotations found for {client_id}/{pay_date}")
             return {
-                "statusCode": 404,
+                "statusCode": 200,
                 "headers": CORS_HEADERS,
-                "body": json.dumps({"error": "No annotations found"}),
+                "body": json.dumps({"annotations": []}),
             }
         else:
             print(f"S3 error loading annotations: {str(e)}")
