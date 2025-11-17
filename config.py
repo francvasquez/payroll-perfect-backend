@@ -102,6 +102,8 @@ COLUMNS_TO_SHOW_NONACTIVE = [
     "Payroll Name",
     "IDX",
     "Position Status",
+    "Job Title Description",
+    "HIREDATE",
     "V_Vacation_Hours",
     "Termination Date",
     "REG",

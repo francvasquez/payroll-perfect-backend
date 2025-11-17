@@ -181,6 +181,8 @@ def generate_results(
                 cols=config.COLUMNS_TO_SHOW_NONACTIVE,
                 rename_map={
                     "V_Vacation_Hours": "Vacation Hours",
+                    "Job Title Description": "Job Description",
+                    "HIREDATE": "Hire Date",
                     "REG": "Straight Hours Worked",
                     "Variance Sick": "Variance Sick Credit ($)",
                     "Regular Rate Paid": "Regular Rate Paid ($)",
