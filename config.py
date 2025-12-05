@@ -1,5 +1,7 @@
-# S3 config
-S3_BUCKET = "pp-client-data"
+import os
+
+# S3 config - uses environment variable with fallback to production bucket
+S3_BUCKET = os.environ.get("S3_BUCKET", "pp-client-data")
 
 # API configuration
 CORS_HEADERS = {
