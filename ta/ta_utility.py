@@ -89,8 +89,7 @@ def add_next_break_time(df):
 
 
 def add_shift_length(df):
-    # Positive calculation of shift length (e.g. only when have all the data, else na)
-    # eleven_pm = datetime.time(23, 0)
+    # Safe calculation of shift length (e.g. only when have all the data, else na)
 
     df["Shift Length (hrs)"] = np.where(
         df["Next Break Time (min)"] < 60,  # Case a - next punch is part of shift
@@ -108,6 +107,9 @@ def add_shift_length(df):
             ),
         ),
     )
+
+    # Round to 2 decimals
+    df["Shift Length (hrs)"] = df["Shift Length (hrs)"].round(2)
 
     return df
 
