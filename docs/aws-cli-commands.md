@@ -1,10 +1,17 @@
-## Configure region for Payroll Perfect whic is in us-west-1
+## Configure region for Payroll Perfect 
 aws configure set region us-west-1
+
 ## Update function
 # zip first
 zip -r function.zip .
-# upload to lambda
+
+# DEV: upload to lambda
+aws lambda update-function-code --function-name analytics-backend-dev --zip-file fileb://function.zip
+
+# PROD: upload to lambda
 aws lambda update-function-code --function-name analytics-backend --zip-file fileb://function.zip
+
+
 ## Random
 # Find all refernces to "xyz"
 grep -r "xyz" .
