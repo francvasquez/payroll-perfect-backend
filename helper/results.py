@@ -224,12 +224,14 @@ def generate_results(
                     "Totaled Amount": "Punch Length (hrs)",
                 },
             ),
-            ##1c. Did not take break: Earned credits
-            "did_not_break_earned_credits": filter_and_sort_df_to_dict(
+            ##1c. Did not take break: Meal Waiver Check
+            "did_not_break_meal_waiver_check": filter_and_sort_df_to_dict(
                 df=stapled_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.did_not_break(stapled_df),
+                base_filter=ta_masks.did_not_break_bet_five_and_six_not_waived(
+                    stapled_df
+                ),
                 max_rows=200,
                 cols=config.COLS_PRINT2_A,
                 rename_map={"Totaled Amount": "Punch Length (hrs)"},

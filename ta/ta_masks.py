@@ -91,6 +91,17 @@ def did_not_break(df):
     return mask
 
 
+def did_not_break_bet_five_and_six_not_waived(df):
+    # Same as did_not_break but shows only cases were shift length is between five and six hours and waiver is not on file
+    mask = (
+        greater_than_five(df)  # df["Totaled Amount"] > 5
+        & is_first_punch_of_shift(df)  # df["Break Time (min)"] >= 60 | or NA but > 1AM
+        & shift_bet_5_and_6(df)  # shift between 5 and 6 hours
+        & waiver_on_file(df)  # not waived
+    )
+    return mask
+
+
 def did_not_break_possible(df):
     eleven_pm = datetime.time(23, 0)
     mask = (
