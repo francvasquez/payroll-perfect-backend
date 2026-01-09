@@ -15,9 +15,7 @@ def first_shift(df):
 
 
 def short_break(df):
-    return (df["Break Time (min)"] < 30) & ~(
-        (df["Waiver on File?"] == "Yes") & (df["Shift Length (hrs)"] <= 6)
-    )
+    return (df["Break Time (min)"] < 30) & (df["Shift Length (hrs)"] >= 5)
 
 
 def short_break_possible(df):

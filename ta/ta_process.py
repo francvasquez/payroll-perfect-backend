@@ -16,7 +16,6 @@ def process_data_ta(
 ):
 
     # Updated df: Assure timestamps are in Panda's datetime format
-
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Date/Time")
 
     # Normalize and create new Date column
