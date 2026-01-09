@@ -1,6 +1,10 @@
 ## Configure region for Payroll Perfect 
 aws configure set region us-west-1
 
+## Rollback
+git reset --hard [hash]]
+git push --force
+
 ## Update function
 # zip first
 zip -r function.zip .
