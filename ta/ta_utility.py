@@ -95,15 +95,20 @@ def add_shift_length(df):
         df["Next Break Time (min)"] < 60,  # Case a - next punch is part of shift
         df["Totaled Amount"] + df["Next Punch Length (hrs)"],
         np.where(
-            df["Next Break Time (min)"]
-            >= 60,  # Case b - nexr punch is not part of shift
-            df["Totaled Amount"],
+            df["Break Time (min)"]
+            < 60,  # Case a1 - this punch is part of same shift as prev
+            df["Totaled Amount"] + df["Prev Punch Length (hrs)"],
             np.where(
-                df["Next Break Time (min)"].isna()
-                # & (df["Out Punch"].dt.time < eleven_pm),  # Case c - no info on next shift - by removing this we assume this shift has no subsequent punches
-                ,
+                df["Next Break Time (min)"]
+                >= 60,  # Case b - nexr punch is not part of shift
                 df["Totaled Amount"],
-                np.nan,  # default: NA
+                np.where(
+                    df["Next Break Time (min)"].isna()
+                    # & (df["Out Punch"].dt.time < eleven_pm),  # Case c - no info on next shift - by removing this we assume this shift has no subsequent punches
+                    ,
+                    df["Totaled Amount"],
+                    np.nan,  # default: NA
+                ),
             ),
         ),
     )
