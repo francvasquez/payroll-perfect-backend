@@ -60,6 +60,11 @@ def process_data_ta(
     stapled_df = ta_utility.add_break_time(stapled_df)
     stapled_df = ta_utility.add_next_break_time(stapled_df)
     stapled_df = ta_utility.add_shift_length(stapled_df)
+    df = ta_utility.add_break_time(df)
+
+    # Updated df: Add Hours Worked Shift and Shift ID, 12 hour check
+    df = ta_utility.add_hours_worked_shift_and_shift_id(df)
+    df = ta_utility.add_twelve_hour_check(df)
 
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.
