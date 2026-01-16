@@ -15,6 +15,9 @@ def process_data_ta(
     processed_wfn_df=None,
 ):
 
+    # Drops rows that are not punches (i.e. NA In/Out Punch)
+    df = df.dropna(subset=["In Punch", "Out Punch"]).copy()
+
     # Updated df: Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Date/Time")
 
