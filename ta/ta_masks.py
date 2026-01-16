@@ -169,7 +169,7 @@ def break_credit(df):
 
 
 def over_twelve(df):
-    mask = unique_ids_datetime(df) & (df["Total Worked Hours Workday"] >= 12)
+    mask = unique_ids_datetime(df) & df["12hr Credit Due"]
     return mask
 
 

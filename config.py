@@ -160,7 +160,7 @@ COLS_PRINT7 = [
     "ID",
     "Employee",
     "Date",
-    "Total Worked Hours Workday",
+    "Hours Worked Shift",
     "Paid Break Credit (hrs)",
 ]
 COLS_PRINT8 = [
