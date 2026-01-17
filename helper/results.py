@@ -200,10 +200,10 @@ def generate_results(
             ),
             ##1a. Short Break: Earned credits
             "short_break_earned_credits": filter_and_sort_df_to_dict(
-                df=stapled_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.short_break(stapled_df),
+                base_filter=ta_masks.short_break(processed_ta_df),
                 max_rows=200,
                 cols=config.COLS_PRINT3,
                 rename_map={

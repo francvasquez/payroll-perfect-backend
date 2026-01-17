@@ -15,7 +15,14 @@ def first_shift(df):
 
 
 def short_break(df):
+    # evaluate deletion
     return (df["Break Time (min)"] < 30) & (df["Shift Length (hrs)"] >= 5)
+
+
+def break_less_than_30(df):
+    return (
+        (df["Break Time (min)"] < 30) & (df["Hours Worked Shift"] >= 5) & df["is_break"]
+    )  # df["is_break"] ignores midnight punches and first punches of shift
 
 
 def short_break_possible(df):

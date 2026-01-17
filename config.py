@@ -144,6 +144,20 @@ COLS_PRINT3 = [
     "Shift Length (hrs)",
     "Waiver on File?",
 ]
+
+COLS_PRINT3a = [
+    "Employee",
+    "ID",
+    "Prev In Punch",
+    "Prev Out Punch",
+    "Break Time (min)",
+    "In Punch",
+    "Totaled Amount",
+    "Paid Break Credit (hrs)",
+    "Hours Worked Shift",
+    "Waiver on File?",
+]
+
 COLS_PRINT5 = [
     "Employee",
     "ID",
