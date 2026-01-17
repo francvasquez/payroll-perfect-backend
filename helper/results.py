@@ -203,7 +203,7 @@ def generate_results(
                 df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.short_break(processed_ta_df),
+                base_filter=ta_masks.break_less_than_30(processed_ta_df),
                 max_rows=200,
                 cols=config.COLS_PRINT3,
                 rename_map={
