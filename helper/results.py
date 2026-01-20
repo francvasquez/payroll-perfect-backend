@@ -211,19 +211,6 @@ def generate_results(
                     "Totaled Amount": "Punch Length (hrs)",
                 },
             ),
-            ##1b. Short Break: Cases to investigate further
-            "short_break_to_investigate": filter_and_sort_df_to_dict(
-                df=stapled_df,
-                sort_col="Employee",
-                ascending=True,
-                base_filter=ta_masks.short_break_possible(stapled_df),
-                max_rows=200,
-                cols=config.COLS_PRINT3,
-                rename_map={
-                    "Regular Rate Paid": "Straight Rate ($)",
-                    "Totaled Amount": "Punch Length (hrs)",
-                },
-            ),
             ##1c. Did not take break: Meal Waiver Check
             "did_not_break_meal_waiver_check": filter_and_sort_df_to_dict(
                 df=stapled_df,

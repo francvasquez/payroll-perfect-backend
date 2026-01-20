@@ -25,18 +25,6 @@ def break_less_than_30(df):
     )  # df["is_break"] ignores midnight punches and first punches of shift
 
 
-def short_break_possible(df):
-    # These cases are cases where we don't have Break Time (min) AND
-    # there is a chance it is the second punch of the day
-    one_am = datetime.time(1, 0)  # 01:00:00
-    mask = (
-        df["Break Time (min)"].isna() & (df["In Punch"].dt.time <= one_am)
-    ) & ~first_shift(
-        df
-    )  # second punch
-    return mask
-
-
 def is_first_punch_of_shift(df):
     one_am = datetime.time(1, 0)  # 01:00:00
     return (df["Break Time (min)"] >= 60) | (  # Must be first punch of shift
