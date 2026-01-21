@@ -274,10 +274,10 @@ def generate_results(
             ),
             ##4. Split Shift Check
             "split_shift": filter_and_sort_df_to_dict(
-                df=stapled_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.split_shift(stapled_df),
+                base_filter=ta_masks.split_shift(processed_ta_df),
                 max_rows=200,
                 cols=config.COLS_PRINT5,
                 rename_map={"Regular Rate Paid": "Straight Rate ($)"},

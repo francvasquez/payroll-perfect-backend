@@ -68,7 +68,7 @@ def process_data_ta(
 
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.
-    # df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
+    df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
     stapled_df = ta_utility.add_split_shift(stapled_df, processed_wfn_df, min_wage)
 
     # BY PUNCH DF ######################################
