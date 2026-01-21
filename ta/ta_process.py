@@ -27,12 +27,8 @@ def process_data_ta(
     # Updated df: Adds "Total Worked Hours Workday" col.
     df = ta_utility.add_total_hours_workday(df)
 
-    # New df: Sort and staple system generated midnight punches
-    stapled_df = ta_utility.sort_and_staple(df)
-
     # Updated df: Add time helper columns
     df = ta_utility.add_time_helper_cols(df)
-    stapled_df = ta_utility.add_time_helper_cols(stapled_df)
 
     # Updated df: Add Break Credit from WFN File.
     df = ta_utility.add_col_from_another_df(
@@ -43,23 +39,11 @@ def process_data_ta(
         lookup_tgt="J_Break Credits_Additional Hours",
         home_new_col="Paid Break Credit (hrs)",
     )
-    stapled_df = ta_utility.add_col_from_another_df(
-        home_df=stapled_df,
-        lookup_df=processed_wfn_df,
-        home_ref="ID",
-        lookup_ref="IDX",
-        lookup_tgt="J_Break Credits_Additional Hours",
-        home_new_col="Paid Break Credit (hrs)",
-    )
 
     # Updated df: Adds Short ID, Waiver Lookup, Waiver on File? cols
     df = ta_utility.add_waiver_check(df, processed_waiver_df)
-    stapled_df = ta_utility.add_waiver_check(stapled_df, processed_waiver_df)
 
     # Updated df: Adds breaks check columns
-    stapled_df = ta_utility.add_break_time(stapled_df)
-    stapled_df = ta_utility.add_next_break_time(stapled_df)
-    stapled_df = ta_utility.add_shift_length(stapled_df)
     df = ta_utility.add_break_time(df)
 
     # Updated df: Add Hours Worked Shift and Shift ID, 12 hour check
@@ -69,7 +53,6 @@ def process_data_ta(
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
-    stapled_df = ta_utility.add_split_shift(stapled_df, processed_wfn_df, min_wage)
 
     # BY PUNCH DF ######################################
 
