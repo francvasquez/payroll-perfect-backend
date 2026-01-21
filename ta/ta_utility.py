@@ -362,52 +362,57 @@ def create_bypunch(
     return bypunch_df
 
 
-def create_anomalies(df, stapled_df):
+def create_anomalies_new(df):
     # Step 1: Define anomaly columns as either 1 or 0
-    stapled_df["Short Break"] = (ta_masks.short_break(stapled_df)).astype(int)
-    stapled_df["Did Not Break"] = (ta_masks.did_not_break(stapled_df)).astype(int)
+    df["Short Break"] = (ta_masks.break_less_than_30(df)).astype(int)
+    df["Did Not Break"] = (ta_masks.did_not_break_new(df)).astype(int)
     df["Over Twelve"] = (ta_masks.over_twelve(df)).astype(int)
 
     # Step 2: Aggregate anomalies by Employee and ID
-    anomalies_stapled_df = stapled_df.groupby(["ID"], as_index=False).agg(
+    anomalies_df = df.groupby(["ID"], as_index=False).agg(
         {
             "Employee": "first",  # keeps this column
             "Paid Break Credit (hrs)": "first",  # keeps this column
             "Short Break": "sum",  # consolidate
             "Did Not Break": "sum",  # consolidate
-        }
-    )
-    anomalies_df = df.groupby(["ID"], as_index=False).agg(
-        {
-            "Employee": "first",  # keeps this column
-            "Paid Break Credit (hrs)": "first",  # keeps this column
             "Over Twelve": "sum",  # consolidate
         }
     )
-    # Discard rows that have both zero calculated and paid brakes
-    anomalies_stapled_df = anomalies_stapled_df[
-        (anomalies_stapled_df["Short Break"] != 0)
-        | (anomalies_stapled_df["Did Not Break"] != 0)
-        | (anomalies_stapled_df["Paid Break Credit (hrs)"] != 0)
+
+    # Step 3: Keep only rows with anomalies or paid break credits
+    anomalies_df = anomalies_df[
+        (anomalies_df["Short Break"] != 0)
+        | (anomalies_df["Did Not Break"] != 0)
+        | (anomalies_df["Over Twelve"] != 0)
+        | (anomalies_df["Paid Break Credit (hrs)"] != 0)
     ]
-    anomalies_df = anomalies_df[(anomalies_df["Over Twelve"] != 0)]
 
-    output_df = merge_source_into_target_auto(
-        anomalies_df, anomalies_stapled_df, key_col="ID"
+    # Step 4 Create sum and variance dfs
+    anomalies_df["Due Break Credit (hrs)"] = (
+        anomalies_df["Short Break"]
+        + anomalies_df["Did Not Break"]
+        + anomalies_df["Over Twelve"]
+    )
+    anomalies_df["Variance"] = (
+        anomalies_df["Due Break Credit (hrs)"] - anomalies_df["Paid Break Credit (hrs)"]
     )
 
-    # Create sum and variance dfs
-    output_df["Due Break Credit (hrs)"] = (
-        output_df["Short Break"] + output_df["Did Not Break"] + output_df["Over Twelve"]
-    )
-    output_df["Variance"] = (
-        output_df["Due Break Credit (hrs)"] - output_df["Paid Break Credit (hrs)"]
-    )
+    return anomalies_df
 
-    # Sort for columns correct display in UI
-    output_df = output_df[config.COLS_PRINT10]
 
-    return output_df
+def add_punch_length(df):
+    # Identify where a new logical punch starts
+    df["new_punch"] = (df.groupby(["ID", "shift_id"]).cumcount() == 0) | (
+        df["Break Time (min)"] > 0
+    )
+    # Create a punch_id within each shift
+    df["punch_id"] = df.groupby(["ID", "shift_id"])["new_punch"].cumsum()
+    # Aggregate into the Punch Length DataFrame
+    df["Punch Length (hrs)"] = df.groupby(["ID", "shift_id", "punch_id"])[
+        "Totaled Amount"
+    ].transform("sum")
+
+    return df
 
 
 def merge_source_into_target_auto(source_df, target_df, key_col="ID"):

@@ -56,7 +56,7 @@ def filter_and_sort_df_to_dict(
 
 def generate_results(
     processed_ta_df,
-    anomalies_df,
+    anomalies_df_new,
     bypunch_df,
     stapled_df,
     processed_wfn_df,
@@ -71,7 +71,7 @@ def generate_results(
         "summary": {
             "rows": {
                 "ta_rows": len(processed_ta_df),
-                "anomalies_rows": len(anomalies_df),
+                "anomalies_rows": len(anomalies_df_new),
                 "bypunch_rows": len(bypunch_df),
                 "stapled_rows": len(stapled_df),
                 "wfn_rows": len(processed_wfn_df),
@@ -192,9 +192,9 @@ def generate_results(
         "ta": {
             ## "1. Break Credit Summary"
             "break_credit_summary": filter_and_sort_df_to_dict(
-                df=anomalies_df,
+                df=anomalies_df_new,
                 sort_col="Paid Break Credit (hrs)",
-                base_filter=ta_masks.non_zero_var(anomalies_df),
+                base_filter=ta_masks.non_zero_var(anomalies_df_new),
                 ascending=False,
                 max_rows=200,
             ),

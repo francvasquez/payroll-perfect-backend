@@ -112,7 +112,10 @@ def process_data_ta(
         bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"]
     )
 
-    # Create anomalies DF
-    anomalies_df = ta_utility.create_anomalies(df, stapled_df)
+    # Updated df: Add Punch Length df which adds staples midnight punches
+    df = ta_utility.add_punch_length(df)
 
-    return (df, bypunch_df, stapled_df, anomalies_df)
+    # Create new anomalies DF
+    anomalies_df_new = ta_utility.create_anomalies_new(df)
+
+    return (df, bypunch_df, anomalies_df_new)

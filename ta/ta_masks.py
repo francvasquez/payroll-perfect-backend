@@ -75,11 +75,16 @@ def shift_greater_than_6(df):
 
 
 def did_not_break_new(df):
+    # LB 1/21/26: If the punch is greater than 5 hours, you get a credit unless the shift
+    # is 6 hours or less and there is a waiver on file.
+
     mask = (
-        df["new_shift"]
-        & (df["Totaled Amount"] > 5)
-        & (df["Hours Worked Shift"] <= 6)
-        & ~waiver_on_file(df)
+        df["new_shift"]  # is first punch of shift
+        & df["new_punch"]  # exclude midnight punches
+        & (df["Punch Length (hrs)"] > 5)  # stapled punch length
+        & ~(
+            (df["Hours Worked Shift"] <= 6) & waiver_on_file(df)
+        )  # exclude bonafied waived
     )
     return mask
 
