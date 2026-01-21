@@ -365,7 +365,7 @@ def create_bypunch(
 def create_anomalies_new(df):
     # Step 1: Define anomaly columns as either 1 or 0
     df["Short Break"] = (ta_masks.break_less_than_30(df)).astype(int)
-    df["Did Not Break"] = (ta_masks.did_not_break_new(df)).astype(int)
+    df["Did Not Break"] = (ta_masks.did_not_break_new_all(df)).astype(int)
     df["Over Twelve"] = (ta_masks.over_twelve(df)).astype(int)
 
     # Step 2: Aggregate anomalies by Employee and ID

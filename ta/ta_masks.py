@@ -92,6 +92,19 @@ def did_not_break_new(df):
     return mask
 
 
+def did_not_break_new_all(df):
+    # For anomalies table only
+    mask = (
+        df["new_shift"]  # is first punch of shift
+        & df["new_punch"]  # exclude midnight punches
+        & (df["Punch Length (hrs)"] > 5)  # stapled punch length
+        & ~(
+            (df["Hours Worked Shift"] <= 6) & waiver_on_file(df)
+        )  # exclude bonafied waived
+    )
+    return mask
+
+
 def spans_midnight(df):
     # Need to include second condition otherwise would skip punches that
     # start at 12:00:00 AM.
