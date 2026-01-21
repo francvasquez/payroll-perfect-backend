@@ -221,16 +221,6 @@ def generate_results(
                 cols=config.COLS_PRINT2_B,
                 rename_map={"Totaled Amount": "Punch Length (hrs)"},
             ),
-            ##1d. Did not take break: Cases to investigate further
-            "did_not_break_to_investigate": filter_and_sort_df_to_dict(
-                df=stapled_df,
-                sort_col="Employee",
-                ascending=True,
-                base_filter=ta_masks.did_not_break_possible(stapled_df),
-                max_rows=200,
-                cols=config.COLS_PRINT2_A,
-                rename_map={"Totaled Amount": "Punch Length (hrs)"},
-            ),
             ##1e. Over 12 hours Check
             "over_12_hours": filter_and_sort_df_to_dict(
                 df=processed_ta_df,
