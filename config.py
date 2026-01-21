@@ -111,6 +111,15 @@ COLUMNS_TO_SHOW_NONACTIVE = [
     "REG",
 ]
 # COLS for printing TA
+COLS_ANOMALIES = [
+    "ID" "Employee",
+    "Paid Break Credit (hrs)",
+    "Due Break Credit (hrs)",
+    "Variance",
+    "Short Break",
+    "Did Not Break",
+    "Over Twelve",
+]
 COLS_PRINT = ["Employee", "Totaled Amount"]
 COLS_PRINT2_A = [
     "ID",

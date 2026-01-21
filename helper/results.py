@@ -195,6 +195,7 @@ def generate_results(
                 base_filter=ta_masks.non_zero_var(anomalies_df_new),
                 ascending=False,
                 max_rows=200,
+                cols=config.COLS_ANOMALIES,
             ),
             ##1a. Short Break: Earned credits
             "short_break_earned_credits": filter_and_sort_df_to_dict(
