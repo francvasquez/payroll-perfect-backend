@@ -213,14 +213,12 @@ def generate_results(
             ),
             ##1c. Did not take break: Meal Waiver Check
             "did_not_break_meal_waiver_check": filter_and_sort_df_to_dict(
-                df=stapled_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.did_not_break_bet_five_and_six_not_waived(
-                    stapled_df
-                ),
+                base_filter=ta_masks.did_not_break_new(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT2_A,
+                cols=config.COLS_PRINT2_B,
                 rename_map={"Totaled Amount": "Punch Length (hrs)"},
             ),
             ##1d. Did not take break: Cases to investigate further

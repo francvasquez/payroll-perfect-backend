@@ -74,6 +74,16 @@ def shift_greater_than_6(df):
     return df["Shift Length (hrs)"] > 6
 
 
+def did_not_break_new(df):
+    mask = (
+        df["new_shift"]
+        & (df["Totaled Amount"] > 5)
+        & (df["Hours Worked Shift"] <= 6)
+        & ~waiver_on_file(df)
+    )
+    return mask
+
+
 def did_not_break(df):
     # Cases positively identified as earning break credit:
     mask = (

@@ -131,6 +131,19 @@ COLS_PRINT2_A = [
     "Waiver on File?",
     # "Flag",
 ]
+COLS_PRINT2_B = [
+    "ID",
+    "Employee",
+    "Prev Out Punch",
+    "Break Time (min)",
+    "In Punch",
+    "Out Punch",
+    "Totaled Amount",
+    "Hours Worked Shift",
+    "Paid Break Credit (hrs)",
+    "Waiver on File?",
+    # "Flag",
+]
 COLS_PRINT3 = [
     "Employee",
     "ID",
