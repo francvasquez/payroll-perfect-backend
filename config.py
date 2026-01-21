@@ -112,7 +112,8 @@ COLUMNS_TO_SHOW_NONACTIVE = [
 ]
 # COLS for printing TA
 COLS_ANOMALIES = [
-    "ID" "Employee",
+    "ID",
+    "Employee",
     "Paid Break Credit (hrs)",
     "Due Break Credit (hrs)",
     "Variance",
