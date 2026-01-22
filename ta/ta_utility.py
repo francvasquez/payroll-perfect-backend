@@ -106,62 +106,57 @@ def add_hours_worked_shift_and_shift_id(df):
 def add_twelve_hour_check(df):
     ##################
     # The credit will be due when in a unique shift:
-    # Condition 1: 1) Hours Worked Shift is equal or longer than 12 hours 2) There are less than two punches with Break Time (min) greater than zero
+    # Condition 1: 1) Hours Worked Shift is equal or longer than 12 hours
+    #              2) There are less than two punches with Break Time (min) > 0
     # OR
-    # Condition 2: 1) Hours Worked Shift is equal or longer than 12 hours 2) There are two punches or more with Break Time (min) greater than zero,
-    # however the second punch with Break Time (min) greater than zero started after 10 hours since the first In Punch of the shift.
+    # Condition 2: 1) Hours Worked Shift is equal or longer than 12 hours
+    #              2) There are two punches or more with Break Time (min) > 0,
+    #                 however the second break started after 10 hours
     ##################
 
     # Shift start time
     df["Shift Start"] = df.groupby(["ID", "shift_id"])["In Punch"].transform("min")
-    # Identify punch breaks, excluding first punch of the shift
+
+    # Identify first punch of shift
     df["is_first_punch_of_shift"] = df.groupby(["ID", "shift_id"]).cumcount().eq(0)
+
+    # Identify break-causing punches
     df["is_break"] = (df["Break Time (min)"] > 0) & (~df["is_first_punch_of_shift"])
+
     # Count breaks per shift
     df["break_count"] = df.groupby(["ID", "shift_id"])["is_break"].transform("sum")
-    # Time of the 2nd break (if any)
-    # Isolate break punches, rank them within the shift, and pull the 2nd one.
+
+    # Rank ONLY break-causing punches by Out Punch
     df["break_order"] = (
-        df[df["is_break"]].groupby(["ID", "shift_id"])["In Punch"].rank(method="first")
+        df.loc[df["is_break"]]
+        .groupby(["ID", "shift_id"])["Out Punch"]
+        .rank(method="first")
     )
-    df["second_break_in"] = (
-        df[df["break_order"] == 2]
-        .groupby(["ID", "shift_id"])["In Punch"]
-        .transform("first")
-    )
-    # Now propagate that timestamp to all rows in the shift:
-    df["second_break_in"] = df.groupby(["ID", "shift_id"])["second_break_in"].transform(
-        "first"
-    )
+
+    # Filter to get only the rows where conditions are met
+    second_break = df[(df["break_count"] == 2) & (df["break_order"] == 1)][
+        ["ID", "shift_id", "Out Punch"]
+    ].rename(columns={"Out Punch": "second_break_out"})
+
+    # Merge back to the original dataframe to create the column
+    df = df.merge(second_break, on=["ID", "shift_id"], how="left")
+
     # Hours from shift start to 2nd break
     df["hours_to_second_break"] = (
-        (df["second_break_in"] - df["Shift Start"]).dt.total_seconds().div(3600)
+        (df["second_break_out"] - df["Shift Start"]).dt.total_seconds().div(3600)
     )
-    # Apply rules
-    # Condition 1
-    # ≥ 12 hours worked AND fewer than 2 breaks
+
+    # Condition 1: ≥ 12 hours and fewer than 2 breaks
     cond1 = (df["Hours Worked Shift"] >= 12) & (df["break_count"] < 2)
-    # Condition 2
-    # ≥ 12 hours worked
-    # ≥ 2 breaks
-    # 2nd break started after 10 hours from shift start
+
+    # Condition 2: ≥ 12 hours, ≥ 2 breaks, second break after 10 hours
     cond2 = (
         (df["Hours Worked Shift"] >= 12)
         & (df["break_count"] >= 2)
         & (df["hours_to_second_break"] > 10)
     )
-    df["12hr Credit Due"] = cond1 | cond2
 
-    # Cleanup (optional)
-    # df.drop(
-    # columns=[
-    #     'is_break',
-    #     'break_order',
-    #     'second_break_in',
-    #     'hours_to_second_break'
-    # ],
-    # inplace=True
-    # )
+    df["12hr Credit Due"] = cond1 | cond2
 
     return df
 
