@@ -14,11 +14,6 @@ def first_shift(df):
     return df["Next Break Time (min)"] < 60
 
 
-def short_break(df):
-    # evaluate deletion
-    return (df["Break Time (min)"] < 30) & (df["Shift Length (hrs)"] >= 5)
-
-
 def break_less_than_30(df):
     return (
         (df["Break Time (min)"] < 30) & (df["Hours Worked Shift"] >= 5) & df["is_break"]
@@ -31,10 +26,6 @@ def is_first_punch_of_shift(df):
         (df["Break Time (min)"].isna()) & (df["In Punch"].dt.time >= one_am)
     )  # We don't have break time but the punch is greater than 1 am
     # which tells me it must be the first punch of the shift as well.
-
-
-def prev_in_punch_midnight(df):
-    return df["Prev In Punch"].dt.time == pd.Timestamp("00:00:00").time()
 
 
 def waiver_on_file(df):
@@ -62,16 +53,8 @@ def greater_than_five(df):
     return df["Totaled Amount"] > 5
 
 
-def is_second_half_of_shift(df):
-    return df["Break Time (min)"] < 60
-
-
 def shift_bet_5_and_6(df):
     return (df["Shift Length (hrs)"] > 5) & (df["Shift Length (hrs)"] <= 6)
-
-
-def shift_greater_than_6(df):
-    return df["Shift Length (hrs)"] > 6
 
 
 def did_not_break_new(df):
@@ -105,14 +88,6 @@ def did_not_break_new_all(df):
     return mask
 
 
-def spans_midnight(df):
-    # Need to include second condition otherwise would skip punches that
-    # start at 12:00:00 AM.
-    return (df["In Punch"].dt.date != df["Out Punch"].dt.date) | (
-        df["In Punch"].dt.time == pd.Timestamp("00:00:00").time()
-    )
-
-
 def non_zero_var(df):
     return df["Variance"] != 0
 
@@ -127,11 +102,6 @@ def zero_rows_bypunch(df):
     return mask
 
 
-def over_six(df):
-    # Boolean: Shifts greater than 6 hours.
-    return df["Totaled Amount"] > 6
-
-
 def unique_ids_datetime(df):
     # Keeps first unique pair ID + Date. Note that all Date has been normalized to midnight when adding date helper cols.
     return ~df.duplicated(subset=["ID", "Date"])
@@ -140,12 +110,6 @@ def unique_ids_datetime(df):
 def unique_ids(df):
     # Returns a Boolean mask that keeps the first occurrence of every unique ID and filters out duplicates.
     return ~df.duplicated(subset=["ID"])
-
-
-def break_credit(df):
-    # Boolean: Create mask without dups and break credit earned.
-    # return (~df.duplicated("ID")) & (df["Paid Break Credit (hrs)"] > 0)
-    return df["Paid Break Credit (hrs)"] > 0
 
 
 def over_twelve(df):
