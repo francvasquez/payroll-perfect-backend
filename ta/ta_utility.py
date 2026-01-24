@@ -91,13 +91,13 @@ def add_next_break_time(df):
 def add_hours_worked_shift_and_shift_id(df):
     # 1.16.26 Compare to add_shift_length and evaluate which to keep
     # New shift starts if gap from prev punch >= 60 minutes or first punch for employee (boolean)
-    df["new_shift"] = (df["Break Time (min)"] >= 60) | df["Break Time (min)"].isna()
+    df["New Shift?"] = (df["Break Time (min)"] >= 60) | df["Break Time (min)"].isna()
 
     # Create shift id per employee (1, 2, 3, ...)
-    df["shift_id"] = df.groupby("ID")["new_shift"].cumsum()
+    df["Shift Number"] = df.groupby("ID")["New Shift?"].cumsum()
 
     # Compute shift length (sum of hours per shift)
-    df["Hours Worked Shift"] = df.groupby(["ID", "shift_id"])[
+    df["Hours Worked Shift"] = df.groupby(["ID", "Shift Number"])[
         "Totaled Amount"
     ].transform("sum")
     return df
@@ -115,45 +115,45 @@ def add_twelve_hour_check(df):
     ##################
 
     # Shift start time
-    df["Shift Start"] = df.groupby(["ID", "shift_id"])["In Punch"].transform("min")
+    df["Shift Start"] = df.groupby(["ID", "Shift Number"])["In Punch"].transform("min")
 
     # Identify first punch of shift
-    df["is_first_punch_of_shift"] = df.groupby(["ID", "shift_id"]).cumcount().eq(0)
+    df["First Punch of Shift?"] = df.groupby(["ID", "Shift Number"]).cumcount().eq(0)
 
     # Identify break-causing punches
-    df["is_break"] = (df["Break Time (min)"] > 0) & (~df["is_first_punch_of_shift"])
+    df["Is Break?"] = (df["Break Time (min)"] > 0) & (~df["First Punch of Shift?"])
 
     # Count breaks per shift
-    df["break_count"] = df.groupby(["ID", "shift_id"])["is_break"].transform("sum")
+    df["Break Count"] = df.groupby(["ID", "Shift Number"])["Is Break?"].transform("sum")
 
     # Rank ONLY break-causing punches by Out Punch
-    df["break_order"] = (
-        df.loc[df["is_break"]]
-        .groupby(["ID", "shift_id"])["Out Punch"]
+    df["Break Order"] = (
+        df.loc[df["Is Break?"]]
+        .groupby(["ID", "Shift Number"])["Out Punch"]
         .rank(method="first")
     )
 
     # Filter to get only the rows where conditions are met
-    second_break = df[(df["break_count"] == 2) & (df["break_order"] == 1)][
-        ["ID", "shift_id", "Out Punch"]
-    ].rename(columns={"Out Punch": "second_break_out"})
+    second_break = df[(df["Break Count"] == 2) & (df["Break Order"] == 1)][
+        ["ID", "Shift Number", "Out Punch"]
+    ].rename(columns={"Out Punch": "2nd Break Start"})
 
     # Merge back to the original dataframe to create the column
-    df = df.merge(second_break, on=["ID", "shift_id"], how="left")
+    df = df.merge(second_break, on=["ID", "Shift Number"], how="left")
 
     # Hours from shift start to 2nd break
-    df["hours_to_second_break"] = (
-        (df["second_break_out"] - df["Shift Start"]).dt.total_seconds().div(3600)
+    df["Hours to 2nd Break"] = (
+        (df["2nd Break Start"] - df["Shift Start"]).dt.total_seconds().div(3600)
     )
 
     # Condition 1: ≥ 12 hours and fewer than 2 breaks
-    cond1 = (df["Hours Worked Shift"] >= 12) & (df["break_count"] < 2)
+    cond1 = (df["Hours Worked Shift"] >= 12) & (df["Break Count"] < 2)
 
     # Condition 2: ≥ 12 hours, ≥ 2 breaks, second break after 10 hours
     cond2 = (
         (df["Hours Worked Shift"] >= 12)
-        & (df["break_count"] >= 2)
-        & (df["hours_to_second_break"] > 10)
+        & (df["Break Count"] >= 2)
+        & (df["Hours to 2nd Break"] > 10)
     )
 
     df["12hr Credit Due"] = cond1 | cond2
@@ -397,15 +397,17 @@ def create_anomalies_new(df):
 
 def add_punch_length(df):
     # Identify where a new logical punch starts
-    df["new_punch"] = (df.groupby(["ID", "shift_id"]).cumcount() == 0) | (
+    df["Is New Punch?"] = (df.groupby(["ID", "Shift Number"]).cumcount() == 0) | (
         df["Break Time (min)"] > 0
     )
-    # Create a punch_id within each shift
-    df["punch_id"] = df.groupby(["ID", "shift_id"])["new_punch"].cumsum()
+    # Create a Punch Number in Shift  within each shift
+    df["Punch Number in Shift "] = df.groupby(["ID", "Shift Number"])[
+        "Is New Punch?"
+    ].cumsum()
     # Aggregate into the Punch Length DataFrame
-    df["Punch Length (hrs)"] = df.groupby(["ID", "shift_id", "punch_id"])[
-        "Totaled Amount"
-    ].transform("sum")
+    df["Punch Length (hrs)"] = df.groupby(
+        ["ID", "Shift Number", "Punch Number in Shift "]
+    )["Totaled Amount"].transform("sum")
 
     return df
 

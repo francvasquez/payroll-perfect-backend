@@ -16,8 +16,10 @@ def first_shift(df):
 
 def break_less_than_30(df):
     return (
-        (df["Break Time (min)"] < 30) & (df["Hours Worked Shift"] >= 5) & df["is_break"]
-    )  # df["is_break"] ignores midnight punches and first punches of shift
+        (df["Break Time (min)"] < 30)
+        & (df["Hours Worked Shift"] >= 5)
+        & df["Is Break?"]
+    )  # df["Is Break?"] ignores midnight punches and first punches of shift
 
 
 def is_first_punch_of_shift(df):
@@ -62,8 +64,8 @@ def did_not_break_new(df):
     # is 6 hours or less and there is a waiver on file.
 
     mask = (
-        df["new_shift"]  # is first punch of shift
-        & df["new_punch"]  # exclude midnight punches
+        df["New Shift?"]  # is first punch of shift
+        & df["Is New Punch?"]  # exclude midnight punches
         & (df["Punch Length (hrs)"] > 5)  # stapled punch length
         & ~(
             (df["Hours Worked Shift"] <= 6) & waiver_on_file(df)
@@ -78,8 +80,8 @@ def did_not_break_new(df):
 def did_not_break_new_all(df):
     # For anomalies table only
     mask = (
-        df["new_shift"]  # is first punch of shift
-        & df["new_punch"]  # exclude midnight punches
+        df["New Shift?"]  # is first punch of shift
+        & df["Is New Punch?"]  # exclude midnight punches
         & (df["Punch Length (hrs)"] > 5)  # stapled punch length
         & ~(
             (df["Hours Worked Shift"] <= 6) & waiver_on_file(df)
