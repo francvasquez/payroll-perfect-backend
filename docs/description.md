@@ -1,5 +1,2 @@
-## lambda_function
-- Handles CORS preflight
-- Request
-    - If preflight, returns 
-    - Else handles presigned url request or file processing
+## Notes
+- Ensure Lambda prod is updated to dev in runtime in console and check layers.
