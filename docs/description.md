@@ -1,2 +1,2 @@
 ## Notes
-- Ensure Lambda prod is updated to dev in runtime in console and check layers.
+- Ensure Lambda prod is updated to dev in runtime in console and check layers, also check env variables. 
