@@ -162,6 +162,7 @@ def handle_file_processing(event, clientId, payDate):
             ot_week_max,
             dt_day_max,
             first_date,
+            clientId,
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )

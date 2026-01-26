@@ -1,3 +1,4 @@
+from helper.db_utils import save_to_database
 import utility
 from . import ta_utility
 
@@ -11,6 +12,7 @@ def process_data_ta(
     ot_week_max,
     dt_day_max,
     first_date,
+    clientId,
     processed_waiver_df=None,
     processed_wfn_df=None,
 ):
@@ -100,5 +102,13 @@ def process_data_ta(
 
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)
+
+    # Save ta df to database
+    try:
+        table_name = save_to_database(df, data_type="ta", client_name=clientId)
+        print(f"Data successfully saved to table: {table_name}")
+
+    except Exception as e:
+        print(f"Failed to save to database: {e}")
 
     return (df, bypunch_df, anomalies_df_new)
