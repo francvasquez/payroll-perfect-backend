@@ -105,7 +105,7 @@ def process_data_ta(
 
     # Save ta df to database
     try:
-        table_name = save_to_database(df, data_type="ta", client_name=clientId)
+        table_name = save_to_database(df, table_name="ta", client_name=clientId)
         print(f"Data successfully saved to table: {table_name}")
 
     except Exception as e:
