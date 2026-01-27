@@ -242,6 +242,6 @@ COLUMNS_TO_DROP_FOR_DATABASE = [
     "Prev Punch Length (hrs)",
     "Next Punch Length (hrs)",
     "Prev ID",
-    "Next ID ",
+    "Next ID",
     "Waiver Lookup",
 ]

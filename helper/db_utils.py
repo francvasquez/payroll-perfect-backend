@@ -29,7 +29,10 @@ def get_pg_type(dtype):
 
 def save_to_database_fast(df, table_name, clientId):
     # Cleanup before saving
-    df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE, errors="ignore")
+    df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
+    # Metadata
+    df = df.copy()  # Good practice to avoid SettingWithCopy warnings
+    df["last_updated"] = pd.Timestamp.now()
 
     #   Table name
     if not clientId or clientId == "None":
@@ -59,7 +62,28 @@ def save_to_database_fast(df, table_name, clientId):
                     f'CREATE TABLE IF NOT EXISTS "{full_table_name}" ({cols_sql});'
                 )
 
-                # 2. Ensure the Unique Constraint exists for the UPSERT
+            # 2. SCHEMA EVOLUTION: Check for and add missing columns
+            cur.execute(
+                f"""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = '{full_table_name}';
+            """
+            )
+            existing_db_cols = {row[0] for row in cur.fetchall()}
+
+            new_cols = [c for c in df.columns if c not in existing_db_cols]
+
+            for col in new_cols:
+                pg_type = get_pg_type(df[col].dtype)
+                print(
+                    f"Detecting new field. Adding {col} ({pg_type}) to {full_table_name}"
+                )
+                cur.execute(
+                    f'ALTER TABLE "{full_table_name}" ADD COLUMN "{col}" {pg_type};'
+                )
+
+                # 3. CONSTRAINT: Ensure the Upsert key exists
                 constraint_name = f"uq_{full_table_name}"
                 cur.execute(
                     f"""
@@ -71,19 +95,19 @@ def save_to_database_fast(df, table_name, clientId):
                 """
                 )
 
-                # 3. Create a Temp Table (fastest way: copy schema)
+                # 4. Create a Temp Table (fastest way: copy schema)
                 cur.execute(
                     f'CREATE TEMP TABLE "{temp_table}" (LIKE "{full_table_name}" INCLUDING ALL) ON COMMIT DROP;'
                 )
 
-                # 4. Bulk Insert to Temp Table
+                # 5. Bulk Insert to Temp Table
                 # Replace NaNs with None so they become NULLs in Postgres
                 data = [tuple(x) for x in df.replace({np.nan: None}).to_numpy()]
                 cols_str = ", ".join([f'"{c}"' for c in df.columns])
                 insert_query = f'INSERT INTO "{temp_table}" ({cols_str}) VALUES %s'
                 execute_values(cur, insert_query, data, page_size=2000)
 
-                # 5. Atomic Upsert
+                # 6. Atomic Upsert
                 update_cols = [c for c in df.columns if c not in ["ID", "In Punch"]]
                 update_clause = ", ".join(
                     [f'"{c}" = EXCLUDED."{c}"' for c in update_cols]
