@@ -1,8 +1,7 @@
 # db_utils.py
 import pandas as pd
 from sqlalchemy import create_engine, text
-import os, re, uuid
-import config
+import os, uuid
 
 # Database configuration
 DB_HOST = os.getenv("DB_HOST")
@@ -17,9 +16,19 @@ DATABASE_URL = (
 )
 
 
+# def get_engine():
+#     """Create and return a SQLAlchemy engine."""
+#     return create_engine(DATABASE_URL)
+
+
 def get_engine():
-    """Create and return a SQLAlchemy engine."""
-    return create_engine(DATABASE_URL)
+    """Create and return a SQLAlchemy engine with connection pooling disabled."""
+    # pg8000 works better in Lambda with pooling disabled
+    return create_engine(
+        DATABASE_URL,
+        poolclass=None,  # Disable connection pooling for Lambda
+        connect_args={"timeout": 30},  # 30 second timeout
+    )
 
 
 def save_to_database(df, table_name, client_name):
