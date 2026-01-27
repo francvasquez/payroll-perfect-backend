@@ -1,7 +1,6 @@
 # db_utils.py
 import pandas as pd
 import numpy as np
-from sqlalchemy import create_engine, text
 import os, uuid
 import psycopg2
 from psycopg2.extras import execute_values
@@ -12,11 +11,6 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-# Create connection string
-DATABASE_URL = (
-    f"postgresql+pg8000://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
 
 
 def get_pg_type(dtype):
@@ -39,7 +33,7 @@ def save_to_database_fast(df, table_name, clientId):
     full_table_name = f"{clientId}_{table_name}"
     # This temp table name stays inside the DB session
     temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
-
+    # CONSIDER MOVING CONNECTION OUTSIDE FOR OTHER CALLS
     conn = psycopg2.connect(
         host=DB_HOST,
         port=DB_PORT,
@@ -102,149 +96,6 @@ def save_to_database_fast(df, table_name, clientId):
 
     finally:
         conn.close()
-
-
-def get_engine():
-    """Create and return a SQLAlchemy engine with connection pooling disabled."""
-    # pg8000 works better in Lambda with pooling disabled
-    return create_engine(
-        DATABASE_URL,
-        poolclass=None,  # Disable connection pooling for Lambda
-        connect_args={"timeout": 30},  # 30 second timeout
-    )
-
-
-def save_to_database(df, table_name, clientId):
-    """
-    Save DataFrame to PostgreSQL with upsert logic.
-    Uses proper column types inferred from pandas DataFrame.
-    Only indexes the unique constraint (ID + In Punch).
-
-    Parameters:
-    -----------
-    df : pandas.DataFrame
-        DataFrame with 'ID' and 'In Punch' columns
-    table_name : str
-        Base table name (e.g., 'ta', 'payroll')
-    clientId : str
-        Client identifier (e.g., 'demo_client', 'acme_corp')
-
-    Returns:
-    --------
-    str : Full table name created (e.g., 'demo_client_ta')
-    """
-
-    if "ID" not in df.columns or "In Punch" not in df.columns:
-        raise ValueError("DataFrame must have 'ID' and 'In Punch' columns")
-
-    # Generate full table name
-    table_name = f"{clientId}_{table_name}"
-    print(f"Saving to table: {table_name}")
-    # Prepare DataFrame
-    df = df.copy()
-    df["last_updated"] = pd.Timestamp.now()
-
-    if "clientId" not in df.columns:
-        df["clientId"] = clientId
-
-    engine = get_engine()
-    temp_table = f"{table_name}_temp_{uuid.uuid4().hex[:8]}"
-    print(f"Engine ready - temp_table: {temp_table}")
-    try:
-        with engine.begin() as conn:
-            # Create table if it doesn't exist
-            # pandas will infer proper column types (INTEGER, DOUBLE PRECISION, TEXT, TIMESTAMP, etc.)
-            df.head(0).to_sql(table_name, conn, if_exists="append", index=False)
-
-            # Get existing columns
-            result = conn.execute(
-                text(
-                    "SELECT column_name FROM information_schema.columns WHERE table_name = :t"
-                ),
-                {"t": table_name},
-            )
-            existing_columns = {row[0] for row in result}
-
-            # Add new columns if they don't exist
-            # Let pandas handle type inference by using a temp table
-            new_cols = [col for col in df.columns if col not in existing_columns]
-            if new_cols:
-                # Create a small temp table to infer types
-                type_inference_temp = f"{table_name}_types_{uuid.uuid4().hex[:8]}"
-                df.head(1).to_sql(
-                    type_inference_temp, conn, if_exists="replace", index=False
-                )
-
-                # Get the types that pandas chose
-                type_result = conn.execute(
-                    text(
-                        """
-                        SELECT column_name, data_type 
-                        FROM information_schema.columns 
-                        WHERE table_name = :t
-                    """
-                    ),
-                    {"t": type_inference_temp},
-                )
-                inferred_types = {row[0]: row[1] for row in type_result}
-
-                # Add new columns with inferred types
-                for col in new_cols:
-                    pg_type = inferred_types.get(col, "TEXT")
-                    print(f"  Adding new column: {col} ({pg_type})")
-                    conn.execute(
-                        text(f'ALTER TABLE {table_name} ADD COLUMN "{col}" {pg_type}')
-                    )
-
-                # Drop the type inference temp table
-                conn.execute(text(f"DROP TABLE {type_inference_temp}"))
-
-            # Create unique constraint if not exists (only essential index)
-            constraint_name = f"{table_name}_id_punchin_key"
-            conn.execute(
-                text(
-                    f"""
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (
-                            SELECT 1 FROM pg_constraint 
-                            WHERE conname = '{constraint_name}'
-                        ) THEN
-                            ALTER TABLE {table_name} 
-                            ADD CONSTRAINT {constraint_name} 
-                            UNIQUE ("ID", "In Punch");
-                        END IF;
-                    END $$;
-                """
-                )
-            )
-
-            # Write to temporary table
-            df.to_sql(temp_table, conn, if_exists="replace", index=False)
-
-            # Upsert: insert new rows, update existing
-            update_cols = [col for col in df.columns if col not in ["ID", "In Punch"]]
-            update_clause = ", ".join(
-                [f'"{col}" = EXCLUDED."{col}"' for col in update_cols]
-            )
-
-            upsert_query = f"""
-                INSERT INTO {table_name}
-                SELECT * FROM {temp_table}
-                ON CONFLICT ("ID", "In Punch")
-                DO UPDATE SET {update_clause};
-            """
-            conn.execute(text(upsert_query))
-
-            # Drop temporary table
-            conn.execute(text(f"DROP TABLE {temp_table}"))
-
-        print(f"✓ Successfully saved {len(df)} rows to table: {table_name}")
-        return table_name
-
-    except Exception as e:
-        print(f"✗ Error saving to database: {e}")
-        raise
 
 
 # def query_payroll_data(
