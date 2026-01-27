@@ -38,9 +38,8 @@ def lambda_handler(event, context):
         # Parse the body to check for action
         body = json.loads(event.get("body", "{}"))
         action = body.get("action")
-        clientId = body.get("clientId")
+        clientId = body.get("clientId") or body.get("client_id")
         payDate = body.get("payDate")
-
         print("ACTION: ", action, "RAW EVENT: ", json.dumps(event))
 
         # Routing
@@ -138,9 +137,9 @@ def handle_file_processing(event, clientId, payDate):
         print(f"Waiver processed: {len(processed_waiver_df)} rows")
 
         # Process WFN SECOND
-        print(f"Reading WFN from S3: {body['wfn_key']}")
+        # print(f"Reading WFN from S3: {body['wfn_key']}")
         wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
-        print(f"WFN read from Excel: {len(wfn_df)} rows")
+        # print(f"WFN read from Excel: {len(wfn_df)} rows")
         wfn_start = time.time()
         processed_wfn_df = process_data_wfn(
             wfn_df, locations_config, min_wage, state_min_wage, pay_periods_per_year
@@ -149,9 +148,9 @@ def handle_file_processing(event, clientId, payDate):
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         # Process TA THIRD (using results from first two)
-        print(f"Reading TA from S3: {body['ta_key']}")
+        # print(f"Reading TA from S3: {body['ta_key']}")
         ta_df = read_excel_from_s3(body["ta_key"], header=7)
-        print(f"TA read from Excel: {len(ta_df)} rows")
+        # print(f"TA read from Excel: {len(ta_df)} rows")
         ta_start = time.time()
         processed_ta_df, bypunch_df, anomalies_df_new = process_data_ta(
             ta_df,

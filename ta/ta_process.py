@@ -1,4 +1,4 @@
-from helper.db_utils import save_to_database
+from helper.db_utils import save_to_database_fast
 import utility
 from . import ta_utility
 
@@ -67,7 +67,7 @@ def process_data_ta(
     # Updated df: Adds col "Hours in Consecutive Days" and "First day of Streak".
     bypunch_df = ta_utility.add_seventh_day_hours(
         bypunch_df, locations_config, number_of_consec_days_before_ot
-    )  # SLOWWW
+    )  # SLOW
     # print(f"7th day hours: {time.time()-t7:.2f}s")
 
     # Updated df: Add OT and DT columns from WFN
@@ -104,9 +104,9 @@ def process_data_ta(
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
     # Save ta df to database
+
     try:
-        table_name = save_to_database(df, table_name="ta", client_name=clientId)
-        print(f"Data successfully saved to table: {table_name}")
+        save_to_database_fast(df, "ta", clientId)
 
     except Exception as e:
         print(f"Failed to save to database: {e}")
