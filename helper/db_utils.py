@@ -4,6 +4,7 @@ import numpy as np
 import os, uuid
 import psycopg2
 from psycopg2.extras import execute_values
+import config
 
 # Database configuration from Env Vars
 DB_HOST = os.getenv("DB_HOST")
@@ -27,6 +28,10 @@ def get_pg_type(dtype):
 
 
 def save_to_database_fast(df, table_name, clientId):
+    # Cleanup before saving
+    df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE, errors="ignore")
+
+    #   Table name
     if not clientId or clientId == "None":
         raise ValueError("clientId is missing from input!")
 

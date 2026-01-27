@@ -232,3 +232,16 @@ COLS_PRINT10 = [
     "Did Not Break",
     "Over Twelve",
 ]
+COLUMNS_TO_DROP_FOR_DATABASE = [
+    "Prev In Punch",
+    "Prev Out Punch",
+    "Next In Punch",
+    "Next Out Punch",
+    "Prev Date",
+    "Next Date",
+    "Prev Punch Length (hrs)",
+    "Next Punch Length (hrs)",
+    "Prev ID",
+    "Next ID ",
+    "Waiver Lookup",
+]
