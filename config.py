@@ -232,6 +232,7 @@ COLS_PRINT10 = [
     "Did Not Break",
     "Over Twelve",
 ]
+
 COLUMNS_TO_DROP_FOR_DATABASE = [
     "Prev In Punch",
     "Prev Out Punch",

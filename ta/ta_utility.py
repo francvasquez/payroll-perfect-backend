@@ -1,8 +1,29 @@
 import numpy as np
-import config
+import client_config
 import pandas as pd
 from . import ta_masks
 import utility
+import logging
+
+logger = logging.getLogger()
+
+
+def normalize_client_data(df, clientId):
+    # Get the specific config for this client
+    client_conf = client_config.CLIENT_CONFIGS.get(clientId, {})
+
+    # 1. Rename columns first
+    mapping = client_conf.get("mappings", {})
+    df = df.rename(columns=mapping)
+
+    # 2. Drop client-specific junk
+    junk_cols = client_conf.get("drop_columns", [])
+    if junk_cols:
+        # errors="ignore" is vital so it doesn't crash if the column isn't there
+        df = df.drop(columns=junk_cols, errors="ignore")
+        logger.info(f"Dropped {len(junk_cols)} client-specific columns for {clientId}")
+
+    return df
 
 
 def add_time_helper_cols(df):
