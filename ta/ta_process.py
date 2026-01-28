@@ -38,7 +38,9 @@ def process_data_ta(
         raise ValueError(error_msg)
 
     # 3. Re-order so your 'Core' columns are always first (makes the DB readable)
-    other_cols = [col for col in df.columns if col not in config.PP_REQUIRED_COLUMNS]
+    other_cols = [
+        col for col in df.columns if col not in client_config.PP_REQUIRED_COLUMNS
+    ]
     df = df[client_config.PP_REQUIRED_COLUMNS + other_cols]
 
     # 4. Drops rows that are not punches (i.e. NA In/Out Punch)
