@@ -12,7 +12,7 @@ PP_REQUIRED_COLUMNS = [
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "mappings": {"Employee": "Employee", "ID": "ID"},
-        "drop_columns": ["Org Path"],
+        "drop_columns": ["Org Path", "Date/Time"],
     },
     "client_b": {  # sample client
         "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},
