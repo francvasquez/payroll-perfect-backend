@@ -283,5 +283,5 @@ def generate_results(
             ),
         },
     }
-    print("result.ta.split_shift: ", result["ta"]["split_shift"])
+    print("Ready to serve tables generated from generate_results")
     return result

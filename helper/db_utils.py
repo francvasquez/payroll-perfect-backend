@@ -65,23 +65,21 @@ def save_to_database_fast(df, table_name, clientId, conn):
     df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
 
     # Metadata
-    df = df.copy()  # Good practice to avoid SettingWithCopy warnings
+    df = df.copy()
     df["last_updated"] = pd.Timestamp.now()
 
-    # Table name
-    if not clientId or clientId == "None":
-        raise ValueError("clientId is missing from input!")
+    # Create tables
     full_table_name = f"{clientId}_{table_name}"
-    temp_table = (
-        f"temp_upsert_{uuid.uuid4().hex[:8]}"  # temp table stays inside db session
-    )
+    temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
     print(f"Connected to DB - preparing to upsert to {full_table_name}")
 
-    # Try writing
     try:
+        # 'with conn' handles the COMMIT at the end automatically
         with conn:
+            # ALL database steps must be inside this 'with cur' block
             with conn.cursor() as cur:
-                # 1. Create table if it doesn't exist (using DF types)
+
+                # 1. Create table
                 cols_sql = ", ".join(
                     [f'"{c}" {get_pg_type(df[c].dtype)}' for c in df.columns]
                 )
@@ -89,26 +87,22 @@ def save_to_database_fast(df, table_name, clientId, conn):
                     f'CREATE TABLE IF NOT EXISTS "{full_table_name}" ({cols_sql});'
                 )
 
-            # 2. SCHEMA EVOLUTION: Check for and add missing columns
-            cur.execute(
-                f"""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = '{full_table_name}';
-            """
-            )
-            existing_db_cols = {row[0] for row in cur.fetchall()}
-            new_cols = [c for c in df.columns if c not in existing_db_cols]
-            for col in new_cols:
-                pg_type = get_pg_type(df[col].dtype)
-                print(
-                    f"Detecting new field. Adding {col} ({pg_type}) to {full_table_name}"
-                )
+                # 2. Schema evolution - add new cols if they don't exist
                 cur.execute(
-                    f'ALTER TABLE "{full_table_name}" ADD COLUMN "{col}" {pg_type};'
+                    f"SELECT column_name FROM information_schema.columns WHERE table_name = %s",
+                    (full_table_name,),
                 )
+                existing_db_cols = {row[0] for row in cur.fetchall()}
+                new_cols = [c for c in df.columns if c not in existing_db_cols]
 
-                # 3. CONSTRAINT: Ensure the Upsert key exists
+                for col in new_cols:
+                    pg_type = get_pg_type(df[col].dtype)
+                    print(f"Adding new column: {col}")
+                    cur.execute(
+                        f'ALTER TABLE "{full_table_name}" ADD COLUMN "{col}" {pg_type};'
+                    )
+
+                # 3. Constraint - ensure unique on ID + In Punch
                 constraint_name = f"uq_{full_table_name}"
                 cur.execute(
                     f"""
@@ -120,24 +114,22 @@ def save_to_database_fast(df, table_name, clientId, conn):
                 """
                 )
 
-                # 4. Create a Temp Table (fastest way: copy schema)
+                # 4. Temp table for upsert
                 cur.execute(
-                    f'CREATE TEMP TABLE "{temp_table}" (LIKE "{full_table_name}" INCLUDING ALL) ON COMMIT DROP;'
+                    f'CREATE TEMP TABLE "{temp_table}" ({cols_sql}) ON COMMIT DROP;'
                 )
 
-                # 5. Bulk Insert to Temp Table
-                # Replace NaNs with None so they become NULLs in Postgres
+                # 5. Bulk insert
                 data = [tuple(x) for x in df.replace({np.nan: None}).to_numpy()]
                 cols_str = ", ".join([f'"{c}"' for c in df.columns])
                 insert_query = f'INSERT INTO "{temp_table}" ({cols_str}) VALUES %s'
                 execute_values(cur, insert_query, data, page_size=2000)
 
-                # 6. Atomic Upsert
+                # 6. Upsert
                 update_cols = [c for c in df.columns if c not in ["ID", "In Punch"]]
                 update_clause = ", ".join(
                     [f'"{c}" = EXCLUDED."{c}"' for c in update_cols]
                 )
-
                 upsert_query = f"""
                     INSERT INTO "{full_table_name}" ({cols_str})
                     SELECT * FROM "{temp_table}"
@@ -148,9 +140,13 @@ def save_to_database_fast(df, table_name, clientId, conn):
 
         print(f"✓ Successfully upserted {len(df)} rows to {full_table_name}")
 
+    except Exception as e:
+        # Re-raise the error so lambda_handler knows it failed
+        print(f"Error during DB transaction: {e}")
+        raise e
     finally:
-        return
-        # conn.close()
+        # Do NOT put a return statement here
+        print("Closing database cursor logic.")
 
 
 # def query_payroll_data(

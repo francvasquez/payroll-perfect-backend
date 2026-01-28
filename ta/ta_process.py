@@ -111,7 +111,7 @@ def process_data_ta(
     conn = get_db_connection()
     if conn:
         try:
-            save_to_database_fast(df, "table_name", "clientId", conn)
+            save_to_database_fast(df, "ta", clientId, conn)
         except Exception as e:
             logger.error(f"Failed to save to database: {e}")
         finally:
