@@ -18,17 +18,18 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install dependencies and Zip
+      - name: Zip only Python code
         run: |
-          pip install -r requirements.txt -t .
-          zip -r function.zip .
+          # Only zip .py files (and folders if needed) 
+          # This avoids zipping hidden .git folders or the YAML itself
+          zip -r function.zip . -x "*.git*" ".github/*"
 
       - name: AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-1 
+          aws-region: us-east-1 # Double check this is your region!
 
       - name: Push to Lambda
         run: |
