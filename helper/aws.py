@@ -290,7 +290,7 @@ def list_pay_periods(client_id):
         # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
         date = obj["Prefix"].split("/")[-2]
         periods.append(date)
-        print("AVAILABLE PERIODS: ", periods)
+        # print("AVAILABLE PERIODS: ", periods)
 
     return {"periods": periods}
 
