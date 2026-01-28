@@ -5,6 +5,11 @@ import os, uuid
 import psycopg2
 from psycopg2.extras import execute_values
 import config
+import logging
+
+# Consider extendind accross other files
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Database configuration from Env Vars
 DB_HOST = os.getenv("DB_HOST")
@@ -12,6 +17,33 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+
+def get_db_connection():
+    """
+    Attempts to connect to the DB, graceful exit continues code if unreachable.
+    Returns the connection object if successful, or None if the DB is unreachable.
+    """
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432"),
+            database=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            connect_timeout=5,  # Reduced timeout for faster feedback
+        )
+        return conn
+    except psycopg2.OperationalError as e:
+        # This catches "Connection Refused" (Instance paused)
+        logger.warning(
+            f"NOTICE: Database is currently unreachable or paused. Skipping DB operations. Details: {e}"
+        )
+        return None
+    except Exception as e:
+        # Catches other issues like wrong passwords
+        logger.error(f"ERROR: Unexpected connection error: {e}")
+        return None
 
 
 def get_pg_type(dtype):
@@ -27,30 +59,25 @@ def get_pg_type(dtype):
     return "TEXT"
 
 
-def save_to_database_fast(df, table_name, clientId):
+def save_to_database_fast(df, table_name, clientId, conn):
+
     # Cleanup before saving
     df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
+
     # Metadata
     df = df.copy()  # Good practice to avoid SettingWithCopy warnings
     df["last_updated"] = pd.Timestamp.now()
 
-    #   Table name
+    # Table name
     if not clientId or clientId == "None":
         raise ValueError("clientId is missing from input!")
-
     full_table_name = f"{clientId}_{table_name}"
-    # This temp table name stays inside the DB session
-    temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
-    # CONSIDER MOVING CONNECTION OUTSIDE FOR OTHER CALLS
-    conn = psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        connect_timeout=10,
+    temp_table = (
+        f"temp_upsert_{uuid.uuid4().hex[:8]}"  # temp table stays inside db session
     )
     print(f"Connected to DB - preparing to upsert to {full_table_name}")
+
+    # Try writing
     try:
         with conn:
             with conn.cursor() as cur:
@@ -71,9 +98,7 @@ def save_to_database_fast(df, table_name, clientId):
             """
             )
             existing_db_cols = {row[0] for row in cur.fetchall()}
-
             new_cols = [c for c in df.columns if c not in existing_db_cols]
-
             for col in new_cols:
                 pg_type = get_pg_type(df[col].dtype)
                 print(
@@ -124,7 +149,8 @@ def save_to_database_fast(df, table_name, clientId):
         print(f"✓ Successfully upserted {len(df)} rows to {full_table_name}")
 
     finally:
-        conn.close()
+        return
+        # conn.close()
 
 
 # def query_payroll_data(

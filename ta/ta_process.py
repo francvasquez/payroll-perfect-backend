@@ -1,6 +1,10 @@
-from helper.db_utils import save_to_database_fast
+from helper.db_utils import save_to_database_fast, get_db_connection
 import utility
 from . import ta_utility
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def process_data_ta(
@@ -103,12 +107,20 @@ def process_data_ta(
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
-    # Save ta df to database
+    # Attempt connection to dababase and save
+    conn = get_db_connection()
+    if conn:
+        try:
+            save_to_database_fast(df, "table_name", "clientId", conn)
+        except Exception as e:
+            logger.error(f"Failed to save to database: {e}")
+        finally:
+            conn.close()
+    else:
+        # We just log it and move on, we don't 'return' here
+        logger.warning(
+            "DB is paused. Skipping the save step, but continuing with the response."
+        )
 
-    try:
-        save_to_database_fast(df, "ta", clientId)
-
-    except Exception as e:
-        print(f"Failed to save to database: {e}")
-
+    # Always execute this
     return (df, bypunch_df, anomalies_df_new)
