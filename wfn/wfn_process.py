@@ -14,7 +14,7 @@ def process_data_wfn(
     df["IDX"] = df["CO."].astype(str) + "0" + df["FILE#"].astype(str)
 
     # Aux Cols
-    df["Base Rate"] = df["Regular Earnings Total"] / df["REG"]
+    df["Base Rate"] = (df["Regular Earnings Total"] / df["REG"]).round(4)
     df["Non-Disc Earnings"] = (
         (
             df["Y_BELLMANSVCCHG_Additional Earnings"]
@@ -47,7 +47,7 @@ def process_data_wfn(
     df["1.5 OT Worked"] = df["OT"]
     df["1.5 OT Earnings Due"] = (df["1.5x OT Rate"] * df["1.5 OT Worked"]).round(2)
     df["Actual Pay Check"] = df["Overtime Earnings Total"]
-    df["Variance"] = df["Actual Pay Check"] - df["1.5 OT Earnings Due"]
+    df["Variance"] = (df["Actual Pay Check"] - df["1.5 OT Earnings Due"]).round(2)
 
     # Double Time
     df["Double Time Rate"] = 2 * (
@@ -63,7 +63,7 @@ def process_data_wfn(
     df["RROP"] = df["Base Rate"] + (
         df["Total Non Discretionary Wage"] / (df["REG"] + df["OT"] + df["DBLTIME HRS"])
     )
-    df["Break Credit Due"] = df["RROP"] * df["Break Credit Hours"]
+    df["Break Credit Due"] = (df["RROP"] * df["Break Credit Hours"]).round(2)
     df["Actual Pay BrkCrd"] = df["J_Break Credits_Additional Earnings"]
     df["Variance BrkCrd"] = (df["Actual Pay BrkCrd"] - df["Break Credit Due"]).round(2)
     df["Break Credit Due / Break Credit Hours"] = (
