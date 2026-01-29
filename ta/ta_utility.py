@@ -118,9 +118,9 @@ def add_hours_worked_shift_and_shift_id(df):
     df["Shift Number"] = df.groupby("ID")["New Shift?"].cumsum()
 
     # Compute shift length (sum of hours per shift)
-    df["Hours Worked Shift"] = df.groupby(["ID", "Shift Number"])[
-        "Totaled Amount"
-    ].transform("sum")
+    df["Hours Worked Shift"] = (
+        df.groupby(["ID", "Shift Number"])["Totaled Amount"].transform("sum")
+    ).round(4)
     return df
 
 
@@ -372,8 +372,8 @@ def create_bypunch(
     totalsDT = unique_totalsDT.groupby("ID")["Total DT Hours Week"].sum()
 
     # Put the above total on every row belonging to that "ID"
-    bypunch_df["Total OT Hours Pay Period"] = bypunch_df["ID"].map(totalsOT)
-    bypunch_df["Total DT Hours Pay Period"] = bypunch_df["ID"].map(totalsDT)
+    bypunch_df["Total OT Hours Pay Period"] = bypunch_df["ID"].map(totalsOT).round(4)
+    bypunch_df["Total DT Hours Pay Period"] = bypunch_df["ID"].map(totalsDT).round(4)
 
     return bypunch_df
 
@@ -426,9 +426,11 @@ def add_punch_length(df):
         "Is New Punch?"
     ].cumsum()
     # Aggregate into the Punch Length DataFrame
-    df["Punch Length (hrs)"] = df.groupby(
-        ["ID", "Shift Number", "Punch Number in Shift "]
-    )["Totaled Amount"].transform("sum")
+    df["Punch Length (hrs)"] = (
+        df.groupby(["ID", "Shift Number", "Punch Number in Shift "])[
+            "Totaled Amount"
+        ].transform("sum")
+    ).round(4)
 
     return df
 
@@ -508,9 +510,9 @@ def add_seventh_day_hours(df, locations_config, number_of_consec_days_before_ot)
         return rolling_sum.where(streak >= consec_days).fillna(0)
 
     # Apply per ID group
-    df["Hours in Consecutive Days"] = df.groupby("ID", group_keys=False).apply(
-        compute_group
-    )
+    df["Hours in Consecutive Days"] = (
+        df.groupby("ID", group_keys=False).apply(compute_group)
+    ).round(4)
     df["First day of Streak"] = df["Date"] - pd.Timedelta(days=6)
 
     return df

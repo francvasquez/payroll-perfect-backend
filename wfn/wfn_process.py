@@ -45,7 +45,7 @@ def process_data_wfn(
         + df["OT for Non Discretionary Income"]
     )
     df["1.5 OT Worked"] = df["OT"]
-    df["1.5 OT Earnings Due"] = df["1.5x OT Rate"] * df["1.5 OT Worked"]
+    df["1.5 OT Earnings Due"] = (df["1.5x OT Rate"] * df["1.5 OT Worked"]).round(2)
     df["Actual Pay Check"] = df["Overtime Earnings Total"]
     df["Variance"] = df["Actual Pay Check"] - df["1.5 OT Earnings Due"]
 
@@ -72,7 +72,7 @@ def process_data_wfn(
 
     # Rest Credit
     df["Rest Credit Hours"] = df["RC - Rest Credit Hours"]
-    df["Rest Credit Due"] = df["RROP"] * df["Rest Credit Hours"]
+    df["Rest Credit Due"] = (df["RROP"] * df["Rest Credit Hours"]).round(2)
     df["Actual Pay RestCrd"] = df["RC_Rest Credit_Earnings"]
     df["Variance RestCrd"] = (df["Actual Pay RestCrd"] - df["Rest Credit Due"]).round(2)
     df["Rest Credit Due / Rest Credit Hours"] = (
@@ -84,7 +84,7 @@ def process_data_wfn(
     df["RROP Sick"] = np.where(
         df["FLSA Code"] == "E", df["Regular Rate Paid"] / (10 * 8), df["RROP"]
     )
-    df["Sick Credit Due"] = df["Sick Credit Hours"] * df["RROP Sick"]
+    df["Sick Credit Due"] = (df["Sick Credit Hours"] * df["RROP Sick"]).round(2)
     df["Sick Paid"] = df["S_Sick Pay_Earnings"]
     df["Variance Sick"] = (df["Sick Paid"] - df["Sick Credit Due"]).round(2)
     df["Sick Credit Due / Sick Credit Hours"] = (
