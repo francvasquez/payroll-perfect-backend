@@ -54,7 +54,7 @@ def process_data_wfn(
         df["Base Rate"] + df["OT for Non Discretionary Income"]
     )
     df["Double Time Hours"] = df["DBLTIME HRS"]
-    df["Double Time Due"] = df["Double Time Hours"] * df["Double Time Rate"]
+    df["Double Time Due"] = (df["Double Time Hours"] * df["Double Time Rate"]).round(2)
     df["Actual Pay Check Dble"] = df["D_Double Time_Additional Earnings"]
     df["Variance Dble"] = (df["Actual Pay Check Dble"] - df["Double Time Due"]).round(2)
 

@@ -118,13 +118,13 @@ def process_data_ta(
 
     # Updated df: Add OT vs WFN variances cols.
     bypunch_df["OT Variance (hrs)"] = (
-        bypunch_df["Total OT Hours Pay Period"] - bypunch_df["OT Hours Paid"]
-    )
+        (bypunch_df["Total OT Hours Pay Period"] - bypunch_df["OT Hours Paid"])
+    ).round(4)
     bypunch_df["DT Variance (hrs)"] = (
-        bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"]
-    )
+        (bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"])
+    ).round(4)
 
-    # Updated df: Add Punch Length df which adds staples midnight punches
+    # Updated df: Add Punch Length df which adds stapled midnight punches
     df = ta_utility.add_punch_length(df)
 
     # Create new anomalies DF
