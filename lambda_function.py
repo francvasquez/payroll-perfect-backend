@@ -87,6 +87,7 @@ def handle_file_processing(event, clientId, payDate):
 
         # Extract client_config from request body
         client_config = body.get("client_config", {})
+        print(f"Client config received: {client_config}")
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
 
