@@ -89,11 +89,16 @@ def handle_file_processing(event, clientId, payDate):
         client_config = body.get("client_config", {})
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
-        print("locations_config: ", locations_config)
 
         # Extract global parameters with default fallback
+        pay_period_length = global_config.get(
+            "pay_period_length", DEFAULT_PAY_PERIOD_LENGTH
+        )
+        days_bet_payroll_end_and_pay_date = global_config.get(
+            "days_bet_payroll_end_and_pay_date",
+            DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE,
+        )
         min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
-        # min_wage_40 = global_config.get("min_wage_40", DEFAULT_MIN_WAGE_40)
         state_min_wage = global_config.get("state_min_wage", DEFAULT_STATE_MIN_WAGE)
         pay_periods_per_year = global_config.get(
             "pay_periods_per_year", DEFAULT_PAY_PERIODS_PER_YEAR
@@ -105,11 +110,17 @@ def handle_file_processing(event, clientId, payDate):
             "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS_BEFORE_OT
         )
 
-        # Extract First date of pay period and convert to pandas
-        first_date = pd.to_datetime(body.get("pay_date"))
+        # Calcula pay_date and first_date
+        pay_date = pd.to_datetime(body.get("pay_date"))
+        first_date = (
+            pay_date
+            - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+            - pd.Timedelta(days=pay_period_length)
+            + pd.Timedelta(days=1)
+        )
 
         print(
-            f"Processing with parameters: client_config={client_config}, min_wage={min_wage}, first date ={first_date}"
+            f"File Processing - Client configuration: client_config={client_config}, pay_date={pay_date}, first date ={first_date}"
         )
 
         # Verify all three files are provided (they should be from frontend)
@@ -137,9 +148,7 @@ def handle_file_processing(event, clientId, payDate):
         print(f"Waiver processed: {len(processed_waiver_df)} rows")
 
         # Process WFN SECOND
-        # print(f"Reading WFN from S3: {body['wfn_key']}")
         wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
-        # print(f"WFN read from Excel: {len(wfn_df)} rows")
         wfn_start = time.time()
         processed_wfn_df = process_data_wfn(
             wfn_df, locations_config, min_wage, state_min_wage, pay_periods_per_year
@@ -148,9 +157,7 @@ def handle_file_processing(event, clientId, payDate):
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         # Process TA THIRD (using results from first two)
-        # print(f"Reading TA from S3: {body['ta_key']}")
         ta_df = read_excel_from_s3(body["ta_key"], header=7)
-        # print(f"TA read from Excel: {len(ta_df)} rows")
         ta_start = time.time()
         processed_ta_df, bypunch_df, anomalies_df_new = process_data_ta(
             ta_df,
