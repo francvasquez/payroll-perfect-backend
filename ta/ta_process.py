@@ -18,6 +18,7 @@ def process_data_ta(
     ot_week_max,
     dt_day_max,
     first_date,
+    pay_date,
     clientId,
     processed_waiver_df=None,
     processed_wfn_df=None,
@@ -134,7 +135,7 @@ def process_data_ta(
     conn = get_db_connection()
     if conn:
         try:
-            save_to_database_fast(df, "ta", clientId, conn)
+            save_to_database_fast(df, "ta", clientId, pay_date, conn)
         except Exception as e:
             logger.error(f"Failed to save to database: {e}")
         finally:

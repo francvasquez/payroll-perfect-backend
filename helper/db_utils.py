@@ -59,7 +59,7 @@ def get_pg_type(dtype):
     return "TEXT"
 
 
-def save_to_database_fast(df, table_name, clientId, conn):
+def save_to_database_fast(df, table_name, clientId, pay_date, conn):
 
     # Cleanup before saving
     df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
@@ -67,6 +67,7 @@ def save_to_database_fast(df, table_name, clientId, conn):
     # Metadata
     df = df.copy()
     df["last_updated"] = pd.Timestamp.now()
+    df["pay_date"] = pay_date
 
     # Create tables
     full_table_name = f"{clientId}_{table_name}"
