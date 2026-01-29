@@ -12,8 +12,8 @@ CORS_HEADERS = {
 
 # These are fallbacks in case the front doesn't pass default (global) parameters
 # Consider different approach?
-DEFAULT_PAY_PERIOD_LENGTH: 14
-DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE: 6
+DEFAULT_PAY_PERIOD_LENGTH = 14
+DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE = 6
 DEFAULT_MIN_WAGE = 17.25
 DEFAULT_OT_DAY_MAX = 8.0
 DEFAULT_OT_WEEK_MAX = 40
