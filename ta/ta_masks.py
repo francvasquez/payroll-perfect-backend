@@ -55,10 +55,6 @@ def greater_than_five(df):
     return df["Totaled Amount"] > 5
 
 
-def shift_bet_5_and_6(df):
-    return (df["Shift Length (hrs)"] > 5) & (df["Shift Length (hrs)"] <= 6)
-
-
 def did_not_break_new(df):
     # LB 1/21/26: If the punch is greater than 5 hours, you get a credit unless the shift
     # is 6 hours or less and there is a waiver on file.

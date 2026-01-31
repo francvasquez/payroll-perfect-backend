@@ -110,7 +110,6 @@ def add_next_break_time(df):
 
 
 def add_hours_worked_shift_and_shift_id(df):
-    # 1.16.26 Compare to add_shift_length and evaluate which to keep
     # New shift starts if gap from prev punch >= 60 minutes or first punch for employee (boolean)
     df["New Shift?"] = (df["Break Time (min)"] >= 60) | df["Break Time (min)"].isna()
 
@@ -178,38 +177,6 @@ def add_twelve_hour_check(df):
     )
 
     df["12hr Credit Due"] = cond1 | cond2
-
-    return df
-
-
-def add_shift_length(df):
-    # Old - consider replacing with above
-    # Safe calculation of shift length (e.g. only when have all the data, else na)
-
-    df["Shift Length (hrs)"] = np.where(
-        df["Next Break Time (min)"] < 60,  # Case a - next punch is part of shift
-        df["Totaled Amount"] + df["Next Punch Length (hrs)"],
-        np.where(
-            df["Break Time (min)"]
-            < 60,  # Case a1 - this punch is part of same shift as prev
-            df["Totaled Amount"] + df["Prev Punch Length (hrs)"],
-            np.where(
-                df["Next Break Time (min)"]
-                >= 60,  # Case b - nexr punch is not part of shift
-                df["Totaled Amount"],
-                np.where(
-                    df["Next Break Time (min)"].isna()
-                    # & (df["Out Punch"].dt.time < eleven_pm),  # Case c - no info on next shift - by removing this we assume this shift has no subsequent punches
-                    ,
-                    df["Totaled Amount"],
-                    np.nan,  # default: NA
-                ),
-            ),
-        ),
-    )
-
-    # Round to 2 decimals
-    df["Shift Length (hrs)"] = df["Shift Length (hrs)"].round(2)
 
     return df
 
