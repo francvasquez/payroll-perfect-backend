@@ -38,7 +38,7 @@ def process_data_ta(
         # This stops execution immediately.In Lambda, this will mark the request as 'Failed'.
         raise ValueError(error_msg)
 
-    # 3. Re-order so your 'Core' columns are always first (makes the DB readable)
+    # 3. Re-order 'Core' columns are always first (makes the DB readable)
     other_cols = [
         col for col in df.columns if col not in client_config.PP_REQUIRED_COLUMNS
     ]
