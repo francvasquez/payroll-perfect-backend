@@ -20,6 +20,7 @@ from helper.aws import (
     delete_pay_period,
 )
 from helper.results import generate_results
+from helper.db_utils import handle_query_ta_records
 import pandas as pd
 
 
@@ -43,6 +44,15 @@ def lambda_handler(event, context):
         print("ACTION: ", action, "RAW EVENT: ", json.dumps(event))
 
         # Routing
+        if action == "query-ta-records":
+            # Extract query parameters from the body
+            employeeId = body.get("employeeId")
+            startDate = body.get("startDate")
+            endDate = body.get("endDate")
+            selectedCols = body.get("selectedCols", [])
+            return handle_query_ta_records(
+                clientId, employeeId, startDate, endDate, selectedCols
+            )
         if action == "get-client-config":
             return handle_get_client_config(body)
         if action == "save-client-config":

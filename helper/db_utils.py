@@ -6,6 +6,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 import config
 import logging
+import json
 
 # Consider extendind accross other files
 logger = logging.getLogger()
@@ -148,6 +149,64 @@ def save_to_database_fast(df, table_name, clientId, pay_date, conn):
     finally:
         # Do NOT put a return statement here
         print("Closing database cursor logic.")
+
+
+def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCols):
+    try:
+        conn = get_db_connection()  # Use your existing connection engine
+        cur = conn.cursor()
+
+        table_name = f"{clientId}_ta"
+
+        # 1. Start with the core required columns
+        base_cols = ["Employee", "In Punch", "Out Punch"]
+
+        # 2. Add the user-selected extra columns
+        # We wrap in double quotes to handle spaces/special chars safely
+        all_cols_to_query = base_cols + selectedCols
+        quoted_cols = [f'"{col}"' for col in all_cols_to_query]
+        select_clause = ", ".join(quoted_cols)
+
+        # 3. Build the WHERE clause dynamically
+        query = f"SELECT {select_clause} FROM {table_name} WHERE 1=1"
+        params = []
+
+        if employeeId:
+            query += ' AND "ID" = %s'
+            params.append(employeeId)
+
+        if startDate and endDate:
+            query += ' AND "pay_date" BETWEEN %s AND %s'
+            params.append(startDate)
+            params.append(endDate)
+
+        query += ' ORDER BY "In Punch" DESC LIMIT 1000'  # Safety cap
+
+        cur.execute(query, tuple(params))
+
+        # 4. Map results to a list of dictionaries for the React UI
+        columns = [desc[0] for desc in cur.description]
+        results = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        # Close connection
+        cur.close()
+        conn.close()
+
+        return {
+            "statusCode": 200,
+            "headers": config.CORS_HEADERS,
+            "body": json.dumps(
+                results, default=str
+            ),  # default=str handles Date/Timestamp conversion
+        }
+
+    except Exception as e:
+        print(f"Query Error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": config.CORS_HEADERS,
+            "body": json.dumps({"error": f"Database query failed: {str(e)}"}),
+        }
 
 
 # def query_payroll_data(
