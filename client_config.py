@@ -37,4 +37,5 @@ EXCLUDE_FROM_PULLDOWN = {
     "Day Amount",
     "Xfr/Move: Account",
     "Xfr: Work Rule",
+    "Date/Time",
 }
