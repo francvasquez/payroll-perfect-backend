@@ -151,6 +151,40 @@ def save_to_database_fast(df, table_name, clientId, pay_date, conn):
         print("Closing database cursor logic.")
 
 
+def handle_get_ta_columns(clientId):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        table_name = f"{clientId}_ta"
+
+        # Query PostgreSQL metadata for column names
+        cur.execute(
+            f"""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = '{table_name}'
+            ORDER BY ordinal_position
+        """
+        )
+
+        all_cols = [row[0] for row in cur.fetchall()]
+
+        # Columns to EXCLUDE from the pulldown (User shouldn't pick these)
+        exclude = {"ID", "Employee", "In Punch", "Out Punch", "last_updated"}
+        selectable_cols = [c for c in all_cols if c not in exclude]
+
+        cur.close()
+        conn.close()
+
+        return {
+            "statusCode": 200,
+            "headers": config.CORS_HEADERS,
+            "body": json.dumps(selectable_cols),
+        }
+    except Exception as e:
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+
+
 def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCols):
     try:
         conn = get_db_connection()  # Use your existing connection engine
