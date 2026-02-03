@@ -56,7 +56,7 @@ def process_data_ta(
     df["Date"] = df["In Punch"].dt.normalize()
 
     # Updated df: Adds "Total Worked Hours Workday" col.
-    df = ta_utility.add_total_hours_workday(df)
+    # df = ta_utility.add_total_hours_workday(df)
 
     # Updated df: Add time helper columns
     df = ta_utility.add_time_helper_cols(df)

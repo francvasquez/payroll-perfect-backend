@@ -5,6 +5,7 @@ import os, uuid
 import psycopg2
 from psycopg2.extras import execute_values
 import config
+import client_config
 import logging
 import json
 
@@ -67,8 +68,8 @@ def save_to_database_fast(df, table_name, clientId, pay_date, conn):
 
     # Metadata
     df = df.copy()
-    df["last_updated"] = pd.Timestamp.now()
-    df["pay_date"] = pay_date
+    df["Last Updated"] = pd.Timestamp.now()
+    df["Pay Date"] = pay_date
 
     # Create tables
     full_table_name = f"{clientId}_{table_name}"
@@ -170,8 +171,9 @@ def handle_get_ta_columns(clientId):
         all_cols = [row[0] for row in cur.fetchall()]
 
         # Columns to EXCLUDE from the pulldown (User shouldn't pick these)
-        exclude = {"ID", "Employee", "In Punch", "Out Punch", "last_updated"}
-        selectable_cols = [c for c in all_cols if c not in exclude]
+        selectable_cols = [
+            c for c in all_cols if c not in client_config.EXCLUDE_FROM_PULLDOWN
+        ]
 
         cur.close()
         conn.close()
@@ -192,7 +194,7 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
 
         table_name = f"{clientId}_ta"
 
-        # 1. Start with the core required columns
+        # 1. Always display these on the query:
         base_cols = ["Employee", "In Punch", "Out Punch"]
 
         # 2. Add the user-selected extra columns
@@ -210,7 +212,7 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
             params.append(employeeId)
 
         if startDate and endDate:
-            query += ' AND "pay_date" BETWEEN %s AND %s'
+            query += ' AND "Pay Date" BETWEEN %s AND %s'
             params.append(startDate)
             params.append(endDate)
 
@@ -241,144 +243,3 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
             "headers": config.CORS_HEADERS,
             "body": json.dumps({"error": f"Database query failed: {str(e)}"}),
         }
-
-
-# def query_payroll_data(
-#     table_name=None,
-#     data_type="ta",
-#     clientId=None,
-#     employee_id=None,
-#     start_date=None,
-#     end_date=None,
-#     pay_period=None,
-#     limit=100,
-# ):
-#     """
-#     Query payroll data with optional filters.
-
-#     Parameters:
-#     -----------
-#     table_name : str, optional
-#         Explicit table name (overrides generated name)
-#     data_type : str
-#         Type of data (default: 'ta')
-#     clientId : str
-#         Client/company name (required if table_name not provided)
-#     employee_id : str or int, optional
-#         Filter by specific employee ID
-#     start_date : str or datetime, optional
-#         Filter records from this date onwards
-#     end_date : str or datetime, optional
-#         Filter records up to this date
-#     pay_period : str, optional
-#         Filter by specific pay period
-#     limit : int
-#         Maximum number of records to return (default: 100)
-
-#     Returns:
-#     --------
-#     pandas.DataFrame
-#         Filtered payroll data
-#     """
-#     # Generate table name if not provided
-#     if table_name is None:
-#         if clientId is None:
-#             raise ValueError("Either table_name or clientId must be provided")
-#         table_name = generate_table_name(data_type, clientId)
-#     else:
-#         table_name = sanitize_table_name(table_name)
-
-#     engine = get_engine()
-
-#     query = f"SELECT * FROM {table_name} WHERE 1=1"
-#     params = {}
-
-#     if employee_id is not None:
-#         query += ' AND "ID" = :employee_id'
-#         params["employee_id"] = str(employee_id)
-
-#     if start_date:
-#         query += ' AND "In Punch" >= :start_date'
-#         params["start_date"] = start_date
-
-#     if end_date:
-#         query += ' AND "In Punch" <= :end_date'
-#         params["end_date"] = end_date
-
-#     if pay_period:
-#         query += ' AND "pay_period" = :pay_period'
-#         params["pay_period"] = pay_period
-
-#     query += f' ORDER BY "In Punch" DESC LIMIT {limit}'
-
-#     df = pd.read_sql(query, engine, params=params)
-#     return df
-
-
-# def list_tables(pattern=None):
-#     """
-#     List all tables in the database, optionally filtered by pattern.
-
-#     Parameters:
-#     -----------
-#     pattern : str, optional
-#         SQL LIKE pattern (e.g., 'ta_%' for all TA tables)
-
-#     Returns:
-#     --------
-#     list
-#         List of table names
-#     """
-#     engine = get_engine()
-
-#     query = """
-#         SELECT table_name
-#         FROM information_schema.tables
-#         WHERE table_schema = 'public'
-#     """
-
-#     params = {}
-#     if pattern:
-#         query += " AND table_name LIKE :pattern"
-#         params["pattern"] = pattern
-
-#     query += " ORDER BY table_name"
-
-#     with engine.connect() as conn:
-#         result = conn.execute(text(query), params)
-#         return [row[0] for row in result]
-
-
-# def get_table_info(table_name):
-#     """
-#     Get row count and basic info about a table.
-
-#     Parameters:
-#     -----------
-#     table_name : str
-#         Name of the table
-
-#     Returns:
-#     --------
-#     dict
-#         Dictionary with table statistics
-#     """
-#     engine = get_engine()
-
-#     with engine.connect() as conn:
-#         # Get row count
-#         result = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
-#         row_count = result.fetchone()[0]
-
-#         # Get date range
-#         result = conn.execute(
-#             text(f'SELECT MIN("In Punch"), MAX("In Punch") FROM {table_name}')
-#         )
-#         date_range = result.fetchone()
-
-#         return {
-#             "table_name": table_name,
-#             "row_count": row_count,
-#             "earliest_punch": date_range[0],
-#             "latest_punch": date_range[1],
-#         }

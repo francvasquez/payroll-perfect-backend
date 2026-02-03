@@ -485,9 +485,9 @@ def add_seventh_day_hours(df, locations_config, number_of_consec_days_before_ot)
     return df
 
 
-def add_total_hours_workday(df):
-    df["Total Worked Hours Workday"] = df.groupby(["ID", "Date"])[
-        "Totaled Amount"
-    ].transform("sum")
+# def add_total_hours_workday(df):
+#     df["Total Worked Hours Workday"] = df.groupby(["ID", "Date"])[
+#         "Totaled Amount"
+#     ].transform("sum")
 
-    return df
+#     return df
