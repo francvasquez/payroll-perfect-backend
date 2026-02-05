@@ -207,7 +207,6 @@ def generate_results(
                 cols=config.COLS_PRINT3a,
                 rename_map={
                     "Regular Rate Paid": "Straight Rate ($)",
-                    "Totaled Amount": "Punch Length (hrs)",
                 },
             ),
             ##1c. Did not take break: Meal Waiver Check
@@ -218,7 +217,6 @@ def generate_results(
                 base_filter=ta_masks.did_not_break_new(processed_ta_df),
                 max_rows=200,
                 cols=config.COLS_PRINT2_B,
-                rename_map={"Totaled Amount": "Punch Length (hrs)"},
             ),
             ##1e. Over 12 hours Check
             "over_12_hours": filter_and_sort_df_to_dict(
@@ -239,7 +237,6 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLS_PRINT8,
                 rename_map={
-                    "Totaled Amount": "Hours Worked on Trigger Date",
                     "In Punch": "Trigger Date",
                 },
             ),

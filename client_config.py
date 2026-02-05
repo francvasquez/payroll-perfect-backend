@@ -3,7 +3,6 @@ PP_REQUIRED_COLUMNS = [
     "Employee",  # employee name (full name)
     "In Punch",  # containing both date and time info of the punch
     "Out Punch",  # containing both date and time info of the punch
-    "Totaled Amount",  # total hours worked in the punch (decimal hours)
 ]
 
 
@@ -13,7 +12,7 @@ PP_REQUIRED_COLUMNS = [
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "mappings": {"Employee": "Employee", "ID": "ID"},
-        "drop_columns": ["Org Path", "Date/Time"],
+        "drop_columns": ["Org Path", "Date/Time", "Totaled Amount"],
     },
     "client_b": {  # sample client
         "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},

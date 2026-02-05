@@ -2,8 +2,8 @@ from helper.db_utils import save_to_database_fast, get_db_connection
 import utility
 from . import ta_utility
 import logging
-import config
 import client_config
+import pandas as pd
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -49,19 +49,21 @@ def process_data_ta(
 
     ######### DF PROCESSING #################
 
-    # Updated df: Assure timestamps are in Panda's datetime format
+    # Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch")
 
     # Normalize and create new Date column
     df["Date"] = df["In Punch"].dt.normalize()
 
-    # Updated df: Adds "Total Worked Hours Workday" col.
-    # df = ta_utility.add_total_hours_workday(df)
+    # Create unstapled Punch Length
+    df["Punch Length (hrs) Raw"] = (df["Out Punch"] - df["In Punch"]) / pd.Timedelta(
+        hours=1
+    )
 
-    # Updated df: Add time helper columns
+    # Add time helper columns
     df = ta_utility.add_time_helper_cols(df)
 
-    # Updated df: Add Break Credit from WFN File.
+    # Add Break Credit from WFN File.
     df = ta_utility.add_col_from_another_df(
         home_df=df,
         lookup_df=processed_wfn_df,
@@ -76,6 +78,9 @@ def process_data_ta(
 
     # Updated df: Adds breaks check columns
     df = ta_utility.add_break_time(df)
+
+    # Updated df: Add Punch Length df which adds stapled midnight punches
+    df = ta_utility.add_punch_length(df)
 
     # Updated df: Add Hours Worked Shift and Shift ID, 12 hour check
     df = ta_utility.add_hours_worked_shift_and_shift_id(df)
@@ -124,9 +129,6 @@ def process_data_ta(
     bypunch_df["DT Variance (hrs)"] = (
         (bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"])
     ).round(4)
-
-    # Updated df: Add Punch Length df which adds stapled midnight punches
-    df = ta_utility.add_punch_length(df)
 
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)

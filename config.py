@@ -121,26 +121,7 @@ COLS_ANOMALIES = [
     "Did Not Break",
     "Over Twelve",
 ]
-COLS_PRINT = ["Employee", "Totaled Amount"]
-COLS_PRINT2_A = [
-    "ID",
-    "Employee",
-    "Prev Out Punch",
-    "Break Time (min)",
-    "In Punch",
-    "Out Punch",
-    "Totaled Amount",
-    "Shift Length (hrs)",
-    # "Total Worked Hours Workday",
-    "Next Break Time (min)",
-    "Next In Punch",
-    # "Next Out Punch",
-    "Next Out Punch",
-    "Next Punch Length (hrs)",
-    "Paid Break Credit (hrs)",
-    "Waiver on File?",
-    # "Flag",
-]
+
 COLS_PRINT2_B = [
     "ID",
     "Employee",
@@ -148,26 +129,12 @@ COLS_PRINT2_B = [
     "Break Time (min)",
     "In Punch",
     "Out Punch",
-    "Totaled Amount",
+    "Punch Length (hrs)",
     "Hours Worked Shift",
     "Paid Break Credit (hrs)",
     "Waiver on File?",
     # "Flag",
 ]
-COLS_PRINT3 = [
-    "Employee",
-    "ID",
-    "Prev In Punch",
-    "Prev Out Punch",
-    "Break Time (min)",
-    "In Punch",
-    "Totaled Amount",
-    "Next Break Time (min)",
-    "Paid Break Credit (hrs)",
-    "Shift Length (hrs)",
-    "Waiver on File?",
-]
-
 COLS_PRINT3a = [
     "Employee",
     "ID",
@@ -175,7 +142,7 @@ COLS_PRINT3a = [
     "Prev Out Punch",
     "Break Time (min)",
     "In Punch",
-    "Totaled Amount",
+    "Punch Length (hrs)",
     "Paid Break Credit (hrs)",
     "Hours Worked Shift",
     "Waiver on File?",
@@ -205,7 +172,7 @@ COLS_PRINT8 = [
     "ID",
     "In Punch",
     "Hours in Consecutive Days",
-    "Totaled Amount",
+    "Punch Length (hrs)",
     "First day of Streak",
 ]
 COLS_PRINT9 = [
@@ -221,16 +188,6 @@ COLS_PRINT9a = [
     "Total DT Hours Pay Period",
     "DT Hours Paid",
     "DT Variance (hrs)",
-]
-COLS_PRINT10 = [
-    "ID",
-    "Employee",
-    "Paid Break Credit (hrs)",
-    "Due Break Credit (hrs)",
-    "Variance",
-    "Short Break",
-    "Did Not Break",
-    "Over Twelve",
 ]
 
 COLUMNS_TO_DROP_FOR_DATABASE = [

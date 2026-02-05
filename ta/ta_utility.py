@@ -35,8 +35,8 @@ def add_time_helper_cols(df):
         "Next Out Punch": ("Out Punch", -1),
         "Prev Date": ("Date", 1),
         "Next Date": ("Date", -1),
-        "Prev Punch Length (hrs)": ("Totaled Amount", 1),
-        "Next Punch Length (hrs)": ("Totaled Amount", -1),
+        "Prev Punch Length (hrs)": ("Punch Length (hrs) Raw", 1),
+        "Next Punch Length (hrs)": ("Punch Length (hrs) Raw", -1),
     }
 
     # Apply all shifts in one loop
@@ -45,52 +45,6 @@ def add_time_helper_cols(df):
 
     df["Prev ID"] = df["ID"].shift(1)
     df["Next ID"] = df["ID"].shift(-1)
-
-    return df
-
-
-def sort_and_staple(df):
-    # Sort by ID and In Punch
-    df = df.sort_values(["ID", "In Punch"]).reset_index(drop=True)
-    df = df.reset_index()  # column 'index' is original row index
-
-    # Initialize Flag column if it doesn't exist
-    if "Flag" not in df.columns:
-        df["Flag"] = pd.NA
-
-    # Merge df with itself to find Out Punch -> In Punch matches for same ID
-    merged = df.merge(
-        df,
-        left_on=["ID", "Out Punch"],
-        right_on=["ID", "In Punch"],
-        suffixes=("", "_next"),
-    )
-
-    if not merged.empty:
-        keep_idx = merged["index"].values
-        drop_idx = merged["index_next"].values
-
-        # Extend Out Punch
-        df.loc[keep_idx, "Out Punch"] = merged["Out Punch_next"].values
-
-        # Only sum the "Totaled Amount"
-        if "Totaled Amount" in df.columns:
-            df.loc[keep_idx, "Totaled Amount"] = (
-                df.loc[keep_idx, "Totaled Amount"].fillna(0).values
-                + merged["Totaled Amount_next"].fillna(0).values
-            )
-
-        # Mark surviving stapled rows
-        df.loc[keep_idx, "Flag"] = "Stapled"
-
-        # Drop the merged-away rows
-        df = df.drop(index=drop_idx)
-
-    # Restore original structure
-    df = df.drop(columns="index").reset_index(drop=True)
-
-    # Final sort for readability
-    df = df.sort_values(["Employee", "In Punch"]).reset_index(drop=True)
 
     return df
 
@@ -109,6 +63,7 @@ def add_next_break_time(df):
     return df
 
 
+# TODO
 def add_hours_worked_shift_and_shift_id(df):
     # New shift starts if gap from prev punch >= 60 minutes or first punch for employee (boolean)
     df["New Shift?"] = (df["Break Time (min)"] >= 60) | df["Break Time (min)"].isna()
@@ -118,7 +73,7 @@ def add_hours_worked_shift_and_shift_id(df):
 
     # Compute shift length (sum of hours per shift)
     df["Hours Worked Shift"] = (
-        df.groupby(["ID", "Shift Number"])["Totaled Amount"].transform("sum")
+        df.groupby(["ID", "Shift Number"])["Punch Length (hrs) Raw"].transform("sum")
     ).round(4)
     return df
 
@@ -182,6 +137,7 @@ def add_twelve_hour_check(df):
 
 
 def add_split_shift(df, processed_wfn_df, min_wage):
+    # TODO Prev Punch Length is coming from Raw. Verify implications.
     # Create df with Straight Rate ($) Lookup. Note that Regular Rate on the WFN is a misnomer,
     # it's actually Straight Rate ($)
     df["Regular Rate Paid"] = df["ID"].map(
@@ -189,11 +145,11 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     )
     # Auxiliary: Current plus previous totaled hours x straight rate paid
     df["Split Paid ($)"] = df["Regular Rate Paid"] * (
-        df["Totaled Amount"] + df["Prev Punch Length (hrs)"]
+        df["Punch Length (hrs) Raw"] + df["Prev Punch Length (hrs)"]
     )
     # Auxiliary: Current and previous totaled hours x min wage
     df["Split at Min Wage ($)"] = min_wage * (
-        1 + df["Totaled Amount"] + df["Prev Punch Length (hrs)"]
+        1 + df["Punch Length (hrs) Raw"] + df["Prev Punch Length (hrs)"]
     )
     # Split Shift Due ($) (applicable if Master boolean above)
     df["Split Shift Due ($)"] = df["Split at Min Wage ($)"] - df["Split Paid ($)"]
@@ -235,7 +191,7 @@ def create_bypunch(
             "ID",
             "Location",
             "Date",
-            "Totaled Amount",
+            "Punch Length (hrs) Raw",
             "In Punch",
             "Out Punch",
         ]
@@ -244,18 +200,18 @@ def create_bypunch(
     # Add "Workday Hours" column. It totals for each Date/ID pair.
     # Repeats for all rows that share the same "Date" and "ID" combination
     bypunch_df["Workday Hours"] = bypunch_df.groupby(["Date", "ID"])[
-        "Totaled Amount"
+        "Punch Length (hrs) Raw"
     ].transform("sum")
 
     # Add "Add Week Hours" column. Creates a helper label 1 or 2.
     bypunch_df["Work Week"] = ((bypunch_df["Date"] - first_date).dt.days // 7) + 1
     bypunch_df["Week Hours"] = bypunch_df.groupby(["ID", "Work Week"])[
-        "Totaled Amount"
+        "Punch Length (hrs) Raw"
     ].transform("sum")
 
     # Add "Total hours on the work period" columns
     bypunch_df["Total Hours Pay Period"] = bypunch_df.groupby(["ID"])[
-        "Totaled Amount"
+        "Punch Length (hrs) Raw"
     ].transform("sum")
 
     ## OVERRIDE COLUMNS ## process time 0.02 seconds
@@ -383,6 +339,7 @@ def create_anomalies_new(df):
     return anomalies_df
 
 
+# TODO
 def add_punch_length(df):
     # Identify where a new logical punch starts
     df["Is New Punch?"] = (df.groupby(["ID", "Shift Number"]).cumcount() == 0) | (
@@ -395,7 +352,7 @@ def add_punch_length(df):
     # Aggregate into the Punch Length DataFrame
     df["Punch Length (hrs)"] = (
         df.groupby(["ID", "Shift Number", "Punch Number in Shift "])[
-            "Totaled Amount"
+            "Punch Length (hrs) Raw"
         ].transform("sum")
     ).round(4)
 
@@ -471,7 +428,9 @@ def add_seventh_day_hours(df, locations_config, number_of_consec_days_before_ot)
         streak = g.groupby(consec_group).cumcount() + 1
         # Rolling sum based on that employee's rule
         rolling_sum = (
-            g["Totaled Amount"].rolling(consec_days, min_periods=consec_days).sum()
+            g["Punch Length (hrs) Raw"]
+            .rolling(consec_days, min_periods=consec_days)
+            .sum()
         )
         # Keep only sums where streak >= thresold
         return rolling_sum.where(streak >= consec_days).fillna(0)
@@ -483,11 +442,3 @@ def add_seventh_day_hours(df, locations_config, number_of_consec_days_before_ot)
     df["First day of Streak"] = df["Date"] - pd.Timedelta(days=6)
 
     return df
-
-
-# def add_total_hours_workday(df):
-#     df["Total Worked Hours Workday"] = df.groupby(["ID", "Date"])[
-#         "Totaled Amount"
-#     ].transform("sum")
-
-#     return df
