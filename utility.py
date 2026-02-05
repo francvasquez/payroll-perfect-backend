@@ -10,12 +10,6 @@ def apply_override_else_global(
     )
 
 
-def debug_to_csv(df, IDs, cols, filename):
-    print("Columns:", df.columns)
-    debug_subset = df.loc[df["ID"].isin(IDs), cols]
-    debug_subset.to_csv(filename, index=False)
-
-
 def to_pandas_datetime(df, *columns):
     """
     Convert multiple DataFrame columns to pandas datetime.

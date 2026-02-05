@@ -31,7 +31,7 @@ def lambda_handler(event, context):
         event.get("httpMethod") == "OPTIONS"
         or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
     ):
-        print("Preflight: Returning OPTIONS response for CORS")
+        # print("Preflight: Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
     # Handle actual request (either presigned URL or file processing)
