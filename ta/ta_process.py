@@ -84,7 +84,22 @@ def process_data_ta(
     df = ta_utility.add_twelve_hour_check(df)
 
     # Updated df: Add Punch Length df which adds stapled midnight punches
+    # Needs  Break Time (min), "Shift Number", "Punch Number in Shift", Punch Length (hrs) Raw
     df = ta_utility.add_punch_length(df)
+
+    # TODO Looking for missing Punch Length (hrs)
+    print("Available columns:", df.columns.tolist())
+    # DEBUG
+    id_to_check = "1DI0081079"
+    filtered_df = df[df["ID"] == id_to_check]
+    cols_to_print = [
+        "In Punch",
+        "Out Punch",
+        "Punch Length (hrs)",
+        "Punch Length (hrs) Raw",
+    ]
+    print(f"\nData for ID: {id_to_check}")
+    print(filtered_df[cols_to_print])
 
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.

@@ -346,12 +346,12 @@ def add_punch_length(df):
         df["Break Time (min)"] > 0
     )
     # Create a Punch Number in Shift  within each shift
-    df["Punch Number in Shift "] = df.groupby(["ID", "Shift Number"])[
+    df["Punch Number in Shift"] = df.groupby(["ID", "Shift Number"])[
         "Is New Punch?"
     ].cumsum()
     # Aggregate into the Punch Length DataFrame
     df["Punch Length (hrs)"] = (
-        df.groupby(["ID", "Shift Number", "Punch Number in Shift "])[
+        df.groupby(["ID", "Shift Number", "Punch Number in Shift"])[
             "Punch Length (hrs) Raw"
         ].transform("sum")
     ).round(4)

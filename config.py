@@ -172,7 +172,7 @@ COLS_PRINT8 = [
     "ID",
     "In Punch",
     "Hours in Consecutive Days",
-    "Punch Length (hrs)",
+    "Punch Length (hrs) Raw",
     "First day of Streak",
 ]
 COLS_PRINT9 = [
