@@ -125,8 +125,6 @@ COLS_ANOMALIES = [
 COLS_PRINT2_B = [
     "ID",
     "Employee",
-    "Prev Out Punch",
-    "Break Time (min)",
     "In Punch",
     "Out Punch",
     "Punch Length (hrs)",
