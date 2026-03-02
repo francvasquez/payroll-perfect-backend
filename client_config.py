@@ -8,7 +8,7 @@ PP_REQUIRED_COLUMNS = [
 ]
 
 # Also at the very top, drop junk columns and map col names interface
-# Note: Python created helper columns are dropped before database write in save_to_database_fast function
+# Note: Python created helper columns are dropped before database write in save_ta_to_db function
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "mappings": {"Employee": "Employee", "ID": "ID"},

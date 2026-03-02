@@ -61,7 +61,50 @@ def get_pg_type(dtype):
     return "TEXT"
 
 
-def save_to_database_fast(df, table_name, clientId, pay_date, conn):
+def delete_ta_from_db(conn, clientId, pay_date):
+    """
+    Deletes all rows for a specific pay date from ta table.
+    """
+    full_table_name = f"{clientId}_ta"
+
+    try:
+        # 'with conn' handles the COMMIT/ROLLBACK
+        with conn:
+            with conn.cursor() as cur:
+                # 1. Verify table exists to prevent a 42P01 (Undefined Table) error
+                cur.execute(
+                    """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = %s
+                    );
+                """,
+                    (full_table_name,),
+                )
+
+                if not cur.fetchone()[0]:
+                    print(
+                        f"Table {full_table_name} does not exist. Skipping DB delete."
+                    )
+                    return 0
+
+                # 2. Execute the deletion
+                # Table name is string-formatted (safe if internal), value is parameterized
+                query = f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s'
+                cur.execute(query, (pay_date,))
+
+                deleted_rows = cur.rowcount
+                print(
+                    f"✓ Successfully deleted {deleted_rows} rows from {full_table_name} for {pay_date}"
+                )
+                return deleted_rows
+
+    except Exception as e:
+        print(f"Error deleting from database table {full_table_name}: {e}")
+        raise e
+
+
+def save_ta_to_db(df, clientId, pay_date, conn):
 
     # Cleanup before saving
     df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
@@ -72,7 +115,7 @@ def save_to_database_fast(df, table_name, clientId, pay_date, conn):
     df["Pay Date"] = pay_date
 
     # Create tables
-    full_table_name = f"{clientId}_{table_name}"
+    full_table_name = f"{clientId}_ta"
     temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
     print(f"Connected to DB - preparing to upsert to {full_table_name}")
 

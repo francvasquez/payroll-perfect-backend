@@ -1,4 +1,4 @@
-from helper.db_utils import save_to_database_fast, get_db_connection
+from helper.db_utils import save_ta_to_db, get_db_connection
 import utility
 from . import ta_utility
 import logging
@@ -152,7 +152,7 @@ def process_data_ta(
     conn = get_db_connection()
     if conn:
         try:
-            save_to_database_fast(df, "ta", clientId, pay_date, conn)
+            save_ta_to_db(df, clientId, pay_date, conn)
         except Exception as e:
             logger.error(f"Failed to save to database: {e}")
         finally:

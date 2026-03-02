@@ -5,6 +5,7 @@ import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
 from io import StringIO
 from botocore.exceptions import ClientError
+from helper.db_utils import delete_ta_from_db, get_db_connection
 
 s3_client = boto3.client("s3")
 
@@ -79,14 +80,31 @@ def delete_pay_period(client_id, pay_date):
                 ),
             }
         else:
+            # Now deleting from database
+            conn = get_db_connection()
+            db_rows = 0
+            if conn:
+                try:
+                    # Call your new delete function
+                    db_rows = delete_ta_from_db(conn, client_id, "results", pay_date)
+                except Exception as e:
+                    print(
+                        f"Failed to delete from database. S3 succeeded but not db: {e}"
+                    )
+                finally:
+                    conn.close()
+                    print("Database connection closed, deleted records: ", db_rows)
+            else:
+                print("DB is paused or unavailable. Skipping DB row deletion.")
             return {
                 "statusCode": 200,
                 "headers": CORS_HEADERS,
                 "body": json.dumps(
                     {
-                        "message": f"Pay period {pay_date} deleted successfully",
-                        "deleted_count": len(deleted_files),
-                        "deleted_files": deleted_files,
+                        "message": f"Pay period {pay_date} deletion processed",
+                        "s3_deleted_count": len(deleted_files),
+                        "db_rows_affected": db_rows,
+                        "db_status": "skipped" if not conn else "completed",
                     }
                 ),
             }
