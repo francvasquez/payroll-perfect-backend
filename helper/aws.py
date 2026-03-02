@@ -86,7 +86,7 @@ def delete_pay_period(client_id, pay_date):
             if conn:
                 try:
                     # Call your new delete function
-                    db_rows = delete_ta_from_db(conn, client_id, "results", pay_date)
+                    db_rows = delete_ta_from_db(conn, client_id, pay_date)
                 except Exception as e:
                     print(
                         f"Failed to delete from database. S3 succeeded but not db: {e}"
