@@ -160,6 +160,14 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                 """
                 )
 
+                # 3b. NEW: Add Index on "Pay Date" for fast deletions
+                # We use the clientId in the name to keep it unique across the DB
+                index_name = f"idx_{clientId}_pd"
+                print(f"Ensuring index {index_name} exists on {full_table_name}")
+                cur.execute(
+                    f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{full_table_name}" ("Pay Date");'
+                )
+
                 # 4. Temp table for upsert
                 cur.execute(
                     f'CREATE TEMP TABLE "{temp_table}" ({cols_sql}) ON COMMIT DROP;'
