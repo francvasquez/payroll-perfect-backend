@@ -93,7 +93,6 @@ def delete_pay_period(client_id, pay_date):
                     )
                 finally:
                     conn.close()
-                    print("Database connection closed, deleted records: ", db_rows)
             else:
                 print("DB is paused or unavailable. Skipping DB row deletion.")
             return {
