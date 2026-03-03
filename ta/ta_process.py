@@ -12,6 +12,7 @@ logger.setLevel(logging.INFO)
 def process_data_ta(
     df,
     locations_config,
+    system_config,
     number_of_consec_days_before_ot,
     min_wage,
     ot_day_max,
@@ -25,8 +26,9 @@ def process_data_ta(
 ):
 
     ######### DF CLEANUP AND PREP #################
-    # 1. Normalization: Rename to pp and drop junk. In the future format transformations should also be handled here.
-    df = ta_utility.normalize_client_data(df, clientId)
+
+    # 1. Normalization: Renaming and column header transformation. Doesn't crash if cols missing.
+    df = ta_utility.normalize_client_data(df, system_config)
 
     # 2. Validation: Check if all neccesary columns are present, if not stop processing.
     missing = [
@@ -35,8 +37,8 @@ def process_data_ta(
     if missing:
         logger.info(f"Columns actually received: {list(df.columns)}")
         error_msg = f"CRITICAL: Missing required columns: {missing}"
-        # This stops execution immediately.In Lambda, this will mark the request as 'Failed'.
-        raise ValueError(error_msg)
+        logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
+        raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
     other_cols = [

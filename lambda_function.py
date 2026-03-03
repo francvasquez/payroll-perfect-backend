@@ -31,7 +31,6 @@ def lambda_handler(event, context):
         event.get("httpMethod") == "OPTIONS"
         or event.get("requestContext", {}).get("http", {}).get("method") == "OPTIONS"
     ):
-        # print("Preflight: Returning OPTIONS response for CORS")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 
     # Handle actual request (either presigned URL or file processing)
@@ -171,11 +170,15 @@ def handle_file_processing(event, clientId, payDate):
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         # Process TA THIRD (using results from first two)
-        ta_df = read_excel_from_s3(body["ta_key"], header=7)
+        ta_df, system_name, system_config = read_excel_from_s3(body["ta_key"], clientId)
+        print(
+            f"Will normalize for system: {system_name}, using {system_config} for client: {clientId}"
+        )
         ta_start = time.time()
         processed_ta_df, bypunch_df, anomalies_df_new = process_data_ta(
             ta_df,
             locations_config,
+            system_config,
             number_of_consec_days_before_ot,
             min_wage,
             ot_day_max,
@@ -222,12 +225,16 @@ def handle_file_processing(event, clientId, payDate):
             "headers": CORS_HEADERS,
             "body": json.dumps(result),
         }
+    except ValueError as ve:
+        print(f"Value error during file processing: {str(ve)}")
+        return {
+            "statusCode": 400,
+            "headers": CORS_HEADERS,
+            "body": json.dumps({"error": str(ve)}),
+        }
 
     except Exception as e:
         print(f"Error processing files: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
         return {
             "statusCode": 500,
             "headers": CORS_HEADERS,

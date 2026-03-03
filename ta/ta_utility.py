@@ -8,22 +8,69 @@ import logging
 logger = logging.getLogger()
 
 
-def normalize_client_data(df, clientId):
-    # Get the specific config for this client
-    client_conf = client_config.CLIENT_CONFIGS.get(clientId, {})
+def normalize_client_data(df, system_config):
+    """
+    Normalizes client data based on system-specific config:
+    1. Apply mappings (simple renames or transformations)
+    2. Drop system-specific unwanted columns
+    """
 
-    # 1. Rename columns first
-    mapping = client_conf.get("mappings", {})
-    df = df.rename(columns=mapping)
+    # --- 1. Apply mappings ---
+    mappings = system_config.get("mappings", {})
 
-    # 2. Drop client-specific junk
-    junk_cols = client_conf.get("drop_columns", [])
-    if junk_cols:
-        # errors="ignore" is vital so it doesn't crash if the column isn't there
-        df = df.drop(columns=junk_cols, errors="ignore")
-        logger.info(f"Dropped {len(junk_cols)} client-specific columns for {clientId}")
+    for target_col, rule in mappings.items():
+        if isinstance(rule, str):
+            # Simple rename
+            if rule in df.columns:
+                df = df.rename(columns={rule: target_col})
 
+        elif isinstance(rule, dict):
+            # Transformation rule
+            transform_type = rule.get("transform")
+
+            if transform_type == "concat":
+                # Concatenate source columns with optional delimiter
+                source_cols = rule.get("source_columns", [])
+                delimiter = rule.get("delimiter", "")
+
+                # Ensure all source columns exist, else fill with empty string
+                for col in source_cols:
+                    if col not in df.columns:
+                        df[col] = ""
+
+                df[target_col] = df[source_cols].astype(str).agg(delimiter.join, axis=1)
+
+            # Additional transform types can be added here later:
+            # elif transform_type == "pad_left": ...
+            # elif transform_type == "upper": ...
+            # etc.
+
+    # --- 2. Drop columns specified in config ---
+    drop_cols = system_config.get("drop_columns", [])
+    if drop_cols:
+        df = df.drop(columns=drop_cols, errors="ignore")
+        logger.info(
+            f"Dropped {len(drop_cols)} columns based on system config: {drop_cols}"
+        )
     return df
+
+
+# def normalize_client_data(df, clientId, system_config, system_name):
+#     # Get the specific config for this client
+#     client_conf = client_config.CLIENT_CONFIGS.get(clientId, {})
+
+#     # 1. Rename columns first
+#     mapping = client_conf.get("mappings", {})
+#     df = df.rename(columns=mapping)
+
+#     # 2. Drop client-specific junk
+#     junk_cols = client_conf.get("drop_columns", [])
+#     if junk_cols:
+#         # errors="ignore" is vital so it doesn't crash if the column isn't there
+#         df = df.drop(columns=junk_cols, errors="ignore")
+#         logger.info(f"Dropped {len(junk_cols)} client-specific columns for {clientId}")
+
+#     return df
 
 
 def add_time_helper_cols(df):

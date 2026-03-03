@@ -1,23 +1,70 @@
-# This is a check at the very top of ta_process
 PP_REQUIRED_COLUMNS = [
     "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
     "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
-    "In Punch",  # containing both date and time info of the punch e.g. 46038.5180555556 Excel format or 2024-01-01 08:30:00 in datetime format
-    "Out Punch",  # containing both date and time info of the punch
+    "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
+    "Out Punch",
 ]
 
-# Also at the very top, drop junk columns and map col names interface
-# Note: Python created helper columns are dropped before database write in save_ta_to_db function
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
-        "mappings": {"Employee": "Employee", "ID": "ID"},
-        "drop_columns": ["Org Path", "Date/Time"],
+        "systems": {
+            "Time and Attendance": {
+                "detection": {
+                    "columns": ["Employee", "In Punch Comment"],
+                    "header": 7,  # The file must contain "columns" in the correct "header"
+                },
+                "mappings": {"Employee": "Employee"},  # Sample
+                "drop_columns": [
+                    "Org Path",
+                    "Date/Time",
+                    "Totaled Amount",
+                ],  # Cols which we know are not needed
+            },
+            "Workforce Manager": {
+                "detection": {
+                    "columns": ["Employee", "Home Labor Category"],
+                    "header": 7,
+                },
+                "mappings": {
+                    "ID": {
+                        "source_columns": ["Pay Group", "Payroll File Number"],
+                        "transform": "concat",
+                        "delimiter": "",
+                    }
+                },
+                "drop_columns": [
+                    "Totaled Amount",
+                ],
+            },
+        },
     },
-    "client_b": {  # sample client
-        "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},
-        "drop_columns": ["Temp_Calculation_Field", "Audit_Log_ID"],
+    "new_client": {  # add new client
+        "systems": {
+            "systemA": {
+                "detection": {
+                    "columns": ["ColA", "ColB"],
+                    "header": 0,
+                },
+                "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},  # Sample
+                "drop_columns": [
+                    "Temp_Calculation_Field",
+                    "Audit_Log_ID",
+                ],
+            },
+        },
     },
 }
+
+# CLIENT_CONFIGS = {
+#     "demo_client": {  # BH
+#         "mappings": {"Employee": "Employee", "ID": "ID"},
+#         "drop_columns": ["Org Path", "Date/Time"],
+#     },
+#     "client_b": {  # sample client
+#         "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},
+#         "drop_columns": ["Temp_Calculation_Field", "Audit_Log_ID"],
+#     },
+# }
 
 # For DB UI: Columns that the user should not be able to see on the pulldown,
 # either because they are required (already there) or just fluff

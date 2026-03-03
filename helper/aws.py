@@ -3,6 +3,7 @@ import json, boto3, io
 from datetime import datetime, timezone
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
+from client_config import CLIENT_CONFIGS
 from io import StringIO
 from botocore.exceptions import ClientError
 from helper.db_utils import delete_ta_from_db, get_db_connection
@@ -352,11 +353,63 @@ def load_processed_results(client_id, pay_date):
         }
 
 
-def read_excel_from_s3(key, header=0, engine=None):
-    """Reads Excel file from S3 into pandas DataFrame"""
+def read_excel_from_s3(key, clientId, engine=None):
+    """
+    Reads Excel file from S3, auto-detects system, and returns (system_name, df, config)
+
+    Steps:
+    1. Download the file from S3 into memory.
+    2. Loop through each system defined for the client.
+        a. For each system, get its detection header row and required columns.
+        b. Read only the header row (or nrows=0) to peek at columns.
+        c. Normalize column names (strip whitespace) for robust matching.
+        d. Check if all required columns are present.
+        e. If matched, read the full Excel file using this system's header.
+    3. If no system matches, raise an error.
+    """
+
+    # Step 1: Download file into memory
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
-    return pd.read_excel(file_bytes, header=header, engine=engine)
+
+    systems = CLIENT_CONFIGS[clientId]["systems"]
+
+    # Step 2: Loop through systems for detection
+    for system_name, config in systems.items():
+
+        # --- a. Detection inputs ---
+        header_row = config["detection"]["header"]
+        required_cols = config["detection"]["columns"]
+        # ----------------------------
+
+        # --- b. Peek at header row only ---
+        try:
+            file_bytes.seek(0)  # reset buffer before each read
+            df_header = pd.read_excel(
+                file_bytes, nrows=0, header=header_row, engine=engine
+            )
+        except Exception:
+            continue  # skip this system if read fails
+
+        # --- c. Normalize column names for robust matching ---
+        df_header.columns = df_header.columns.str.strip()
+
+        # --- d. Check required columns presence ---
+        if all(col in df_header.columns for col in required_cols):
+            # --- e. Read full DataFrame once the system is matched ---
+            file_bytes.seek(0)
+            df = pd.read_excel(file_bytes, header=header_row, engine=engine)
+            df.columns = df.columns.str.strip()  # normalize full DF too
+            return (
+                df,
+                system_name,
+                config,
+            )  # Return the matched system's config for downstream processing
+
+    # Step 3: No system matched
+    raise ValueError(
+        f"Could not determine system type for client '{clientId}' and file '{key}'."
+    )
 
 
 def handle_presigned_url_request(event):
