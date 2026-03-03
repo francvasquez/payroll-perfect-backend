@@ -1,10 +1,9 @@
 # This is a check at the very top of ta_process
 PP_REQUIRED_COLUMNS = [
-    "ID",  # unique per employee. Important: First three chars are Location Code
-    "Employee",  # employee name (full name)
-    "In Punch",  # containing both date and time info of the punch
+    "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
+    "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
+    "In Punch",  # containing both date and time info of the punch e.g. 46038.5180555556 Excel format or 2024-01-01 08:30:00 in datetime format
     "Out Punch",  # containing both date and time info of the punch
-    "Totaled Amount",  # total hours worked in the punch (decimal hours)
 ]
 
 # Also at the very top, drop junk columns and map col names interface
