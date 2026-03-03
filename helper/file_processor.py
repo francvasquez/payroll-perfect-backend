@@ -11,7 +11,19 @@ from config import (
     DEFAULT_CONSEC_DAYS_BEFORE_OT,
     CORS_HEADERS,
 )
-from helper.aux import verify_files
+from helper.aux import verify_files, delete_annotations
+from helper.aws import (
+    read_excel_from_s3,
+    save_csv_to_s3,
+    save_waiver_json_s3,
+    put_result_to_s3,
+)
+from helper.results import generate_results
+import time
+from ta.ta_process import process_data_ta
+from waiver.waiver_process import process_waiver
+from wfn.wfn_process import process_data_wfn
+import json
 
 
 def handle_file_processing(event, params):
@@ -21,7 +33,7 @@ def handle_file_processing(event, params):
     """
     try:
         ### 1. Extract client_config from params
-        client_id = params["clientID"]
+        client_id = params["clientId"]
         client_config = params["client_config"]
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
@@ -63,22 +75,20 @@ def handle_file_processing(event, params):
         if error_response:
             return error_response
 
-        # Delete existing annotations before reprocessing
+        ### 5. Delete existing annotations before reprocessing
         if client_id and pay_date:
-            print(
-                f"Deleting annotations for {client_id}/{pay_date} before reprocessing..."
-            )
-            delete_result = delete_annotations(clientId, payDate)
+            print(f"Deleting annotations for {client_id}/{pay_date} b4 reprocessing.")
+            delete_annotations(client_id, pay_date)
 
-        # Process Waiver FIRST
-        waiver_df = read_excel_from_s3(body["waiver_key"])
+        ### 6. Process WAIVER
+        waiver_df = read_excel_from_s3(params["waiver_key"])
         waiver_start = time.time()
         processed_waiver_df = process_waiver(waiver_df)
         waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
         print(f"Waiver processed: {len(processed_waiver_df)} rows")
 
-        # Process WFN SECOND
-        wfn_df = read_excel_from_s3(body["wfn_key"], header=5)
+        ### 7. Process WFN
+        wfn_df = read_excel_from_s3(params["wfn_key"], header=5)
         wfn_start = time.time()
         processed_wfn_df = process_data_wfn(
             wfn_df, locations_config, min_wage, state_min_wage, pay_periods_per_year
@@ -86,10 +96,12 @@ def handle_file_processing(event, params):
         wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
-        # Process TA THIRD (using results from first two)
-        ta_df, system_name, system_config = read_excel_from_s3(body["ta_key"], clientId)
+        ### 8. Process TA (using results from first two)
+        ta_df, system_name, system_config = read_excel_from_s3(
+            params["ta_key"], client_id
+        )
         print(
-            f"Will normalize for system: {system_name}, using {system_config} for client: {clientId}"
+            f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
         )
         ta_start = time.time()
         processed_ta_df, bypunch_df, anomalies_df_new = process_data_ta(
@@ -103,25 +115,24 @@ def handle_file_processing(event, params):
             dt_day_max,
             first_date,
             pay_date,
-            clientId,
+            client_id,
             processed_waiver_df,  # From step 1
             processed_wfn_df,  # From step 2
         )
         ta_process_time = round((time.time() - ta_start) * 1000, 2)
         print("TA processed")
 
-        # Store raw files to csv for future reference
+        ### 9. Store raw files to csv for future reference
         if ta_df is not None:
             save_csv_to_s3(ta_df, "ta", event)
         if wfn_df is not None:
             save_csv_to_s3(wfn_df, "wfn", event)
         if waiver_df is not None:
             save_csv_to_s3(waiver_df, "waiver", event)
-
         # Store json files for ready-to-serve front consumption
         save_waiver_json_s3(waiver_df, "waiver", event)
 
-        # Generate result
+        ### 10. Generate result for front-end
         result = generate_results(
             processed_ta_df,
             anomalies_df_new,
@@ -132,9 +143,9 @@ def handle_file_processing(event, params):
             wfn_process_time,
             waiver_process_time,
         )
-
-        # Save result as JSON to S3 for ready-to-serve consumption
-        put_result_to_s3(result, event)
+        put_result_to_s3(
+            result, event
+        )  # save JSON for ready-to-serve front consumption
 
         # Return to front end upon uploading files
         return {
