@@ -13,7 +13,7 @@ from helper.aws import (
     delete_pay_period,
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
-from file_processor import handle_file_upload
+from helper.file_processor import handle_file_upload
 from config import CORS_HEADERS
 
 
