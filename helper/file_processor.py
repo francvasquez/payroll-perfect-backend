@@ -20,7 +20,8 @@ def handle_file_processing(event, params):
     Frontend ensures all three files are provided
     """
     try:
-        ### 1. Extract client_config from request body
+        ### 1. Extract client_config from params
+        client_id = params["clientID"]
         client_config = params["client_config"]
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
@@ -63,9 +64,9 @@ def handle_file_processing(event, params):
             return error_response
 
         # Delete existing annotations before reprocessing
-        if clientId and pay_Date:
+        if client_id and pay_date:
             print(
-                f"Deleting annotations for {clientId}/{payDate} before reprocessing..."
+                f"Deleting annotations for {client_id}/{pay_date} before reprocessing..."
             )
             delete_result = delete_annotations(clientId, payDate)
 
