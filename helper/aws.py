@@ -568,10 +568,7 @@ def save_table_json_s3(
     return s3_key
 
 
-def handle_get_client_config(body):
-    """Fetch client configuration from S3"""
-    client_id = body.get("clientId")
-
+def handle_get_client_config(client_id):
     if not client_id:
         return {
             "statusCode": 400,
@@ -581,7 +578,6 @@ def handle_get_client_config(body):
             },
             "body": json.dumps({"error": "clientId is required"}),
         }
-
     try:
         # Build S3 key path
         config_key = f"clients/{client_id}/config.json"
@@ -650,10 +646,8 @@ def handle_get_client_config(body):
         }
 
 
-def handle_save_client_config(body):
+def handle_save_client_config(client_id, config):
     """Save client configuration to S3"""
-    client_id = body.get("clientId")
-    config = body.get("config")
 
     if not client_id:
         return {
