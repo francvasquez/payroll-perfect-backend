@@ -14,6 +14,7 @@ from config import (
 from helper.aux import verify_files, delete_annotations
 from helper.aws import (
     read_excel_from_s3,
+    read_ta_excel_from_s3,
     save_csv_to_s3,
     save_waiver_json_s3,
     put_result_to_s3,
@@ -23,22 +24,27 @@ import time
 from ta.ta_process import process_data_ta
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
-import json
+import json, traceback
 
 
-def handle_file_processing(event, params):
+def handle_file_upload(event, params):
     """
     Processes all three files in sequence: Waiver → WFN → TA
     Frontend ensures all three files are provided
     """
     try:
-        ### 1. Extract client_config from params
+        ### 1. Verify all three files are provided (they should be from frontend)
+        error_response = verify_files(params)
+        if error_response:
+            return error_response
+
+        ### 2. Extract client_config from params
         client_id = params["clientId"]
         client_config = params["client_config"]
         global_config = client_config.get("global", {})
         locations_config = client_config.get("locations", {})  ## overrides
 
-        ### 2. Extract global parameters with default fallback (TODO consolidate)
+        ### 3. Extract global parameters with default fallback (TODO consolidate)
         pay_period_length = global_config.get(
             "pay_period_length", DEFAULT_PAY_PERIOD_LENGTH
         )
@@ -58,7 +64,7 @@ def handle_file_processing(event, params):
             "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS_BEFORE_OT
         )
 
-        ### 3. Extract pay_date and calculate first_date
+        ### 4. Extract pay_date and calculate first_date
         pay_date = pd.to_datetime(params["payDate"])
         first_date = (
             pay_date
@@ -69,11 +75,6 @@ def handle_file_processing(event, params):
         print(
             f"file_processor.py - Processing: client_config={client_config}, pay_date={pay_date}, first date ={first_date}"
         )
-
-        ### 4. Verify all three files are provided (they should be from frontend)
-        error_response = verify_files(params)
-        if error_response:
-            return error_response
 
         ### 5. Delete existing annotations before reprocessing
         if client_id and pay_date:
@@ -97,7 +98,7 @@ def handle_file_processing(event, params):
         print(f"WFN processed: {len(processed_wfn_df)} rows")
 
         ### 8. Process TA (using results from first two)
-        ta_df, system_name, system_config = read_excel_from_s3(
+        ta_df, system_name, system_config = read_ta_excel_from_s3(
             params["ta_key"], client_id
         )
         print(
@@ -163,8 +164,9 @@ def handle_file_processing(event, params):
 
     except Exception as e:
         print(f"Error processing files: {str(e)}")
+        traceback.print_exc()
         return {
             "statusCode": 500,
             "headers": CORS_HEADERS,
-            "body": json.dumps({"error": str(e)}),
+            "body": json.dumps({"error": "Internal server error"}),
         }

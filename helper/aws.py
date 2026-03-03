@@ -353,7 +353,14 @@ def load_processed_results(client_id, pay_date):
         }
 
 
-def read_excel_from_s3(key, clientId, engine=None):
+def read_excel_from_s3(key, header=0, engine=None):
+    """Reads WFN or Waiver excel from S3"""
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    file_bytes = io.BytesIO(obj["Body"].read())
+    return pd.read_excel(file_bytes, header=header, engine=engine)
+
+
+def read_ta_excel_from_s3(key, clientId, engine=None):
     """
     Reads Excel file from S3, auto-detects system, and returns (system_name, df, config)
 

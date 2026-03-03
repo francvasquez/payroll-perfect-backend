@@ -13,7 +13,7 @@ from helper.aws import (
     delete_pay_period,
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
-from file_processor import handle_file_processing
+from file_processor import handle_file_upload
 from config import CORS_HEADERS
 
 
@@ -72,7 +72,7 @@ def route_action(action, params, event):
     if action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
     else:
-        return handle_file_processing(event, params)
+        return handle_file_upload(event, params)
 
 
 def verify_files(params):
