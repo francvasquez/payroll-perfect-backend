@@ -1,6 +1,7 @@
 import json
 from config import *
-from helper.aux import parse_event_params, route_action
+from helper.aux import parse_event_params
+from helper.action_router import route_action
 
 
 def lambda_handler(event):

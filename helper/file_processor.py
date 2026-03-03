@@ -11,20 +11,20 @@ from config import (
     DEFAULT_CONSEC_DAYS_BEFORE_OT,
     CORS_HEADERS,
 )
-from helper.aux import verify_files, delete_annotations
+from helper.aux import verify_files
 from helper.aws import (
     read_excel_from_s3,
     read_ta_excel_from_s3,
     save_csv_to_s3,
     save_waiver_json_s3,
     put_result_to_s3,
+    delete_annotations,
 )
 from helper.results import generate_results
-import time
 from ta.ta_process import process_data_ta
 from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
-import json, traceback
+import json, traceback, time
 
 
 def handle_file_upload(event, params):
