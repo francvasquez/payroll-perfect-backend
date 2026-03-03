@@ -4,7 +4,7 @@ from helper.aux import parse_event_params
 from helper.action_router import route_action
 
 
-def lambda_handler(event):
+def lambda_handler(event, _):
 
     ### 0. CORS Preflight check - clean up once determined
     method1 = event.get("httpMethod")
