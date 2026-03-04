@@ -10,7 +10,7 @@ def parse_event_params(event):
     params = {  # Use get as these params may or may not come
         "action": body.get("action"),
         "clientId": body.get("clientId") or body.get("client_id"),
-        "payDate": body.get("payDate"),
+        "payDate": body.get("payDate") or body.get("pay_date"),
         "employeeId": body.get("employeeId"),
         "startDate": body.get("startDate"),
         "endDate": body.get("endDate"),
