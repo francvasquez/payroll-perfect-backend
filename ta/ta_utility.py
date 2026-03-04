@@ -20,16 +20,11 @@ def normalize_client_data(df, system_config):
     force_type = system_config.get("force_type") or {}
     for col, type_name in force_type.items():
         if col in df.columns:
-            if type_name == str:
-                # Convert integer-like floats cleanly (remove .0)
-                if pd.api.types.is_float_dtype(df[col]):
-                    df[col] = df[col].astype("Int64")
-
-                # Convert to pandas string dtype (not Python str)
-                df[col] = df[col].astype("string")
-            elif type_name == int:
+            if type_name is str:
+                df[col] = df[col].astype("string").str.replace(r"\.0$", "", regex=True)
+            elif type_name is int:
                 df[col] = df[col].astype("Int64")
-            elif type_name == float:
+            elif type_name is float:
                 df[col] = df[col].astype(float)
             else:
                 df[col] = df[col].astype(type_name)
