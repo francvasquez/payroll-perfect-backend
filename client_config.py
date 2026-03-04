@@ -29,7 +29,7 @@ CLIENT_CONFIGS = {
                     "ID": {
                         "source_columns": ["Pay Group", "Payroll File Number"],
                         "transform": "concat",
-                        "delimiter": "",
+                        "delimiter": "0",
                     }
                 },
                 "drop_columns": [
