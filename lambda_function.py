@@ -7,11 +7,8 @@ from helper.action_router import route_action
 def lambda_handler(event, _):
 
     ### 0. CORS Preflight check - clean up once determined
-    method1 = event.get("httpMethod")
-    method2 = event.get("requestContext", {}).get("http", {}).get("method")
-    print("Received HTTP method (httpMethod):", method1)
-    print("Received HTTP method (requestContext.http.method):", method2)
-    if method1 == "OPTIONS" or method2 == "OPTIONS":
+    method = event.get("requestContext", {}).get("http", {}).get("method")
+    if method == "OPTIONS":
         print("OPTIONS preflight detected")
         return {"statusCode": 200, "headers": CORS_HEADERS, "body": ""}
 

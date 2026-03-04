@@ -252,6 +252,7 @@ def create_bypunch(
 
     # Add "Add Week Hours" column. Creates a helper label 1 or 2.
     bypunch_df["Work Week"] = ((bypunch_df["Date"] - first_date).dt.days // 7) + 1
+    print("First date", first_date)
     bypunch_df["Week Hours"] = bypunch_df.groupby(["ID", "Work Week"])[
         "Punch Length (hrs) Raw"
     ].transform("sum")
@@ -267,6 +268,7 @@ def create_bypunch(
     bypunch_df["OT Day Max"] = utility.apply_override_else_global(
         bypunch_df, "Location", "ot_day_max", ot_day_max, locations_config
     )
+
     # Is there a location based week overtime trigger? Else take global "ot_week_max"
     bypunch_df["OT Week Max"] = utility.apply_override_else_global(
         bypunch_df, "Location", "ot_week_max", ot_week_max, locations_config
@@ -293,6 +295,18 @@ def create_bypunch(
         .groupby(["Work Week", "ID"])["Workday OT Hours"]
         .sum()
     )
+
+    # ###DEBUG 1#####
+    # debug_id = "GUH0007980"
+    # # Subset by ID and columns
+    # debug_rows = bypunch_df.loc[
+    #     bypunch_df["ID"].astype(str).str.strip() == debug_id,
+    #     ["ID", "In Punch", "Sum of Workday OT Hours"],
+    # ]
+    # print("==== DEBUG ROWS FOR", debug_id, "====")
+    # print(debug_rows.to_string(index=False))
+    # print("====================================")
+    # #############################################
 
     # Double time per workday
     bypunch_df["Workday DT Hours"] = np.maximum(
@@ -386,7 +400,6 @@ def create_anomalies_new(df):
     return anomalies_df
 
 
-# TODO
 def add_punch_length(df):
     # Identify where a new logical punch starts
     df["Is New Punch?"] = (df.groupby(["ID", "Shift Number"]).cumcount() == 0) | (
