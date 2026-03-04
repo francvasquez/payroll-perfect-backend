@@ -23,7 +23,7 @@ CLIENT_CONFIGS = {
             "Workforce Manager": {
                 "detection": {
                     "columns": ["Employee", "Home Labor Category"],
-                    "header": 7,
+                    "header": 5,
                 },
                 "mappings": {
                     "ID": {
