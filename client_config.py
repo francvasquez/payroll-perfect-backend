@@ -13,7 +13,7 @@ CLIENT_CONFIGS = {
                     "columns": ["Employee", "In Punch Comment"],
                     "header": 7,  # The file must contain "columns" in the correct "header"
                 },
-                "mappings": {"Employee": "Employee"},  # Sample
+                "mappings": {"Employee": "Employee"},  # For reference
                 "drop_columns": [
                     "Org Path",
                     "Date/Time",
@@ -25,6 +25,7 @@ CLIENT_CONFIGS = {
                     "columns": ["Employee", "Home Labor Category"],
                     "header": 5,
                 },
+                "force_type": {"Payroll File Number": str},
                 "mappings": {
                     "ID": {
                         "source_columns": ["Pay Group", "Payroll File Number"],

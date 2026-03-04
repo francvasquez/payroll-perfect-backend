@@ -11,11 +11,30 @@ logger = logging.getLogger()
 def normalize_client_data(df, system_config):
     """
     Normalizes client data based on system-specific config:
-    1. Apply mappings (simple renames or transformations)
-    2. Drop system-specific unwanted columns
+    1. Force column types (optional)
+    2. Apply mappings (simple renames or transformations)
+    3. Drop system-specific unwanted columns
     """
 
-    # --- 1. Apply mappings ---
+    # --- 0. Force column types (if provided) ---
+    force_type = system_config.get("force_type") or {}
+    for col, type_name in force_type.items():
+        if col in df.columns:
+            if type_name == str:
+                # Convert integer-like floats cleanly (remove .0)
+                if pd.api.types.is_float_dtype(df[col]):
+                    df[col] = df[col].astype("Int64")
+
+                # Convert to pandas string dtype (not Python str)
+                df[col] = df[col].astype("string")
+            elif type_name == int:
+                df[col] = df[col].astype("Int64")
+            elif type_name == float:
+                df[col] = df[col].astype(float)
+            else:
+                df[col] = df[col].astype(type_name)
+
+    # --- 1. Apply mappings (if provided) ---
     mappings = system_config.get("mappings", {})
 
     for target_col, rule in mappings.items():
