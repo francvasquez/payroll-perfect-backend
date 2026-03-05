@@ -54,6 +54,9 @@ def process_data_ta(
     # Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch")
 
+    # Add Location. TODO Base on Client Settings for scalability
+    df["Location"] = df["ID"].str[:3]
+
     # Normalize and create new Date column
     df["Date"] = df["In Punch"].dt.normalize()
 
@@ -75,7 +78,7 @@ def process_data_ta(
         home_new_col="Paid Break Credit (hrs)",
     )
 
-    # Updated df: Adds Short ID, Waiver Lookup, Waiver on File? cols
+    # Adds Short ID, Waiver Lookup, Waiver on File? cols
     df = ta_utility.add_waiver_check(df, processed_waiver_df)
 
     # Updated df: Adds breaks check columns
