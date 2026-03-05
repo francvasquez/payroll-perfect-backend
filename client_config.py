@@ -25,7 +25,6 @@ CLIENT_CONFIGS = {
                     "columns": ["Employee", "Home Labor Category"],
                     "header": 5,
                 },
-                "force_type": {"Payroll File Number": str},
                 "mappings": {
                     "ID": {
                         "source_columns": ["Pay Group", "Payroll File Number"],
