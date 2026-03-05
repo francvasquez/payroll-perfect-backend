@@ -21,6 +21,10 @@ CLIENT_CONFIGS = {
                 ],  # Cols which we know are not needed
             },
             "Workforce Manager": {
+                "force_type": {
+                    "Pay Group": str,
+                    "Payroll File Number": str,
+                },
                 "detection": {
                     "columns": ["Employee", "Home Labor Category"],
                     "header": 5,

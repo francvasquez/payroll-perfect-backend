@@ -15,6 +15,11 @@ def normalize_client_data(df, system_config):
     2. Apply mappings (simple renames or transformations)
     3. Drop system-specific unwanted columns
     """
+    # --- 0. Force Normalize
+    force_type = system_config.get("force_type", {})
+    for col, col_type in force_type.items():
+        if col in df.columns:
+            df[col] = df[col].astype(col_type)
 
     # --- 1. Apply mappings (if provided) ---
     mappings = system_config.get("mappings", {})
@@ -26,20 +31,17 @@ def normalize_client_data(df, system_config):
                 df = df.rename(columns={rule: target_col})
 
         elif isinstance(rule, dict):
-            # Transformation rule
             transform_type = rule.get("transform")
 
             if transform_type == "concat":
-                # Concatenate source columns with optional delimiter
                 source_cols = rule.get("source_columns", [])
                 delimiter = rule.get("delimiter", "")
 
-                # Ensure all source columns exist, else fill with empty string
                 for col in source_cols:
                     if col not in df.columns:
                         df[col] = ""
 
-                df[target_col] = df[source_cols].astype(str).agg(delimiter.join, axis=1)
+                df[target_col] = df[source_cols].fillna("").agg(delimiter.join, axis=1)
 
             # Additional transform types can be added here later:
             # elif transform_type == "pad_left": ...
