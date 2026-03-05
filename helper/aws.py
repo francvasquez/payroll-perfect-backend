@@ -403,9 +403,16 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
 
         # --- d. Check required columns presence ---
         if all(col in df_header.columns for col in required_cols):
+
             # --- e. Read full DataFrame once the system is matched ---
             file_bytes.seek(0)
-            df = pd.read_excel(file_bytes, header=header_row, engine=engine)
+            force_type = config.get("force_type", {})  # from CLIENT_CONFIGS
+            df = pd.read_excel(
+                file_bytes,
+                header=header_row,
+                engine=engine,
+                dtype=force_type or None,
+            )
             df.columns = df.columns.str.strip()  # normalize full DF too
             return (
                 df,

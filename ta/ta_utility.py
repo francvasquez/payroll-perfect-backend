@@ -15,11 +15,6 @@ def normalize_client_data(df, system_config):
     2. Apply mappings (simple renames or transformations)
     3. Drop system-specific unwanted columns
     """
-    # --- 0. Force Normalize
-    force_type = system_config.get("force_type", {})
-    for col, col_type in force_type.items():
-        if col in df.columns:
-            df[col] = df[col].astype(col_type)
 
     # --- 1. Apply mappings (if provided) ---
     mappings = system_config.get("mappings", {})

@@ -22,7 +22,6 @@ CLIENT_CONFIGS = {
             },
             "Workforce Manager": {
                 "force_type": {
-                    "Pay Group": str,
                     "Payroll File Number": str,
                 },
                 "detection": {
