@@ -241,6 +241,16 @@ def handle_get_ta_columns(clientId):
 def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCols):
     try:
         conn = get_db_connection()  # Use your existing connection engine
+        # --- ADD THIS CHECK ---
+        if conn is None:
+            return {
+                "statusCode": 503,  # Service Unavailable
+                "headers": config.CORS_HEADERS,
+                "body": json.dumps(
+                    {"error": "Database is currently unreachable. Check network/VPN."}
+                ),
+            }
+        # -----------------------
         cur = conn.cursor()
 
         table_name = f"{clientId}_ta"
