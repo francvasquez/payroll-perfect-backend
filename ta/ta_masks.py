@@ -31,7 +31,9 @@ def is_first_punch_of_shift(df):
 
 
 def waiver_on_file(df):
-    return df["Waiver on File?"] == "Yes"
+    # Explicitly check for both the string "Yes" and the boolean True. As we are migrating that column to boolean.
+    mask = (df["Waiver on File?"] == "Yes") | (df["Waiver on File?"] == True)
+    return mask
 
 
 def split_shift(df):

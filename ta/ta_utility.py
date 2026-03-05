@@ -227,18 +227,14 @@ def add_col_from_another_df(
 
 
 def add_waiver_check(df, processed_waiver_df):
-    df["Location"] = df["ID"].str[:3]
-    df["Waiver Lookup"] = df["Location"] + " " + df["Employee"]
-
     add_col_from_another_df(
         home_new_col="Waiver on File?",
         home_df=df,
-        home_ref="Waiver Lookup",
+        home_ref="ID",
         lookup_df=processed_waiver_df,
-        lookup_ref="Name",
-        lookup_tgt="Check_Pure",
+        lookup_ref="ID",
+        lookup_tgt="Has_Waiver_Bool",
     )
-
     return df
 
 

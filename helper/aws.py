@@ -460,9 +460,7 @@ def handle_presigned_url_request(event):
 
 
 def save_csv_to_s3(df, file_type, event, s3_client=None):
-
-    ## Save DataFrame as CSV file to S3 following the folder structure.
-
+    """Save DataFrame as CSV file to S3 following the folder structure."""
     if s3_client is None:
         s3_client = boto3.client("s3")
 
@@ -474,7 +472,6 @@ def save_csv_to_s3(df, file_type, event, s3_client=None):
     if file_type == "waiver":
         s3_key = f"clients/{clientID}/waiver/waiver.csv"
     else:
-        # Changed from 'parquet' to 'csv' folder
         s3_key = f"clients/{clientID}/csv/{payDate}/{file_type}.csv"
 
     # Convert DataFrame to CSV string
