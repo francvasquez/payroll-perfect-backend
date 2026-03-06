@@ -106,15 +106,21 @@ def delete_ta_from_db(conn, clientId, pay_date):
 
 def save_ta_to_db(df, clientId, pay_date, conn):
 
-    # Cleanup before saving
-    df = df.drop(columns=config.COLUMNS_TO_DROP_FOR_DATABASE)
-
-    # Metadata
-    df = df.copy()
+    # Add Metadata
     df["Last Updated"] = pd.Timestamp.now()
     df["Pay Date"] = pay_date
 
-    # Create tables
+    # Filter DF to COLUMN_TO_KEEP_DB
+    try:
+        cols_to_keep = [
+            col for sublist in config.COLUMN_TO_KEEP_DB.values() for col in sublist
+        ]
+        df = df[cols_to_keep].copy()
+    except KeyError as e:
+        print(f"Column missing from DataFrame: {e}")
+        raise
+
+    # Create tables if it doesn't exist
     full_table_name = f"{clientId}_ta"
     temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
     print(f"Connected to DB - preparing to upsert to {full_table_name}")
@@ -160,7 +166,7 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                 """
                 )
 
-                # 3b. NEW: Add Index on "Pay Date" for fast deletions
+                # 3b. Add Index on "Pay Date" for fast deletions if not created already
                 # We use the clientId in the name to keep it unique across the DB
                 index_name = f"idx_{clientId}_pd"
                 print(f"Ensuring index {index_name} exists on {full_table_name}")

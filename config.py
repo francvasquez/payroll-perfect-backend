@@ -188,15 +188,49 @@ COLS_PRINT9a = [
     "DT Variance (hrs)",
 ]
 
-COLUMNS_TO_DROP_FOR_DATABASE = [
-    "Prev In Punch",
-    "Prev Out Punch",
-    "Next In Punch",
-    "Next Out Punch",
-    "Prev Date",
-    "Next Date",
-    "Prev Punch Length (hrs)",
-    "Next Punch Length (hrs)",
-    "Prev ID",
-    "Next ID",
-]
+# COLUMNS_TO_DROP_FOR_DATABASE = [
+#     "Prev In Punch",
+#     "Prev Out Punch",
+#     "Next In Punch",
+#     "Next Out Punch",
+#     "Prev Date",
+#     "Next Date",
+#     "Prev Punch Length (hrs)",
+#     "Next Punch Length (hrs)",
+#     "Prev ID",
+#     "Next ID",
+# ]
+
+COLUMN_TO_KEEP_DB = {
+    "Base": ["ID", "Employee", "In Punch", "Out Punch"],
+    "Metadata": ["Last Updated", "Pay Date"],
+    "Employee": ["Location", "Status", "Status Date"],
+    "Punch Info": [
+        "Punch Length (hrs)",
+        "Break Time (min)",
+        "Is Break?",
+        "Is New Punch?",
+    ],
+    "Violation Flags": [
+        "Short Break",
+        "Did Not Break",
+        "12hr Credit Due",
+        "Split Shift Due ($)",
+    ],
+    "Shift Info": [
+        "New Shift?",
+        "Shift Number",
+        "Hours Worked Shift",
+        "Shift Start",
+        "First Punch of Shift?",
+        "Punch Number in Shift",
+    ],
+    "12 hour Calcs": [
+        "Over Twelve",
+        "Break Count",
+        "Break Order",
+        "2nd Break Start",
+        "Hours to 2nd Break",
+    ],
+    # "Comments": ["In Punch Comment", "Out Punch Comment", "Pay Code Comment"]
+}

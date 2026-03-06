@@ -52,7 +52,7 @@ def process_data_ta(
     ######### DF PROCESSING #################
 
     # Assure timestamps are in Panda's datetime format
-    df = utility.to_pandas_datetime(df, "In Punch", "Out Punch")
+    df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
 
     # Add Location. TODO Base on Client Settings for scalability
     df["Location"] = df["ID"].str[:3]
@@ -163,7 +163,7 @@ def process_data_ta(
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
-    # Attempt connection to dababase and save
+    # Write to DB TODO Improve error handling
     conn = get_db_connection()
     if conn:
         try:

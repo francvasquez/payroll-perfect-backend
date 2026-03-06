@@ -3,6 +3,8 @@ PP_REQUIRED_COLUMNS = [
     "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
     "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
     "Out Punch",
+    "Status",
+    "Status Date",
 ]
 
 CLIENT_CONFIGS = {

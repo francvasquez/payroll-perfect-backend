@@ -81,6 +81,7 @@ def generate_results(
                 "waiver_process_time_ms": waiver_process_time,
             },
         },
+        "db_cols": config.COLUMN_TO_KEEP_DB,
         "wfn": {
             ##Overtime Checks Variances
             "overtime_checks_variances": filter_and_sort_df_to_dict(
