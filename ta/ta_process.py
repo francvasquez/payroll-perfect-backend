@@ -27,7 +27,7 @@ def process_data_ta(
 
     ######### DF CLEANUP AND PREP #################
 
-    # 1. Normalization: Renaming and column header transformation. Doesn't crash if cols missing.
+    # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
     df = ta_utility.normalize_client_data(df, system_config)
 
     # 2. Validation: Check if all neccesary columns are present, if not stop processing.
@@ -46,8 +46,9 @@ def process_data_ta(
     ]
     df = df[client_config.PP_REQUIRED_COLUMNS + other_cols]
 
-    # 4. Drops rows that are not punches (i.e. NA In/Out Punch)
-    df = df.dropna(subset=["In Punch", "Out Punch"]).copy()
+    # 4. Drops rows that are not punches base on CLIENT_CONFIGS
+    # df = df.dropna(subset=["In Punch", "Out Punch"]).copy()
+    df = ta_utility.drop_rows(df, system_config)
 
     ######### DF PROCESSING #################
 

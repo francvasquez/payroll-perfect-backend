@@ -110,8 +110,8 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     df["Last Updated"] = pd.Timestamp.now()
     df["Pay Date"] = pay_date
 
-    # DEBUG:
-    # 1. Identify which rows have duplicate keys
+    # Identify which rows have duplicate keys - if there are, the write will crash
+    # as the logic will not know what to do.
     duplicate_mask = df.duplicated(subset=["ID", "In Punch"], keep=False)
     duplicates = df[duplicate_mask].sort_values(by=["ID", "In Punch"])
 

@@ -8,6 +8,53 @@ import logging
 logger = logging.getLogger()
 
 
+def drop_rows(df, system_config):
+    """
+    Drops rows based on the 'drop_rows' configuration.
+    Supports "Blank" (NaN/NaT/Empty), single strings, or lists of strings.
+    """
+    # 1. Safety check: does the config even have drop rules?
+    drop_rules = system_config.get("drop_rows", {})
+    if not drop_rules:
+        return df
+
+    initial_row_count = len(df)
+
+    # 2. Build a boolean mask (Start with all False = 'Keep All')
+    # We use a mask so we only slice the DataFrame once at the end.
+    combined_mask = pd.Series([False] * len(df), index=df.index)
+
+    for col, value in drop_rules.items():
+        if col not in df.columns:
+            print(f"⚠️ Warning: Column '{col}' defined in drop_rows not found in data.")
+            continue
+
+        # Case A: Handle "Blank" (NaN, NaT, or whitespace strings)
+        if value == "Blank":
+            # .isna() handles both numeric NaN and datetime NaT
+            combined_mask |= df[col].isna() | (df[col].astype(str).str.strip() == "")
+
+        # Case B: Handle a list of values (e.g., ["Sick Pay", "Vacation"])
+        elif isinstance(value, list):
+            combined_mask |= df[col].isin(value)
+
+        # Case C: Handle a single exact match (e.g., "Sick Pay")
+        else:
+            combined_mask |= df[col] == value
+
+    # 3. Apply the mask (Keep rows where the mask is NOT True)
+    df_cleaned = df[~combined_mask].copy()
+
+    # 4. Logging for your backend visibility
+    dropped_count = initial_row_count - len(df_cleaned)
+    if dropped_count > 0:
+        print(
+            f"✂️ System Config: Dropped {dropped_count} rows based on {list(drop_rules.keys())}"
+        )
+
+    return df_cleaned
+
+
 def normalize_client_data(df, system_config):
     """
     Normalizes client data based on system-specific config:

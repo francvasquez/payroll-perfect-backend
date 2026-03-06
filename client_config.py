@@ -21,6 +21,10 @@ CLIENT_CONFIGS = {
                     "Date/Time",
                     "Totaled Amount",
                 ],  # Cols which we know are not needed
+                "drop_rows": {
+                    "In Punch": "Blank",
+                    "Out Punch": "Blank",
+                },
             },
             "Workforce Manager": {
                 "force_type": {
@@ -40,6 +44,11 @@ CLIENT_CONFIGS = {
                 "drop_columns": [
                     "Totaled Amount",
                 ],
+                "drop_rows": {
+                    "In Punch": "Blank",
+                    "Out Punch": "Blank",
+                    "Apply To": ["Sick Pay"],
+                },
             },
         },
     },
