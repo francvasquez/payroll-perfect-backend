@@ -48,6 +48,7 @@ CLIENT_CONFIGS = {
                     "In Punch": "Blank",
                     "Out Punch": "Blank",
                     "Apply To": ["Sick Pay"],
+                    "ID": ["TESTEE"],
                 },
             },
         },
