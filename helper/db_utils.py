@@ -110,6 +110,16 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     df["Last Updated"] = pd.Timestamp.now()
     df["Pay Date"] = pay_date
 
+    # DEBUG:
+    # 1. Identify which rows have duplicate keys
+    duplicate_mask = df.duplicated(subset=["ID", "In Punch"], keep=False)
+    duplicates = df[duplicate_mask].sort_values(by=["ID", "In Punch"])
+
+    if not duplicates.empty:
+        print(f"⚠️ Found {len(duplicates)} rows with duplicate 'ID' + 'In Punch' keys!")
+        # Print the first few duplicates to the logs for inspection
+        print(duplicates[["ID", "In Punch", "Employee", "Location"]].head(10))
+
     # Filter DF to COLUMN_TO_KEEP_DB
     try:
         cols_to_keep = [
