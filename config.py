@@ -204,7 +204,7 @@ COLS_PRINT9a = [
 COLUMN_TO_KEEP_DB = {
     "Base": ["ID", "Employee", "In Punch", "Out Punch"],
     "Metadata": ["Last Updated", "Pay Date"],
-    "Employee": ["Location", "Status", "Status Date"],
+    "Employee": ["Waiver on File?", "Location", "Status", "Status Date"],
     "Punch Info": [
         "Punch Length (hrs)",
         "Break Time (min)",

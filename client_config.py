@@ -82,19 +82,21 @@ CLIENT_CONFIGS = {
 
 # For DB UI: Columns that the user should not be able to see on the pulldown,
 # either because they are required (already there) or just fluff
-EXCLUDE_FROM_PULLDOWN = {
-    "ID",  # req
-    "Employee",  # req
-    "In Punch",  # req
-    "Out Punch",  # req
-    "Time Zone",
-    "Pay Rule",
-    "Org Path",
-    "Primary Account",
-    "Apply To",
-    "Money Amount",
-    "Day Amount",
-    "Xfr/Move: Account",
-    "Xfr: Work Rule",
-    "Date/Time",
-}
+EXCLUDE_FROM_PULLDOWN = (
+    {  # TODO evaluate as many of those are already block from dbase at write
+        "ID",  # req
+        "Employee",  # req
+        "In Punch",  # req
+        "Out Punch",  # req
+        "Time Zone",
+        "Pay Rule",
+        "Org Path",
+        "Primary Account",
+        "Apply To",
+        "Money Amount",
+        "Day Amount",
+        "Xfr/Move: Account",
+        "Xfr: Work Rule",
+        "Date/Time",
+    }
+)
