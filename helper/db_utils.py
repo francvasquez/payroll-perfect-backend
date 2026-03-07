@@ -107,7 +107,7 @@ def delete_ta_from_db(conn, clientId, pay_date):
 def save_ta_to_db(df, clientId, pay_date, conn):
 
     # Add Metadata
-    df["Last Updated"] = pd.Timestamp.now()
+    df["Last Updated"] = pd.Timestamp.now(tz="America/Los_Angeles")
     df["Pay Date"] = pay_date
 
     # Identify which rows have duplicate keys - if there are, the write will crash
