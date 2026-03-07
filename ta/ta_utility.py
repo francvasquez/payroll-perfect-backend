@@ -266,6 +266,8 @@ def add_waiver_check(df, processed_waiver_df):
         lookup_ref="ID",
         lookup_tgt="Has_Waiver_Bool",
     )
+    # Fill the NaN values with False
+    df["Waiver on File?"] = df["Waiver on File?"].fillna(False)
     return df
 
 
