@@ -143,7 +143,7 @@ COLS_PRINT3a = [
     "Punch Length (hrs)",
     "Paid Break Credit (hrs)",
     "Hours Worked Shift",
-    "Waiver on File?",
+    # "Waiver on File?",
 ]
 
 COLS_PRINT5 = [
