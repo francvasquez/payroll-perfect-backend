@@ -8,6 +8,7 @@ from helper.aws import (
     load_annotations,
     delete_annotations,
     delete_pay_period,
+    handle_contact_email,
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
@@ -47,5 +48,7 @@ def route_action(action, params, event):
         return delete_annotations(clientId, payDate)
     if action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
+    if action == "send-contact-email":
+        return handle_contact_email(params)
     else:
         return handle_file_upload(event, params)

@@ -1,5 +1,5 @@
 # lambda_function.py - Add this before lambda_handler
-import json, boto3, io
+import json, boto3, io, json
 from datetime import datetime, timezone
 import pandas as pd
 from config import S3_BUCKET, CORS_HEADERS
@@ -9,6 +9,34 @@ from botocore.exceptions import ClientError
 from helper.db_utils import delete_ta_from_db, get_db_connection
 
 s3_client = boto3.client("s3")
+ses = boto3.client("ses", region_name="us-west-1")
+
+
+def handle_contact_email(params):
+    sender = "francvasquez@gmail.com"
+    recipient = "francvasquez@gmail.com"
+
+    body_text = f"""
+    New Contact Request:
+    Name: {params.get('firstName')} {params.get('lastName')}
+    Company: {params.get('company')}
+    Email: {params.get('email')}
+    Phone: {params.get('phone')}
+    Message: {params.get('message')}
+    """
+
+    try:
+        ses.send_email(
+            Source=sender,
+            Destination={"ToAddresses": [recipient]},
+            Message={
+                "Subject": {"Data": f"New Lead: {params.get('company')}"},
+                "Body": {"Text": {"Data": body_text}},
+            },
+        )
+        return {"statusCode": 200, "body": json.dumps({"message": "Email sent"})}
+    except Exception as e:
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def delete_pay_period(client_id, pay_date):
