@@ -298,7 +298,7 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
             params.append(endDate)
 
         # 4. Sorting & Execution
-        query += sql.SQL(' ORDER BY "In Punch" ASC LIMIT 100')
+        query += sql.SQL(' ORDER BY "In Punch" ASC LIMIT 300')
 
         cur.execute(query, tuple(params))
 
