@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os, uuid
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import execute_values
 import config
 import client_config
@@ -271,29 +272,33 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
 
         table_name = f"{clientId}_ta"
 
-        # 1. Always display these on the query:
-        base_cols = ["Employee", "In Punch", "Out Punch"]
+        # 1. Table Name & Column Safety
+        table_name = f"{clientId}_ta"
+        base_cols = ["ID", "In Punch", "Out Punch", "Employee"]  # Added ID for clarity
+        all_cols = base_cols + [c for c in selectedCols if c not in base_cols]
 
-        # 2. Add the user-selected extra columns
-        # We wrap in double quotes to handle spaces/special chars safely
-        all_cols_to_query = base_cols + selectedCols
-        quoted_cols = [f'"{col}"' for col in all_cols_to_query]
-        select_clause = ", ".join(quoted_cols)
+        # 2. Build secure dynamic SQL
+        # Using psycopg2.sql to prevent injection on identifiers
+        select_clause = sql.SQL(", ").join(map(sql.Identifier, all_cols))
 
-        # 3. Build the WHERE clause dynamically
-        query = f"SELECT {select_clause} FROM {table_name} WHERE 1=1"
+        query = sql.SQL("SELECT {fields} FROM {table} WHERE 1=1").format(
+            fields=select_clause, table=sql.Identifier(table_name)
+        )
+
         params = []
 
+        # 3. Apply Filters
         if employeeId:
-            query += ' AND "ID" = %s'
+            query += sql.SQL(' AND "ID" = %s')
             params.append(employeeId)
 
         if startDate and endDate:
-            query += ' AND "Pay Date" BETWEEN %s AND %s'
+            query += sql.SQL(' AND "In Punch" BETWEEN %s AND %s')
             params.append(startDate)
             params.append(endDate)
 
-        query += ' ORDER BY "In Punch" DESC LIMIT 1000'  # Safety cap
+        # 4. Sorting & Execution
+        query += sql.SQL(' ORDER BY "In Punch" DESC LIMIT 100')
 
         cur.execute(query, tuple(params))
 
