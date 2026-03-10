@@ -14,7 +14,7 @@ from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
 
 
-def route_action(action, params, event):
+def route_action(action, params, contactParams, event):
     # Pre extract params
     clientId = params.get("clientId")
     employeeId = params.get("employeeId")
@@ -51,7 +51,7 @@ def route_action(action, params, event):
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
     elif action == "send-contact-email":
-        return handle_contact_email(params)
+        return handle_contact_email(contactParams)
 
     else:
         # This only runs if NONE of the above actions matched

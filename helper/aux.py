@@ -6,7 +6,7 @@ from config import CORS_HEADERS
 
 def parse_event_params(event):
     body = json.loads(event.get("body", "{}"))
-    print("Body - search for pay_date", body)
+    print("Body:", body)
     params = {  # Use get as these params may or may not come
         "action": body.get("action"),
         "clientId": body.get("clientId") or body.get("client_id"),
@@ -22,7 +22,8 @@ def parse_event_params(event):
         "wfn_key": body.get("wfn_key"),
         "ta_key": body.get("ta_key"),
     }
-    return params
+    contact_params = body  # We'll deconstruct in the actual handler
+    return params, contact_params
 
 
 def verify_files(params):
