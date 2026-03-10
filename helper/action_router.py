@@ -8,7 +8,6 @@ from helper.aws import (
     load_annotations,
     delete_annotations,
     delete_pay_period,
-    handle_contact_email,
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
