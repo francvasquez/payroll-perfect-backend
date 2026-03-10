@@ -50,9 +50,6 @@ def route_action(action, params, contactParams, event):
         return delete_annotations(clientId, payDate)
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
-    elif action == "send-contact-email":
-        return handle_contact_email(contactParams)
-
     else:
         # This only runs if NONE of the above actions matched
         return handle_file_upload(event, params)

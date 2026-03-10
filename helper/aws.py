@@ -1,4 +1,3 @@
-# lambda_function.py - Add this before lambda_handler
 import json, boto3, io, json
 from datetime import datetime, timezone
 import pandas as pd
@@ -10,34 +9,6 @@ from helper.db_utils import delete_ta_from_db, get_db_connection
 
 s3_client = boto3.client("s3")
 ses = boto3.client("ses", region_name="us-west-1")
-
-
-def handle_contact_email(params):
-    print("DEBUG: Executing handle_contact_email...")
-
-    try:
-        if not ses:
-            raise Exception("SES client not initialized")
-        response = ses.send_email(
-            Source="no-reply@payrollprotect.com",  # Must be your verified domain!
-            Destination={"ToAddresses": ["your-personal@gmail.com"]},
-            Message={
-                "Subject": {"Data": f"New Lead: {params.get('company')}"},
-                "Body": {
-                    "Text": {
-                        "Data": f"Name: {params.get('firstName')}\nMessage: {params.get('message')}"
-                    }
-                },
-            },
-        )
-        print(f"DEBUG: SES Success! MessageId: {response['MessageId']}")
-        return {"statusCode": 200, "body": json.dumps({"message": "Success"})}
-
-    except Exception as e:
-        print(
-            f"!!! SES FATAL ERROR: {str(e)}"
-        )  # This will tell us if it's "Access Denied"
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def delete_pay_period(client_id, pay_date):
