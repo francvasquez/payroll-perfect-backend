@@ -13,7 +13,8 @@ ses = boto3.client("ses", region_name="us-west-1")
 
 
 def handle_contact_email(params):
-    # This MUST use your verified domain
+    print("DEBUG: Entered handle_contact_email")  # See if we even get here
+    print(f"DEBUG: Params received: {json.dumps(params)}")
     SENDER = "no-reply@payrollprotect.com"
     RECIPIENT = "francvasquez@gmail.com"  # Your actual inbox
 
@@ -28,15 +29,31 @@ def handle_contact_email(params):
     )
 
     try:
-        ses.send_email(
+        print("DEBUG: Entered handle_contact_email")  # See if we even get here
+        print(f"DEBUG: Params received: {json.dumps(params)}")
+        response = ses.send_email(
             Source=SENDER,
             Destination={"ToAddresses": [RECIPIENT]},
             Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
         )
-        return {"statusCode": 200, "body": json.dumps({"message": "Sent"})}
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},  # Added headers for safety
+            "body": json.dumps({"message": "Sent", "messageId": response["MessageId"]}),
+        }
     except Exception as e:
-        print(f"SES Error: {str(e)}")
-        return {"statusCode": 500, "body": json.dumps({"error": "Mail failed"})}
+        # Print the FULL error to CloudWatch
+        print("!!! SES FATAL ERROR !!!")
+        print(str(e))
+        import traceback
+
+        print(traceback.format_exc())
+
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)}),
+        }
 
 
 def delete_pay_period(client_id, pay_date):
