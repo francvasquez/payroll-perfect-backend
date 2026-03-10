@@ -9,6 +9,7 @@ import config
 import client_config
 import logging
 import json
+from datetime import datetime, timedelta
 
 # Consider extendind accross other files
 logger = logging.getLogger()
@@ -293,9 +294,14 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
             params.append(employeeId)
 
         if startDate and endDate:
-            query += sql.SQL(' AND "In Punch" BETWEEN %s AND %s')
-            params.append(startDate)
-            params.append(endDate)
+            end_dt = datetime.strptime(endDate, "%Y-%m-%d") + timedelta(days=1)
+            exclusive_end = end_dt.strftime("%Y-%m-%d")
+
+            query += sql.SQL(' AND "In Punch" >= %s AND "In Punch" < %s')
+            params.append(startDate)  # e.g., "2026-02-21" (Includes start of day)
+            params.append(
+                exclusive_end
+            )  # e.g., "2026-02-22" (Excludes start of next day)
 
         # 4. Sorting & Execution
         query += sql.SQL(' ORDER BY "In Punch" ASC LIMIT 300')
