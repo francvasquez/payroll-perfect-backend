@@ -13,47 +13,31 @@ ses = boto3.client("ses", region_name="us-west-1")
 
 
 def handle_contact_email(params):
-    print("DEBUG: Entered handle_contact_email")  # See if we even get here
-    print(f"DEBUG: Params received: {json.dumps(params)}")
-    SENDER = "no-reply@payrollprotect.com"
-    RECIPIENT = "francvasquez@gmail.com"  # Your actual inbox
-
-    subject = f"New Lead: {params.get('company', 'N/A')}"
-    body = (
-        f"Contact Form Submission\n"
-        f"-----------------------\n"
-        f"Name: {params.get('firstName')} {params.get('lastName')}\n"
-        f"Email: {params.get('email')}\n"
-        f"Company: {params.get('company')}\n"
-        f"Message: {params.get('message')}"
-    )
+    print("DEBUG: Executing handle_contact_email...")
 
     try:
-        print("DEBUG: Entered handle_contact_email")  # See if we even get here
-        print(f"DEBUG: Params received: {json.dumps(params)}")
+        if not ses:
+            raise Exception("SES client not initialized")
         response = ses.send_email(
-            Source=SENDER,
-            Destination={"ToAddresses": [RECIPIENT]},
-            Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
+            Source="no-reply@payrollprotect.com",  # Must be your verified domain!
+            Destination={"ToAddresses": ["your-personal@gmail.com"]},
+            Message={
+                "Subject": {"Data": f"New Lead: {params.get('company')}"},
+                "Body": {
+                    "Text": {
+                        "Data": f"Name: {params.get('firstName')}\nMessage: {params.get('message')}"
+                    }
+                },
+            },
         )
-        return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},  # Added headers for safety
-            "body": json.dumps({"message": "Sent", "messageId": response["MessageId"]}),
-        }
+        print(f"DEBUG: SES Success! MessageId: {response['MessageId']}")
+        return {"statusCode": 200, "body": json.dumps({"message": "Success"})}
+
     except Exception as e:
-        # Print the FULL error to CloudWatch
-        print("!!! SES FATAL ERROR !!!")
-        print(str(e))
-        import traceback
-
-        print(traceback.format_exc())
-
-        return {
-            "statusCode": 500,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": str(e)}),
-        }
+        print(
+            f"!!! SES FATAL ERROR: {str(e)}"
+        )  # This will tell us if it's "Access Denied"
+        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
 
 
 def delete_pay_period(client_id, pay_date):
