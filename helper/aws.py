@@ -13,30 +13,30 @@ ses = boto3.client("ses", region_name="us-west-1")
 
 
 def handle_contact_email(params):
-    sender = "francvasquez@gmail.com"
-    recipient = "francvasquez@gmail.com"
+    # This MUST use your verified domain
+    SENDER = "no-reply@payrollprotect.com"
+    RECIPIENT = "francvasquez@gmail.com"  # Your actual inbox
 
-    body_text = f"""
-    New Contact Request:
-    Name: {params.get('firstName')} {params.get('lastName')}
-    Company: {params.get('company')}
-    Email: {params.get('email')}
-    Phone: {params.get('phone')}
-    Message: {params.get('message')}
-    """
+    subject = f"New Lead: {params.get('company', 'N/A')}"
+    body = (
+        f"Contact Form Submission\n"
+        f"-----------------------\n"
+        f"Name: {params.get('firstName')} {params.get('lastName')}\n"
+        f"Email: {params.get('email')}\n"
+        f"Company: {params.get('company')}\n"
+        f"Message: {params.get('message')}"
+    )
 
     try:
         ses.send_email(
-            Source=sender,
-            Destination={"ToAddresses": [recipient]},
-            Message={
-                "Subject": {"Data": f"New Lead: {params.get('company')}"},
-                "Body": {"Text": {"Data": body_text}},
-            },
+            Source=SENDER,
+            Destination={"ToAddresses": [RECIPIENT]},
+            Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
         )
-        return {"statusCode": 200, "body": json.dumps({"message": "Email sent"})}
+        return {"statusCode": 200, "body": json.dumps({"message": "Sent"})}
     except Exception as e:
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        print(f"SES Error: {str(e)}")
+        return {"statusCode": 500, "body": json.dumps({"error": "Mail failed"})}
 
 
 def delete_pay_period(client_id, pay_date):
