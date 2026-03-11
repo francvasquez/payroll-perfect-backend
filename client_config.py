@@ -44,10 +44,10 @@ CLIENT_CONFIGS = {
                 "drop_columns": [
                     "Totaled Amount",
                 ],
-                "drop_rows": {
+                "drop_rows": {  ## This is on an OR basis
                     "In Punch": "Blank",
                     "Out Punch": "Blank",
-                    "Apply To": ["Sick Pay"],
+                    "Apply To": ["Sick Pay, Vacation"],
                     "ID": ["TESTEE"],
                 },
             },
