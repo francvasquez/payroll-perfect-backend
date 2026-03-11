@@ -49,6 +49,7 @@ CLIENT_CONFIGS = {
                     "Out Punch": "Blank",
                     "Apply To": ["Sick Pay", "Vacation"],
                     "ID": ["TESTEE"],
+                    "Employee": ["testee"],
                 },
             },
         },
