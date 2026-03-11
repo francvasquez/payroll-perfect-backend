@@ -47,7 +47,7 @@ CLIENT_CONFIGS = {
                 "drop_rows": {  ## This is on an OR basis
                     "In Punch": "Blank",
                     "Out Punch": "Blank",
-                    "Apply To": ["Sick Pay, Vacation"],
+                    "Apply To": ["Sick Pay", "Vacation"],
                     "ID": ["TESTEE"],
                 },
             },
