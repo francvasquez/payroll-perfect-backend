@@ -248,12 +248,40 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     return df
 
 
+# def add_col_from_another_df(
+#     home_df, lookup_df, home_ref, lookup_ref, lookup_tgt, home_new_col
+# ):
+#     home_df[home_new_col] = home_df[home_ref].map(
+#         lookup_df.set_index(lookup_ref)[lookup_tgt]
+#     )
+#     return home_df
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def add_col_from_another_df(
     home_df, lookup_df, home_ref, lookup_ref, lookup_tgt, home_new_col
 ):
-    home_df[home_new_col] = home_df[home_ref].map(
-        lookup_df.set_index(lookup_ref)[lookup_tgt]
-    )
+    # Create the mapping series
+    mapper = lookup_df.set_index(lookup_ref)[lookup_tgt]
+
+    # Check for duplicates in the index we just created
+    if not mapper.index.is_unique:
+        duplicated_ids = mapper.index[mapper.index.duplicated()].unique().tolist()
+
+        logger.error(
+            f"Non-unique index found in lookup_df! "
+            f"The following {lookup_ref} values are duplicated: {duplicated_ids}"
+        )
+
+        # Optional: If you want the code to keep running despite the duplicates,
+        # you can drop them here:
+        # mapper = mapper[~mapper.index.duplicated(keep='first')]
+
+    home_df[home_new_col] = home_df[home_ref].map(mapper)
+
     return home_df
 
 
