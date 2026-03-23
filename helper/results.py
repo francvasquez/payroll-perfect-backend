@@ -4,6 +4,7 @@ from ta import ta_masks
 from wfn import wfn_masks
 import config
 from helper.aux import convert_datetime_columns_to_iso
+from datetime import datetime
 
 
 def filter_and_sort_df_to_dict(
@@ -63,10 +64,23 @@ def generate_results(
     ta_process_time,
     wfn_process_time,
     waiver_process_time,
+    first_date,
+    last_date,
+    pay_date,
+    client_id,
 ):
 
     result = {
         "success": True,
+        "metadata": {
+            "first_date": first_date.strftime("%Y-%m-%d"),
+            "last_date": last_date.strftime("%Y-%m-%d"),
+            "pay_date": pay_date.strftime(
+                "%Y-%m-%d"
+            ),  ## for reference only, front-end already has this from user input.
+            "processed_at": datetime.now().isoformat(),
+            "client_id": client_id,
+        },
         "summary": {
             "rows": {
                 "ta_rows": len(processed_ta_df),

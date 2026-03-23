@@ -72,6 +72,7 @@ def handle_file_upload(event, params):
             - pd.Timedelta(days=pay_period_length)
             + pd.Timedelta(days=1)
         )
+        last_date = pay_date - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
         print(
             f"file_processor.py - Processing: client_config={client_config}, pay_date={pay_date}, first date ={first_date}"
         )
@@ -133,7 +134,7 @@ def handle_file_upload(event, params):
         # Store json files for ready-to-serve front consumption
         save_waiver_json_s3(waiver_df, "waiver", event)
 
-        ### 10. Generate result for front-end
+        ### 10. Generate result for React front-end
         result = generate_results(
             processed_ta_df,
             anomalies_df_new,
@@ -143,6 +144,10 @@ def handle_file_upload(event, params):
             ta_process_time,
             wfn_process_time,
             waiver_process_time,
+            first_date,
+            last_date,
+            pay_date,
+            client_id,
         )
         put_result_to_s3(
             result, event

@@ -79,6 +79,16 @@ def process_data_ta(
         home_new_col="Paid Break Credit (hrs)",
     )
 
+    # Add Hire Date from WFN File.
+    df = ta_utility.add_col_from_another_df(
+        home_df=df,
+        lookup_df=processed_wfn_df,
+        home_ref="ID",
+        lookup_ref="IDX",
+        lookup_tgt="HIREDATE",
+        home_new_col="Hire Date",
+    )
+
     # Adds Short ID, Waiver Lookup, Waiver on File? cols
     df = ta_utility.add_waiver_check(df, processed_waiver_df)
 
