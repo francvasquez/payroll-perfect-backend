@@ -32,7 +32,7 @@ def process_data_ta(
 
     # 2. Validation: Check if all neccesary columns are present, if not stop processing.
     missing = [
-        col for col in client_config.PP_REQUIRED_COLUMNS if col not in df.columns
+        col for col in client_config.PP_REQUIRED_COLUMNS["ta"] if col not in df.columns
     ]
     if missing:
         logger.info(f"Columns actually received: {list(df.columns)}")
@@ -42,9 +42,9 @@ def process_data_ta(
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
     other_cols = [
-        col for col in df.columns if col not in client_config.PP_REQUIRED_COLUMNS
+        col for col in df.columns if col not in client_config.PP_REQUIRED_COLUMNS["ta"]
     ]
-    df = df[client_config.PP_REQUIRED_COLUMNS + other_cols]
+    df = df[client_config.PP_REQUIRED_COLUMNS["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on CLIENT_CONFIGS
     # df = df.dropna(subset=["In Punch", "Out Punch"]).copy()

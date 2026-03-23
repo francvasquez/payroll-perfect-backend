@@ -1,11 +1,13 @@
-PP_REQUIRED_COLUMNS = [
-    "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
-    "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
-    "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
-    "Out Punch",
-    "Status",
-    "Status Date",
-]
+PP_REQUIRED_COLUMNS = {
+    "ta": [
+        "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
+        "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
+        "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
+        "Out Punch",
+        "Status",
+        "Status Date",
+    ]
+}
 
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
