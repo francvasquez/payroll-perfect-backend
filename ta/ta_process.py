@@ -93,20 +93,6 @@ def process_data_ta(
     # Needs  Break Time (min), "Shift Number", "Punch Number in Shift", Punch Length (hrs) Raw
     df = ta_utility.add_punch_length(df)
 
-    # Looking for missing Punch Length (hrs)
-    # print("Available columns:", df.columns.tolist())
-    # # DEBUG
-    # id_to_check = "1DI0081079"
-    # filtered_df = df[df["ID"] == id_to_check]
-    # cols_to_print = [
-    #     "In Punch",
-    #     "Out Punch",
-    #     "Punch Length (hrs)",
-    #     "Punch Length (hrs) Raw",
-    # ]
-    # print(f"\nData for ID: {id_to_check}")
-    # print(filtered_df[cols_to_print])
-
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
@@ -142,16 +128,6 @@ def process_data_ta(
         lookup_tgt="DBLTIME HRS",
         home_new_col="DT Hours Paid",
     )
-
-    # debug_id = "GUH0007980"
-    # Subset by ID and columns
-    # debug_rows = bypunch_df.loc[
-    #     bypunch_df["ID"].astype(str).str.strip() == debug_id,
-    #     ["ID", "In Punch", "OT Hours Paid", "Total OT Hours Pay Period"],
-    # ]
-    # print("==== DEBUG ROWS FOR", debug_id, "====")
-    # print(debug_rows.to_string(index=False))
-    # print("====================================")
 
     # Updated df: Add OT vs WFN variances cols.
     bypunch_df["OT Variance (hrs)"] = (
