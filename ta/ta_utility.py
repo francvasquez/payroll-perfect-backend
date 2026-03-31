@@ -439,6 +439,24 @@ def create_anomalies_new(df):
     df["Did Not Break"] = (ta_masks.did_not_break_new_all(df)).astype(int)
     df["Over Twelve"] = (ta_masks.over_twelve(df)).astype(int)
 
+    # --- DEBUGGING BLOCK ---
+    target_emp = "GUH0008109"
+
+    # Adjust 'EmployeeID' to match your actual column name
+    debug_df = df[(df["EmployeeID"] == target_emp) & (df["Did Not Break"] == 1)]
+
+    if not debug_df.empty:
+        # .to_string() ensures Pandas formats the output as a clean text table
+        # rather than truncating it arbitrarily.
+        logger.info(
+            f"DEBUG: 'Did Not Break' triggered for {target_emp}. Constituent records:\n{debug_df.to_string()}"
+        )
+    else:
+        logger.info(
+            f"DEBUG: No 'Did Not Break' records found for {target_emp} in this batch."
+        )
+    # -----------------------
+
     # Step 2: Aggregate anomalies by Employee and ID
     anomalies_df = df.groupby(["ID"], as_index=False).agg(
         {
