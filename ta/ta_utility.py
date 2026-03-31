@@ -443,7 +443,7 @@ def create_anomalies_new(df):
     target_emp = "GUH0008109"
 
     # Adjust 'EmployeeID' to match your actual column name
-    debug_df = df[(df["EmployeeID"] == target_emp) & (df["Did Not Break"] == 1)]
+    debug_df = df[(df["ID"] == target_emp) & (df["Did Not Break"] == 1)]
 
     if not debug_df.empty:
         # .to_string() ensures Pandas formats the output as a clean text table
