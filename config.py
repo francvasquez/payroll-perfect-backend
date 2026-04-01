@@ -39,22 +39,22 @@ WAIVER_PRINT_COLS = ["Name", "Check_Pure"]
 
 # COLS for printing WFN
 COLUMNS_TO_SHOW = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "1.5 OT Earnings Due",
     "Actual Pay Check",
     "Variance",
 ]
 COLUMNS_TO_SHOW_DBLE = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Double Time Due",
     "Actual Pay Check Dble",
     "Variance Dble",
 ]
 COLUMNS_TO_SHOW_BRKCRD = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Break Credit Hours",
     "Break Credit Due",
     "Actual Pay BrkCrd",
@@ -63,8 +63,8 @@ COLUMNS_TO_SHOW_BRKCRD = [
     "Regular Rate Paid",
 ]
 COLUMNS_TO_SHOW_REST = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Rest Credit Hours",
     "Rest Credit Due",
     "Actual Pay RestCrd",
@@ -73,8 +73,8 @@ COLUMNS_TO_SHOW_REST = [
     "Regular Rate Paid",
 ]
 COLUMNS_TO_SHOW_SICK = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Sick Credit Hours",
     "Sick Credit Due",
     "Sick Paid",
@@ -83,15 +83,15 @@ COLUMNS_TO_SHOW_SICK = [
     "Regular Rate Paid",
 ]
 COLUMNS_TO_SHOW_FLSA = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Position Status",
     "FLSA Code",
     "Regular Rate Paid",
 ]
 COLUMNS_TO_SHOW_MINWAGE = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Position Status",
     "FLSA Code",
     "REG",
@@ -101,8 +101,8 @@ COLUMNS_TO_SHOW_MINWAGE = [
     "V_Vacation_Earnings",
 ]
 COLUMNS_TO_SHOW_NONACTIVE = [
-    "Payroll Name",
     "IDX",
+    "Payroll Name",
     "Position Status",
     "Job Title Description",
     "HIREDATE",
