@@ -233,7 +233,7 @@ def generate_results(
                 max_rows=200,
                 cols=config.COLS_PRINT2_B,
             ),
-            ##1e. Over 12 hours Check
+            ##1e. Second Meal Break Check
             "over_12_hours": filter_and_sort_df_to_dict(
                 df=processed_ta_df,
                 sort_col="Employee",
