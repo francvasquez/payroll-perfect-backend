@@ -100,24 +100,6 @@ def normalize_client_data(df, system_config):
     return df
 
 
-# def normalize_client_data(df, clientId, system_config, system_name):
-#     # Get the specific config for this client
-#     client_conf = client_config.CLIENT_CONFIGS.get(clientId, {})
-
-#     # 1. Rename columns first
-#     mapping = client_conf.get("mappings", {})
-#     df = df.rename(columns=mapping)
-
-#     # 2. Drop client-specific junk
-#     junk_cols = client_conf.get("drop_columns", [])
-#     if junk_cols:
-#         # errors="ignore" is vital so it doesn't crash if the column isn't there
-#         df = df.drop(columns=junk_cols, errors="ignore")
-#         logger.info(f"Dropped {len(junk_cols)} client-specific columns for {clientId}")
-
-#     return df
-
-
 def add_time_helper_cols(df):
     # Columns to shift within ID
     shift_config = {
@@ -296,6 +278,116 @@ def add_waiver_check(df, processed_waiver_df):
     )
     # Fill the NaN values with False
     df["Waiver on File?"] = df["Waiver on File?"].fillna(False)
+    return df
+
+
+def add_ot_and_dt_cols(
+    df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+):
+    # TODO this function will replace the byPunch
+    # Add "Workday Hours" column. It totals for each Date/ID pair.
+    df["Workday Hours"] = df.groupby(["Date", "ID"])[
+        "Punch Length (hrs) Raw"
+    ].transform("sum")
+
+    # Add "Add Week Hours" column. Creates a helper label 1 or 2.
+    df["Work Week"] = ((df["Date"] - first_date).dt.days // 7) + 1
+    # print("First date", first_date)
+    df["Week Hours"] = df.groupby(["ID", "Work Week"])[
+        "Punch Length (hrs) Raw"
+    ].transform("sum")
+
+    # Add "Total hours on the work period" columns
+    df["Total Hours Pay Period"] = df.groupby(["ID"])[
+        "Punch Length (hrs) Raw"
+    ].transform("sum")
+
+    ## OVERRIDE COLUMNS ## process time 0.02 seconds
+
+    # Is there a location based day overtime trigger? Else take global "ot_day_max"
+    df["OT Day Max"] = utility.apply_override_else_global(
+        df, "Location", "ot_day_max", ot_day_max, locations_config
+    )
+
+    # Is there a location based week overtime trigger? Else take global "ot_week_max"
+    df["OT Week Max"] = utility.apply_override_else_global(
+        df, "Location", "ot_week_max", ot_week_max, locations_config
+    )
+    # Is there a location based day doubletime trigger? Else take global "dt_day_max"
+    df["DT Day Max"] = utility.apply_override_else_global(
+        df, "Location", "dt_day_max", dt_day_max, locations_config
+    )
+
+    #######################
+
+    # Overtime per workday (exclude DT hours)
+    df["Workday OT Hours"] = np.maximum(
+        np.minimum(df["Workday Hours"], df["DT Day Max"]) - df["OT Day Max"],
+        0,
+    )
+
+    # Add individual Workday OT hours per week
+    df["Sum of Workday OT Hours"] = df.set_index(["Work Week", "ID"]).index.map(
+        df.drop_duplicates(subset=["Work Week", "ID", "Date"])
+        .groupby(["Work Week", "ID"])["Workday OT Hours"]
+        .sum()
+    )
+
+    # ###DEBUG 1#####
+    # debug_id = "GUH0007980"
+    # # Subset by ID and columns
+    # debug_rows = df.loc[
+    #     df["ID"].astype(str).str.strip() == debug_id,
+    #     ["ID", "In Punch", "Sum of Workday OT Hours"],
+    # ]
+    # print("==== DEBUG ROWS FOR", debug_id, "====")
+    # print(debug_rows.to_string(index=False))
+    # print("====================================")
+    # #############################################
+
+    # Double time per workday
+    df["Workday DT Hours"] = np.maximum(df["Workday Hours"] - df["DT Day Max"], 0)
+
+    # Add individual Workday DT hours per week
+    df["Sum of Workday DT Hours"] = df.set_index(["Work Week", "ID"]).index.map(
+        df.drop_duplicates(subset=["Work Week", "ID", "Date"])
+        .groupby(["Work Week", "ID"])["Workday DT Hours"]
+        .sum()
+    )
+
+    # Gross and Net Week Overtime (double dipping check)
+    df["Week OT Hours Gross"] = np.maximum(0, df["Week Hours"] - df["OT Week Max"])
+    df["Week OT Hours Net"] = np.maximum(
+        0,
+        (
+            df["Week OT Hours Gross"]
+            - df["Sum of Workday OT Hours"]
+            - df["Sum of Workday DT Hours"]
+        ),
+    ).round(6)
+
+    # Calculate Total OT and Total DT Hours for week
+    df["Total OT Hours Week"] = df["Sum of Workday OT Hours"] + df["Week OT Hours Net"]
+    df["Total DT Hours Week"] = df["Sum of Workday DT Hours"]
+
+    # Calculate Total OT and Total DT Hours for the pay period
+
+    # Step 1: Get unique totals per (ID, Work Week)
+    unique_totalsOT = df.drop_duplicates(subset=["ID", "Work Week"])[
+        ["ID", "Total OT Hours Week"]
+    ]
+    unique_totalsDT = df.drop_duplicates(subset=["ID", "Work Week"])[
+        ["ID", "Total DT Hours Week"]
+    ]
+
+    # Step 2: Sum per ID
+    totalsOT = unique_totalsOT.groupby("ID")["Total OT Hours Week"].sum()
+    totalsDT = unique_totalsDT.groupby("ID")["Total DT Hours Week"].sum()
+
+    # Put the above total on every row belonging to that "ID"
+    df["Total OT Hours Pay Period"] = df["ID"].map(totalsOT).round(4)
+    df["Total DT Hours Pay Period"] = df["ID"].map(totalsDT).round(4)
+
     return df
 
 
