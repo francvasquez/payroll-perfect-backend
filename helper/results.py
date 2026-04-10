@@ -58,7 +58,6 @@ def filter_and_sort_df_to_dict(
 def generate_results(
     processed_ta_df,
     anomalies_df_new,
-    # bypunch_df,
     processed_wfn_df,
     processed_waiver_df,
     ta_process_time,
@@ -85,7 +84,6 @@ def generate_results(
             "rows": {
                 "ta_rows": len(processed_ta_df),
                 "anomalies_rows": len(anomalies_df_new),
-                "bypunch_rows": 0,  # bypunch_df is not returned from process_data_ta anymore
                 "wfn_rows": len(processed_wfn_df),
                 "waiver_rows": len(processed_waiver_df),
             },

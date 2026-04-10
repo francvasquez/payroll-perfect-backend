@@ -138,7 +138,6 @@ def handle_file_upload(event, params):
         result = generate_results(
             processed_ta_df,
             anomalies_df_new,
-            # bypunch_df,
             processed_wfn_df,
             processed_waiver_df,
             ta_process_time,
