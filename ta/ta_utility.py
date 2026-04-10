@@ -391,138 +391,138 @@ def add_ot_and_dt_cols(
     return df
 
 
-def create_bypunch(
-    df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
-):
-    # Calculate total sum for each date and ID combination
-    bypunch_df = df[
-        [
-            "Employee",
-            "ID",
-            "Location",
-            "Date",
-            "Punch Length (hrs) Raw",
-            "In Punch",
-            "Out Punch",
-        ]
-    ].copy()
+# def create_bypunch(
+#     df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+# ):
+#     # Calculate total sum for each date and ID combination
+#     bypunch_df = df[
+#         [
+#             "Employee",
+#             "ID",
+#             "Location",
+#             "Date",
+#             "Punch Length (hrs) Raw",
+#             "In Punch",
+#             "Out Punch",
+#         ]
+#     ].copy()
 
-    # Add "Workday Hours" column. It totals for each Date/ID pair.
-    # Repeats for all rows that share the same "Date" and "ID" combination
-    bypunch_df["Workday Hours"] = bypunch_df.groupby(["Date", "ID"])[
-        "Punch Length (hrs) Raw"
-    ].transform("sum")
+#     # Add "Workday Hours" column. It totals for each Date/ID pair.
+#     # Repeats for all rows that share the same "Date" and "ID" combination
+#     bypunch_df["Workday Hours"] = bypunch_df.groupby(["Date", "ID"])[
+#         "Punch Length (hrs) Raw"
+#     ].transform("sum")
 
-    # Add "Add Week Hours" column. Creates a helper label 1 or 2.
-    bypunch_df["Work Week"] = ((bypunch_df["Date"] - first_date).dt.days // 7) + 1
-    print("First date", first_date)
-    bypunch_df["Week Hours"] = bypunch_df.groupby(["ID", "Work Week"])[
-        "Punch Length (hrs) Raw"
-    ].transform("sum")
+#     # Add "Add Week Hours" column. Creates a helper label 1 or 2.
+#     bypunch_df["Work Week"] = ((bypunch_df["Date"] - first_date).dt.days // 7) + 1
+#     print("First date", first_date)
+#     bypunch_df["Week Hours"] = bypunch_df.groupby(["ID", "Work Week"])[
+#         "Punch Length (hrs) Raw"
+#     ].transform("sum")
 
-    # Add "Total hours on the work period" columns
-    bypunch_df["Total Hours Pay Period"] = bypunch_df.groupby(["ID"])[
-        "Punch Length (hrs) Raw"
-    ].transform("sum")
+#     # Add "Total hours on the work period" columns
+#     bypunch_df["Total Hours Pay Period"] = bypunch_df.groupby(["ID"])[
+#         "Punch Length (hrs) Raw"
+#     ].transform("sum")
 
-    ## OVERRIDE COLUMNS ## process time 0.02 seconds
+#     ## OVERRIDE COLUMNS ## process time 0.02 seconds
 
-    # Is there a location based day overtime trigger? Else take global "ot_day_max"
-    bypunch_df["OT Day Max"] = utility.apply_override_else_global(
-        bypunch_df, "Location", "ot_day_max", ot_day_max, locations_config
-    )
+#     # Is there a location based day overtime trigger? Else take global "ot_day_max"
+#     bypunch_df["OT Day Max"] = utility.apply_override_else_global(
+#         bypunch_df, "Location", "ot_day_max", ot_day_max, locations_config
+#     )
 
-    # Is there a location based week overtime trigger? Else take global "ot_week_max"
-    bypunch_df["OT Week Max"] = utility.apply_override_else_global(
-        bypunch_df, "Location", "ot_week_max", ot_week_max, locations_config
-    )
-    # Is there a location based day doubletime trigger? Else take global "dt_day_max"
-    bypunch_df["DT Day Max"] = utility.apply_override_else_global(
-        bypunch_df, "Location", "dt_day_max", dt_day_max, locations_config
-    )
+#     # Is there a location based week overtime trigger? Else take global "ot_week_max"
+#     bypunch_df["OT Week Max"] = utility.apply_override_else_global(
+#         bypunch_df, "Location", "ot_week_max", ot_week_max, locations_config
+#     )
+#     # Is there a location based day doubletime trigger? Else take global "dt_day_max"
+#     bypunch_df["DT Day Max"] = utility.apply_override_else_global(
+#         bypunch_df, "Location", "dt_day_max", dt_day_max, locations_config
+#     )
 
-    #######################
+#     #######################
 
-    # Overtime per workday (exclude DT hours)
-    bypunch_df["Workday OT Hours"] = np.maximum(
-        np.minimum(bypunch_df["Workday Hours"], bypunch_df["DT Day Max"])
-        - bypunch_df["OT Day Max"],
-        0,
-    )
+#     # Overtime per workday (exclude DT hours)
+#     bypunch_df["Workday OT Hours"] = np.maximum(
+#         np.minimum(bypunch_df["Workday Hours"], bypunch_df["DT Day Max"])
+#         - bypunch_df["OT Day Max"],
+#         0,
+#     )
 
-    # Add individual Workday OT hours per week
-    bypunch_df["Sum of Workday OT Hours"] = bypunch_df.set_index(
-        ["Work Week", "ID"]
-    ).index.map(
-        bypunch_df.drop_duplicates(subset=["Work Week", "ID", "Date"])
-        .groupby(["Work Week", "ID"])["Workday OT Hours"]
-        .sum()
-    )
+#     # Add individual Workday OT hours per week
+#     bypunch_df["Sum of Workday OT Hours"] = bypunch_df.set_index(
+#         ["Work Week", "ID"]
+#     ).index.map(
+#         bypunch_df.drop_duplicates(subset=["Work Week", "ID", "Date"])
+#         .groupby(["Work Week", "ID"])["Workday OT Hours"]
+#         .sum()
+#     )
 
-    # ###DEBUG 1#####
-    # debug_id = "GUH0007980"
-    # # Subset by ID and columns
-    # debug_rows = bypunch_df.loc[
-    #     bypunch_df["ID"].astype(str).str.strip() == debug_id,
-    #     ["ID", "In Punch", "Sum of Workday OT Hours"],
-    # ]
-    # print("==== DEBUG ROWS FOR", debug_id, "====")
-    # print(debug_rows.to_string(index=False))
-    # print("====================================")
-    # #############################################
+#     # ###DEBUG 1#####
+#     # debug_id = "GUH0007980"
+#     # # Subset by ID and columns
+#     # debug_rows = bypunch_df.loc[
+#     #     bypunch_df["ID"].astype(str).str.strip() == debug_id,
+#     #     ["ID", "In Punch", "Sum of Workday OT Hours"],
+#     # ]
+#     # print("==== DEBUG ROWS FOR", debug_id, "====")
+#     # print(debug_rows.to_string(index=False))
+#     # print("====================================")
+#     # #############################################
 
-    # Double time per workday
-    bypunch_df["Workday DT Hours"] = np.maximum(
-        bypunch_df["Workday Hours"] - bypunch_df["DT Day Max"], 0
-    )
+#     # Double time per workday
+#     bypunch_df["Workday DT Hours"] = np.maximum(
+#         bypunch_df["Workday Hours"] - bypunch_df["DT Day Max"], 0
+#     )
 
-    # Add individual Workday DT hours per week
-    bypunch_df["Sum of Workday DT Hours"] = bypunch_df.set_index(
-        ["Work Week", "ID"]
-    ).index.map(
-        bypunch_df.drop_duplicates(subset=["Work Week", "ID", "Date"])
-        .groupby(["Work Week", "ID"])["Workday DT Hours"]
-        .sum()
-    )
+#     # Add individual Workday DT hours per week
+#     bypunch_df["Sum of Workday DT Hours"] = bypunch_df.set_index(
+#         ["Work Week", "ID"]
+#     ).index.map(
+#         bypunch_df.drop_duplicates(subset=["Work Week", "ID", "Date"])
+#         .groupby(["Work Week", "ID"])["Workday DT Hours"]
+#         .sum()
+#     )
 
-    # Gross and Net Week Overtime (double dipping check)
-    bypunch_df["Week OT Hours Gross"] = np.maximum(
-        0, bypunch_df["Week Hours"] - bypunch_df["OT Week Max"]
-    )
-    bypunch_df["Week OT Hours Net"] = np.maximum(
-        0,
-        (
-            bypunch_df["Week OT Hours Gross"]
-            - bypunch_df["Sum of Workday OT Hours"]
-            - bypunch_df["Sum of Workday DT Hours"]
-        ),
-    ).round(6)
+#     # Gross and Net Week Overtime (double dipping check)
+#     bypunch_df["Week OT Hours Gross"] = np.maximum(
+#         0, bypunch_df["Week Hours"] - bypunch_df["OT Week Max"]
+#     )
+#     bypunch_df["Week OT Hours Net"] = np.maximum(
+#         0,
+#         (
+#             bypunch_df["Week OT Hours Gross"]
+#             - bypunch_df["Sum of Workday OT Hours"]
+#             - bypunch_df["Sum of Workday DT Hours"]
+#         ),
+#     ).round(6)
 
-    # Calculate Total OT and Total DT Hours for week
-    bypunch_df["Total OT Hours Week"] = (
-        bypunch_df["Sum of Workday OT Hours"] + bypunch_df["Week OT Hours Net"]
-    )
-    bypunch_df["Total DT Hours Week"] = bypunch_df["Sum of Workday DT Hours"]
+#     # Calculate Total OT and Total DT Hours for week
+#     bypunch_df["Total OT Hours Week"] = (
+#         bypunch_df["Sum of Workday OT Hours"] + bypunch_df["Week OT Hours Net"]
+#     )
+#     bypunch_df["Total DT Hours Week"] = bypunch_df["Sum of Workday DT Hours"]
 
-    # Calculate Total OT and Total DT Hours for the pay period
+#     # Calculate Total OT and Total DT Hours for the pay period
 
-    # Step 1: Get unique totals per (ID, Work Week)
-    unique_totalsOT = bypunch_df.drop_duplicates(subset=["ID", "Work Week"])[
-        ["ID", "Total OT Hours Week"]
-    ]
-    unique_totalsDT = bypunch_df.drop_duplicates(subset=["ID", "Work Week"])[
-        ["ID", "Total DT Hours Week"]
-    ]
+#     # Step 1: Get unique totals per (ID, Work Week)
+#     unique_totalsOT = bypunch_df.drop_duplicates(subset=["ID", "Work Week"])[
+#         ["ID", "Total OT Hours Week"]
+#     ]
+#     unique_totalsDT = bypunch_df.drop_duplicates(subset=["ID", "Work Week"])[
+#         ["ID", "Total DT Hours Week"]
+#     ]
 
-    # Step 2: Sum per ID
-    totalsOT = unique_totalsOT.groupby("ID")["Total OT Hours Week"].sum()
-    totalsDT = unique_totalsDT.groupby("ID")["Total DT Hours Week"].sum()
+#     # Step 2: Sum per ID
+#     totalsOT = unique_totalsOT.groupby("ID")["Total OT Hours Week"].sum()
+#     totalsDT = unique_totalsDT.groupby("ID")["Total DT Hours Week"].sum()
 
-    # Put the above total on every row belonging to that "ID"
-    bypunch_df["Total OT Hours Pay Period"] = bypunch_df["ID"].map(totalsOT).round(4)
-    bypunch_df["Total DT Hours Pay Period"] = bypunch_df["ID"].map(totalsDT).round(4)
+#     # Put the above total on every row belonging to that "ID"
+#     bypunch_df["Total OT Hours Pay Period"] = bypunch_df["ID"].map(totalsOT).round(4)
+#     bypunch_df["Total DT Hours Pay Period"] = bypunch_df["ID"].map(totalsDT).round(4)
 
-    return bypunch_df
+#     return bypunch_df
 
 
 def create_anomalies_new(df):

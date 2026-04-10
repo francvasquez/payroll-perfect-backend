@@ -106,7 +106,7 @@ def handle_file_upload(event, params):
             f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
         )
         ta_start = time.time()
-        processed_ta_df, bypunch_df, anomalies_df_new = process_data_ta(
+        processed_ta_df, anomalies_df_new = process_data_ta(
             ta_df,
             locations_config,
             system_config,
@@ -138,7 +138,7 @@ def handle_file_upload(event, params):
         result = generate_results(
             processed_ta_df,
             anomalies_df_new,
-            bypunch_df,
+            # bypunch_df,
             processed_wfn_df,
             processed_waiver_df,
             ta_process_time,

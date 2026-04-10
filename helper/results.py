@@ -58,7 +58,7 @@ def filter_and_sort_df_to_dict(
 def generate_results(
     processed_ta_df,
     anomalies_df_new,
-    bypunch_df,
+    # bypunch_df,
     processed_wfn_df,
     processed_waiver_df,
     ta_process_time,
@@ -85,7 +85,7 @@ def generate_results(
             "rows": {
                 "ta_rows": len(processed_ta_df),
                 "anomalies_rows": len(anomalies_df_new),
-                "bypunch_rows": len(bypunch_df),
+                "bypunch_rows": 0,  # bypunch_df is not returned from process_data_ta anymore
                 "wfn_rows": len(processed_wfn_df),
                 "waiver_rows": len(processed_waiver_df),
             },
@@ -245,10 +245,10 @@ def generate_results(
             ## NEW ##
             ##2. Employees with Seven Consecutive Days
             "seven_consecutive": filter_and_sort_df_to_dict(
-                df=bypunch_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.check_seven_consec(bypunch_df),
+                base_filter=ta_masks.check_seven_consec(processed_ta_df),
                 max_rows=200,
                 cols=config.COLS_PRINT8,
                 rename_map={
@@ -258,13 +258,13 @@ def generate_results(
             ),
             ##3. Check Overtime (OT) hours versus WFN
             "ot_vs_wfn": filter_and_sort_df_to_dict(
-                df=bypunch_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
                 base_filter=(
-                    ta_masks.unique_ids(bypunch_df)
-                    & ~ta_masks.zero_rows_bypunch(bypunch_df)
-                    & ta_masks.OT_var_mask(bypunch_df)
+                    ta_masks.unique_ids(processed_ta_df)
+                    & ~ta_masks.zero_rows_ot_dt(processed_ta_df)
+                    & ta_masks.OT_var_mask(processed_ta_df)
                 ),
                 max_rows=200,
                 cols=config.COLS_PRINT9,
@@ -272,13 +272,13 @@ def generate_results(
             ),
             ##3a. Check Doubletime (DT) hours versus WFN
             "dt_vs_wfn": filter_and_sort_df_to_dict(
-                df=bypunch_df,
+                df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
                 base_filter=(
-                    ta_masks.unique_ids(bypunch_df)
-                    & ~ta_masks.zero_rows_bypunch(bypunch_df)
-                    & ta_masks.DT_var_mask(bypunch_df)
+                    ta_masks.unique_ids(processed_ta_df)
+                    & ~ta_masks.zero_rows_bypunch(processed_ta_df)
+                    & ta_masks.DT_var_mask(processed_ta_df)
                 ),
                 max_rows=200,
                 cols=config.COLS_PRINT9a,

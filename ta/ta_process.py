@@ -107,31 +107,22 @@ def process_data_ta(
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
 
-    # BY PUNCH DF ######################################
-
-    # New df: A reduced col df with daily and add DT and OT calc cols
-    bypunch_df = ta_utility.create_bypunch(
+    df = ta_utility.add_ot_and_dt_cols(
         df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
     )
-
-    # Updated df: Adds col "Hours in Consecutive Days" and "First day of Streak".
-    bypunch_df = ta_utility.add_seventh_day_hours(
-        bypunch_df, locations_config, number_of_consec_days_before_ot
+    df = ta_utility.add_seventh_day_hours(
+        df, locations_config, number_of_consec_days_before_ot
     )  # SLOW
-    # print(f"7th day hours: {time.time()-t7:.2f}s")
-
-    # Updated df: Add OT and DT columns from WFN
-
-    bypunch_df = ta_utility.add_col_from_another_df(
-        home_df=bypunch_df,
+    df = ta_utility.add_col_from_another_df(
+        home_df=df,
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
         lookup_tgt="OT",
         home_new_col="OT Hours Paid",
     )
-    bypunch_df = ta_utility.add_col_from_another_df(
-        home_df=bypunch_df,
+    df = ta_utility.add_col_from_another_df(
+        home_df=df,
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
@@ -140,12 +131,51 @@ def process_data_ta(
     )
 
     # Updated df: Add OT vs WFN variances cols.
-    bypunch_df["OT Variance (hrs)"] = (
-        (bypunch_df["Total OT Hours Pay Period"] - bypunch_df["OT Hours Paid"])
+    df["OT Variance (hrs)"] = (
+        (df["Total OT Hours Pay Period"] - df["OT Hours Paid"])
     ).round(4)
-    bypunch_df["DT Variance (hrs)"] = (
-        (bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"])
+    df["DT Variance (hrs)"] = (
+        (df["Total DT Hours Pay Period"] - df["DT Hours Paid"])
     ).round(4)
+    # BY PUNCH DF ######################################
+
+    # New df: A reduced col df with daily and add DT and OT calc cols
+    # bypunch_df = ta_utility.create_bypunch(
+    #     df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+    # )
+
+    # Updated df: Adds col "Hours in Consecutive Days" and "First day of Streak".
+    # bypunch_df = ta_utility.add_seventh_day_hours(
+    #     bypunch_df, locations_config, number_of_consec_days_before_ot
+    # )  # SLOW
+    # print(f"7th day hours: {time.time()-t7:.2f}s")
+
+    # Updated df: Add OT and DT columns from WFN
+
+    # bypunch_df = ta_utility.add_col_from_another_df(
+    #     home_df=bypunch_df,
+    #     lookup_df=processed_wfn_df,
+    #     home_ref="ID",
+    #     lookup_ref="IDX",
+    #     lookup_tgt="OT",
+    #     home_new_col="OT Hours Paid",
+    # )
+    # bypunch_df = ta_utility.add_col_from_another_df(
+    #     home_df=bypunch_df,
+    #     lookup_df=processed_wfn_df,
+    #     home_ref="ID",
+    #     lookup_ref="IDX",
+    #     lookup_tgt="DBLTIME HRS",
+    #     home_new_col="DT Hours Paid",
+    # )
+
+    # # Updated df: Add OT vs WFN variances cols.
+    # bypunch_df["OT Variance (hrs)"] = (
+    #     (bypunch_df["Total OT Hours Pay Period"] - bypunch_df["OT Hours Paid"])
+    # ).round(4)
+    # bypunch_df["DT Variance (hrs)"] = (
+    #     (bypunch_df["Total DT Hours Pay Period"] - bypunch_df["DT Hours Paid"])
+    # ).round(4)
 
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)
@@ -165,5 +195,8 @@ def process_data_ta(
             "DB is paused. Skipping the save step, but continuing with the response."
         )
 
-    # Always execute this
-    return (df, bypunch_df, anomalies_df_new)
+    return (
+        df,
+        # bypunch_df,
+        anomalies_df_new,
+    )

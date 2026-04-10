@@ -88,7 +88,7 @@ def non_zero_var(df):
     return df["Variance"] != 0
 
 
-def zero_rows_bypunch(df):
+def zero_rows_ot_dt(df):
     mask = (
         (df["Total OT Hours Pay Period"] == 0)
         & (df["OT Hours Paid"] == 0)
