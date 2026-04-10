@@ -277,7 +277,7 @@ def generate_results(
                 ascending=True,
                 base_filter=(
                     ta_masks.unique_ids(processed_ta_df)
-                    & ~ta_masks.zero_rows_bypunch(processed_ta_df)
+                    & ~ta_masks.zero_rows_ot_dt(processed_ta_df)
                     & ta_masks.DT_var_mask(processed_ta_df)
                 ),
                 max_rows=200,
