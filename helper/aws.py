@@ -11,6 +11,37 @@ s3_client = boto3.client("s3")
 ses = boto3.client("ses", region_name="us-west-1")
 
 
+def debug_to_s3(df, debug_id, debug_cols, bucket_name):
+    """Utility function to save any DataFrame to S3 for debugging purposes"""
+
+    # 0. Don't crash if debug_cols not in df, just save the ones that exist
+    safe_cols = [col for col in debug_cols if col in df.columns]
+
+    # 1. Filter the DataFrame
+    debug_df = df[df["ID"] == debug_id][safe_cols]
+
+    if debug_df.empty:
+        print(f"Debug Drop Skipped: No records found for {debug_id}")
+        return
+
+    # 2. Convert DataFrame to a CSV string in memory
+    csv_buffer = StringIO()
+    debug_df.to_csv(csv_buffer, index=False)
+
+    # 3. Create a unique filename with a timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_key = f"debug_outputs/debug_{debug_id}_{timestamp}.csv"
+
+    # 4. Upload directly to S3
+    try:
+        s3_client.put_object(
+            Bucket=bucket_name, Key=file_key, Body=csv_buffer.getvalue()
+        )
+        print(f"Successfully dropped debug file to s3://{bucket_name}/{file_key}")
+    except Exception as e:
+        print(f"Failed to write debug file to S3: {e}")
+
+
 def delete_pay_period(client_id, pay_date):
     """
     Delete all data for a specific pay period

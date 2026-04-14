@@ -116,6 +116,7 @@ def handle_file_upload(event, params):
             ot_week_max,
             dt_day_max,
             first_date,
+            last_date,
             pay_date,
             client_id,
             processed_waiver_df,  # From step 1

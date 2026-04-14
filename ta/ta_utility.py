@@ -4,6 +4,7 @@ import pandas as pd
 from . import ta_masks
 import utility
 import logging
+from helper.aws import debug_to_s3
 
 logger = logging.getLogger()
 
@@ -282,14 +283,14 @@ def add_waiver_check(df, processed_waiver_df):
 
 
 def add_ot_and_dt_cols(
-    df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+    df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date, last_date
 ):
     # Add "Workday Hours" column. It totals for each Date/ID pair.
     df["Workday Hours"] = df.groupby(["Date", "ID"])[
         "Punch Length (hrs) Raw"
     ].transform("sum")
 
-    # Add "Add Week Hours" column. Creates a helper label 1 or 2.
+    # Add "Add Week Hours" column. Creates a helper label 0, 1, 2. It should only be 0 and 1, but if punches from a prior week is carried over it can be 2 or more. We will use this to exclude carryover hours from OT calculation later on this function.
     df["Work Week"] = ((df["Date"] - first_date).dt.days // 7) + 1
     # print("First date", first_date)
     df["Week Hours"] = df.groupby(["ID", "Work Week"])[
@@ -332,18 +333,6 @@ def add_ot_and_dt_cols(
         .sum()
     )
 
-    # ###DEBUG 1#####
-    # debug_id = "GUH0007980"
-    # # Subset by ID and columns
-    # debug_rows = df.loc[
-    #     df["ID"].astype(str).str.strip() == debug_id,
-    #     ["ID", "In Punch", "Sum of Workday OT Hours"],
-    # ]
-    # print("==== DEBUG ROWS FOR", debug_id, "====")
-    # print(debug_rows.to_string(index=False))
-    # print("====================================")
-    # #############################################
-
     # Double time per workday
     df["Workday DT Hours"] = np.maximum(df["Workday Hours"] - df["DT Day Max"], 0)
 
@@ -369,23 +358,66 @@ def add_ot_and_dt_cols(
     df["Total OT Hours Week"] = df["Sum of Workday OT Hours"] + df["Week OT Hours Net"]
     df["Total DT Hours Week"] = df["Sum of Workday DT Hours"]
 
+    # Adjust "Total OT Hours Week" to zero for any row where "Shift Start" does not fall within the pay period. This is to prevent counting OT hours from shifts that started before the pay period, even if they ended within it.
+    start_bound = pd.to_datetime(first_date).normalize()
+    end_bound = pd.to_datetime(last_date).normalize()
+    is_in_pay_period = df["Shift Start"].dt.normalize().between(start_bound, end_bound)
+    df["Adjusted Total OT Hours Week"] = np.where(
+        is_in_pay_period, df["Total OT Hours Week"], 0.0
+    )
+    df["Adjusted Total DT Hours Week"] = np.where(
+        is_in_pay_period, df["Total DT Hours Week"], 0.0
+    )
     # Calculate Total OT and Total DT Hours for the pay period
 
     # Step 1: Get unique totals per (ID, Work Week)
     unique_totalsOT = df.drop_duplicates(subset=["ID", "Work Week"])[
-        ["ID", "Total OT Hours Week"]
+        ["ID", "Adjusted Total OT Hours Week"]
     ]
     unique_totalsDT = df.drop_duplicates(subset=["ID", "Work Week"])[
-        ["ID", "Total DT Hours Week"]
+        ["ID", "Adjusted Total DT Hours Week"]
     ]
 
     # Step 2: Sum per ID
-    totalsOT = unique_totalsOT.groupby("ID")["Total OT Hours Week"].sum()
-    totalsDT = unique_totalsDT.groupby("ID")["Total DT Hours Week"].sum()
+    totalsOT = unique_totalsOT.groupby("ID")["Adjusted Total OT Hours Week"].sum()
+    totalsDT = unique_totalsDT.groupby("ID")["Adjusted Total DT Hours Week"].sum()
 
-    # Put the above total on every row belonging to that "ID"
+    # Broadcast to every row belonging to that "ID"
     df["Total OT Hours Pay Period"] = df["ID"].map(totalsOT).round(4)
     df["Total DT Hours Pay Period"] = df["ID"].map(totalsDT).round(4)
+
+    ###DEBUG 1#####
+    debug_id = "2JV0005917"
+    debug_cols = [
+        "ID",
+        "Employee",
+        "Date",
+        "In Punch",
+        "Out Punch",
+        "Punch Length (hrs) Raw",
+        "Punch Length (hrs)",
+        "Punch Number in Shift",
+        "Shift Number",
+        "Hours Worked Shift",
+        "Workday Hours",
+        "Work Week",
+        "Week Hours",
+        "Total Hours Pay Period",
+        "OT Day Max",
+        "OT Week Max",
+        "Workday OT Hours",
+        "Sum of Workday OT Hours",
+        "Week OT Hours Gross",
+        "Week OT Hours Net",
+        "Total OT Hours Week",
+        "Total DT Hours Week",
+        "Adjusted Total OT Hours Week",
+        "Adjusted Total DT Hours Week",
+        "Total OT Hours Pay Period",
+        "Total DT Hours Pay Period",
+    ]
+    debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
+    #############################################
 
     return df
 
@@ -447,11 +479,12 @@ def create_anomalies_new(df):
 
 
 def add_punch_length(df):
-    # Identify where a new logical punch starts
+    # This function calculates a "Punch Length (hrs)" column that accounts for stapled punches. It uses the "Punch Length (hrs) Raw" column, which is the unstapled punch length, and then aggregates it based on whether punches are considered part of the same continuous working block (i.e., stapled together) or not.
+    # A true new punch starts if there is at lease some break time (Break Time (min) > 0) or if it's the first punch of the shift.
     df["Is New Punch?"] = (df.groupby(["ID", "Shift Number"]).cumcount() == 0) | (
         df["Break Time (min)"] > 0
     )
-    # Create a Punch Number in Shift  within each shift
+    # By taking a cumulative sum of the boolean values "Is New Punch?" (True = 1, False = 0), this line assigns the exact same "Punch Number" to consecutive rows that belong to the same continuous working block.
     df["Punch Number in Shift"] = df.groupby(["ID", "Shift Number"])[
         "Is New Punch?"
     ].cumsum()

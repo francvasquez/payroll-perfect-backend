@@ -19,6 +19,7 @@ def process_data_ta(
     ot_week_max,
     dt_day_max,
     first_date,
+    last_date,
     pay_date,
     clientId,
     processed_waiver_df=None,
@@ -99,7 +100,7 @@ def process_data_ta(
     df = ta_utility.add_hours_worked_shift_and_shift_id(df)
     df = ta_utility.add_twelve_hour_check(df)
 
-    # Updated df: Add Punch Length df which adds stapled midnight punches
+    # Updated df: Add Punch Length df by adding Punch Lenght (Raw) that have no break in between.
     # Needs  Break Time (min), "Shift Number", "Punch Number in Shift", Punch Length (hrs) Raw
     df = ta_utility.add_punch_length(df)
 
@@ -109,7 +110,7 @@ def process_data_ta(
 
     # Add columns for OT and DT vs WFN variance analysis.
     df = ta_utility.add_ot_and_dt_cols(
-        df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date
+        df, locations_config, ot_day_max, ot_week_max, dt_day_max, first_date, last_date
     )
 
     # Add cols for Consecutive Days Check
