@@ -266,7 +266,7 @@ def generate_results(
                 ),
                 max_rows=200,
                 cols=config.COLS_PRINT9,
-                rename_map={"Total OT Hours Pay Period": "OT Hours on Time Card"},
+                # rename_map={"Total OT Hours Pay Period": "OT Hours on Time Card"},
             ),
             ##3a. Check Doubletime (DT) hours versus WFN
             "dt_vs_wfn": filter_and_sort_df_to_dict(
@@ -280,7 +280,7 @@ def generate_results(
                 ),
                 max_rows=200,
                 cols=config.COLS_PRINT9a,
-                rename_map={"Total DT Hours Pay Period": "DT Hours on Time Card"},
+                # rename_map={"Total DT Hours Pay Period": "DT Hours on Time Card"},
             ),
             ##4. Split Shift Check
             "split_shift": filter_and_sort_df_to_dict(
