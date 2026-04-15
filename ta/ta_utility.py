@@ -386,37 +386,37 @@ def add_ot_and_dt_cols(
     df["Total OT Hours Pay Period"] = df["ID"].map(totalsOT).round(4)
     df["Total DT Hours Pay Period"] = df["ID"].map(totalsDT).round(4)
 
-    ###DEBUG 1#####
-    # debug_id = "2JV0005917"
-    # debug_cols = [
-    #     "ID",
-    #     "Employee",
-    #     "Date",
-    #     "In Punch",
-    #     "Out Punch",
-    #     "Punch Length (hrs) Raw",
-    #     "Punch Length (hrs)",
-    #     "Punch Number in Shift",
-    #     "Shift Number",
-    #     "Hours Worked Shift",
-    #     "Workday Hours",
-    #     "Work Week",
-    #     "Week Hours",
-    #     "Total Hours Pay Period",
-    #     "OT Day Max",
-    #     "OT Week Max",
-    #     "Workday OT Hours",
-    #     "Sum of Workday OT Hours",
-    #     "Week OT Hours Gross",
-    #     "Week OT Hours Net",
-    #     "Total OT Hours Week",
-    #     "Total DT Hours Week",
-    #     "Adjusted Total OT Hours Week",
-    #     "Adjusted Total DT Hours Week",
-    #     "Total OT Hours Pay Period",
-    #     "Total DT Hours Pay Period",
-    # ]
-    # debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
+    ##DEBUG 1#####
+    debug_id = "GUH0007980"
+    debug_cols = [
+        "ID",
+        "Employee",
+        "Date",
+        "In Punch",
+        "Out Punch",
+        "Punch Length (hrs) Raw",
+        "Punch Length (hrs)",
+        "Punch Number in Shift",
+        "Shift Number",
+        "Hours Worked Shift",
+        "Workday Hours",
+        "Work Week",
+        "Week Hours",
+        "Total Hours Pay Period",
+        "OT Day Max",
+        "OT Week Max",
+        "Workday OT Hours",
+        "Sum of Workday OT Hours",
+        "Week OT Hours Gross",
+        "Week OT Hours Net",
+        "Total OT Hours Week",
+        "Total DT Hours Week",
+        "Adjusted Total OT Hours Week",
+        "Adjusted Total DT Hours Week",
+        "Total OT Hours Pay Period",
+        "Total DT Hours Pay Period",
+    ]
+    debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
 
     return df
 
