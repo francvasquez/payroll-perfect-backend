@@ -38,11 +38,11 @@ def handle_file_upload(event, params):
         if error_response:
             return error_response
 
-        ### 2. Extract client_config from params
+        ### 2. Extract client_params from params
         client_id = params["clientId"]
-        client_config = params["client_config"]
-        global_config = client_config.get("global", {})
-        locations_config = client_config.get("locations", {})  ## overrides
+        client_params = params["client_config"]
+        global_config = client_params.get("global", {})
+        locations_config = client_params.get("locations", {})  ## overrides
 
         ### 3. Extract global parameters with default fallback (TODO consolidate)
         pay_period_length = global_config.get(
@@ -74,7 +74,7 @@ def handle_file_upload(event, params):
         )
         last_date = pay_date - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
         print(
-            f"file_processor.py - Processing: client_config={client_config}, pay_date={pay_date}, first date ={first_date}"
+            f"file_processor.py - Processing: client_params={client_params}, pay_date={pay_date}, first date ={first_date}"
         )
 
         ### 5. Delete existing annotations before reprocessing
@@ -108,6 +108,7 @@ def handle_file_upload(event, params):
         ta_start = time.time()
         processed_ta_df, anomalies_df_new = process_data_ta(
             ta_df,
+            client_params,
             locations_config,
             system_config,
             number_of_consec_days_before_ot,

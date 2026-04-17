@@ -1,9 +1,10 @@
 from helper.db_utils import save_ta_to_db, get_db_connection
+from client_config import PP_REQUIRED_COLUMNS
 import utility
 from . import ta_utility
 import logging
-import client_config
 import pandas as pd
+from helper.aws import debug_to_s3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -11,6 +12,7 @@ logger.setLevel(logging.INFO)
 
 def process_data_ta(
     df,
+    client_params,
     locations_config,
     system_config,
     number_of_consec_days_before_ot,
@@ -32,9 +34,7 @@ def process_data_ta(
     df = ta_utility.normalize_client_data(df, system_config)
 
     # 2. Validation: Check if all neccesary columns are present, if not stop processing.
-    missing = [
-        col for col in client_config.PP_REQUIRED_COLUMNS["ta"] if col not in df.columns
-    ]
+    missing = [col for col in PP_REQUIRED_COLUMNS["ta"] if col not in df.columns]
     if missing:
         logger.info(f"Columns actually received: {list(df.columns)}")
         error_msg = f"CRITICAL: Missing required columns: {missing}"
@@ -42,13 +42,10 @@ def process_data_ta(
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    other_cols = [
-        col for col in df.columns if col not in client_config.PP_REQUIRED_COLUMNS["ta"]
-    ]
-    df = df[client_config.PP_REQUIRED_COLUMNS["ta"] + other_cols]
+    other_cols = [col for col in df.columns if col not in PP_REQUIRED_COLUMNS["ta"]]
+    df = df[PP_REQUIRED_COLUMNS["ta"] + other_cols]
 
-    # 4. Drops rows that are not punches base on CLIENT_CONFIGS
-    # df = df.dropna(subset=["In Punch", "Out Punch"]).copy()
+    # 4. Drops rows that are not punches base on client configuration
     df = ta_utility.drop_rows(df, system_config)
 
     ######### DF PROCESSING #################
@@ -107,6 +104,29 @@ def process_data_ta(
     # Updated df: Add Regular Rate Paid (a.k.a "Straight Rate ($)") from wfn, Split Paid ($),
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
+
+    # Create the daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
+    daily_df = ta_utility.create_daily_df(df, client_params)
+
+    # Add to daily_df 40 hours and consecutive days calcs
+    daily_df = ta_utility.apply_weekly_rules(daily_df, client_params)
+
+    debug_cols = [
+        "Employee",
+        "ID",
+        "Attributed_Workday",
+        "Hours_Worked",
+        "Regular_Hrs",
+        "OT_Hrs",
+        "DT_Hrs",
+        "Workweek_ID",
+        "Days_Worked_In_Week",
+        "Is_7th_Day_Rule",
+        "Cum_Reg_Hrs",
+        "Weekly_OT_Spillover",
+    ]
+
+    debug_to_s3(daily_df, "GUH0007980", debug_cols, "pp-debug-bucket")
 
     # Add columns for OT and DT vs WFN variance analysis.
     df = ta_utility.add_ot_and_dt_cols(

@@ -1,12 +1,241 @@
 import numpy as np
-import client_config
 import pandas as pd
 from . import ta_masks
 import utility
 import logging
-from helper.aws import debug_to_s3
+
 
 logger = logging.getLogger()
+
+
+def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
+    """
+    Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically
+    based on Location overrides.
+    Columns of the returned DataFrame:
+    "Employee", "ID", "Attributed_Workday", "Hours_Worked", "Regular_Hrs", "OT_Hrs",        "DT_Hrs", "Workweek_ID", "Days_Worked_In_Week", "Is_7th_Day_Rule", "Cum_Reg_Hrs",
+    "Weekly_OT_Spillover",
+    """
+    df = daily_df.copy()
+
+    # 1. Extract Config
+    workweek_start = client_params["global"]["workweek_start"]
+    locs = client_params.get("locations", {})
+
+    g_ot_week = client_params["global"]["ot_week_max"]
+    g_consec = client_params["global"]["number_of_consec_days_before_ot"]
+
+    # 2. Map Limits to Dataframe
+    ot_week_map = {
+        loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
+    }
+    consec_map = {
+        loc: config.get("number_of_consec_days_before_ot", g_consec)
+        for loc, config in locs.items()
+    }
+
+    df["limit_ot_week"] = df["Location"].map(ot_week_map).fillna(g_ot_week)
+    df["limit_consec"] = df["Location"].map(consec_map).fillna(g_consec)
+
+    # 3. Generate Workweek_ID
+    day_map = {
+        "Monday": 0,
+        "Tuesday": 1,
+        "Wednesday": 2,
+        "Thursday": 3,
+        "Friday": 4,
+        "Saturday": 5,
+        "Sunday": 6,
+    }
+    start_day_int = day_map.get(workweek_start, 6)
+
+    df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"])
+    days_to_subtract = (df["Attributed_Workday"].dt.dayofweek - start_day_int) % 7
+    df["Workweek_ID"] = df["Attributed_Workday"] - pd.to_timedelta(
+        days_to_subtract, unit="D"
+    )
+
+    df = df.sort_values(
+        by=["Employee", "ID", "Workweek_ID", "Attributed_Workday"]
+    ).reset_index(drop=True)
+
+    # --- 4. Dynamic Consecutive Day Logic ---
+    df["Days_Worked_In_Week"] = (
+        df.groupby(["Employee", "ID", "Workweek_ID"]).cumcount() + 1
+    )
+
+    # Trigger is true if days worked EXCEEDS the 'before_ot' threshold
+    df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
+
+    mask_consec = df["Is_Consecutive_Day_Rule"]
+
+    df.loc[mask_consec, "DT_Hrs"] = (
+        df.loc[mask_consec, "DT_Hrs"] + df.loc[mask_consec, "OT_Hrs"]
+    )
+    df.loc[mask_consec, "OT_Hrs"] = df.loc[mask_consec, "Regular_Hrs"]
+    df.loc[mask_consec, "Regular_Hrs"] = 0.0
+
+    # --- 5. Dynamic Weekly Overtime Logic ---
+    df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+        "Regular_Hrs"
+    ].cumsum()
+    df["Prior_Cum_Reg"] = (
+        df.groupby(["Employee", "ID", "Workweek_ID"])["Cum_Reg_Hrs"].shift(1).fillna(0)
+    )
+
+    df["Weekly_OT_Spillover"] = 0.0
+
+    # Scenario A: Already crossed custom limit
+    mask_already_over = df["Prior_Cum_Reg"] >= df["limit_ot_week"]
+    df.loc[mask_already_over, "Weekly_OT_Spillover"] = df.loc[
+        mask_already_over, "Regular_Hrs"
+    ]
+    df.loc[mask_already_over, "Regular_Hrs"] = 0.0
+
+    # Scenario B: Crossing custom limit today
+    mask_crossing_today = (df["Prior_Cum_Reg"] < df["limit_ot_week"]) & (
+        df["Cum_Reg_Hrs"] > df["limit_ot_week"]
+    )
+    spillover_hours = (
+        df.loc[mask_crossing_today, "Cum_Reg_Hrs"]
+        - df.loc[mask_crossing_today, "limit_ot_week"]
+    )
+
+    df.loc[mask_crossing_today, "Weekly_OT_Spillover"] = spillover_hours
+    df.loc[mask_crossing_today, "Regular_Hrs"] = (
+        df.loc[mask_crossing_today, "Regular_Hrs"] - spillover_hours
+    )
+
+    df["OT_Hrs"] = df["OT_Hrs"] + df["Weekly_OT_Spillover"]
+
+    # 6. Final Cleanup
+    df = df.drop(columns=["Prior_Cum_Reg", "limit_ot_week", "limit_consec"])
+    float_cols = [
+        "Hours_Worked",
+        "Regular_Hrs",
+        "OT_Hrs",
+        "DT_Hrs",
+        "Cum_Reg_Hrs",
+        "Weekly_OT_Spillover",
+    ]
+    df[float_cols] = df[float_cols].round(4)
+
+    return df
+
+
+def create_daily_df(df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
+    """
+    Transforms the punch dataframe into a daily aggregated dataframe with  OT and DT calculations, applying dynamic thresholds based on the employee's Location.
+    Columns will be: Employee, ID, Location, Attributed_Workday, Hours_Worked, Regular_Hrs, OT_Hrs, DT_Hrs
+    """
+    # 1. Filter to required columns
+    required_cols = [
+        "Employee",
+        "ID",
+        "Location",
+        "In Punch",
+        "Out Punch",
+        "Punch Length (hrs) Raw",
+    ]
+    df = df[required_cols].copy()
+
+    # 2. Extract globals and create mapping dictionaries for locations
+    locs = client_params.get("locations", {})
+    g_ot_day = client_params["global"]["ot_day_max"]
+    g_dt_day = client_params["global"]["dt_day_max"]
+
+    ot_day_map = {
+        loc: config.get("ot_day_max", g_ot_day) for loc, config in locs.items()
+    }
+    dt_day_map = {
+        loc: config.get("dt_day_max", g_dt_day) for loc, config in locs.items()
+    }
+
+    # 3. Map the custom limits to the dataframe (filling any unmapped locations with the global default)
+    df["limit_ot_day"] = df["Location"].map(ot_day_map).fillna(g_ot_day)
+    df["limit_dt_day"] = df["Location"].map(dt_day_map).fillna(g_dt_day)
+
+    # 4. Create a boolean mask to identify shifts that cross midnight
+    df["In_Date"] = df["In Punch"].dt.date
+    df["Out_Date"] = df["Out Punch"].dt.date
+    mask_same_day = df["In_Date"] == df["Out_Date"]
+
+    # --- Group A: Same-Day Shifts ---
+    df_same = df[mask_same_day].copy()
+    df_same["Attributed_Workday"] = df_same["In_Date"]
+    df_same["Hours_Worked"] = df_same["Punch Length (hrs) Raw"]
+
+    # --- Group B: Cross-Midnight Shifts ---
+    df_cross = df[~mask_same_day].copy()
+
+    if not df_cross.empty:
+        midnight_series = df_cross["Out Punch"].dt.normalize()
+
+        df_cross_1 = df_cross.copy()
+        df_cross_1["Attributed_Workday"] = df_cross_1["In_Date"]
+        df_cross_1["Hours_Worked"] = (
+            midnight_series - df_cross_1["In Punch"]
+        ).dt.total_seconds() / 3600.0
+
+        df_cross_2 = df_cross.copy()
+        df_cross_2["Attributed_Workday"] = df_cross_2["Out_Date"]
+        df_cross_2["Hours_Worked"] = (
+            df_cross_2["Out Punch"] - midnight_series
+        ).dt.total_seconds() / 3600.0
+
+        df_splits = pd.concat([df_cross_1, df_cross_2], ignore_index=True)
+    else:
+        df_splits = pd.DataFrame(columns=df_same.columns)
+
+    # 5. Concatenate and Aggregate
+    cols_to_keep = [
+        "Employee",
+        "ID",
+        "Location",
+        "limit_ot_day",
+        "limit_dt_day",
+        "Attributed_Workday",
+        "Hours_Worked",
+    ]
+    df_combined = pd.concat(
+        [df_same[cols_to_keep], df_splits[cols_to_keep]], ignore_index=True
+    )
+
+    daily_df = (
+        df_combined.groupby(["Employee", "ID", "Location", "Attributed_Workday"])
+        .agg(
+            {
+                "Hours_Worked": "sum",
+                "limit_ot_day": "first",  # The limit is the same for the day, grab the first one
+                "limit_dt_day": "first",
+            }
+        )
+        .reset_index()
+    )
+
+    # 6. Calculate California Overtime and Double Time Dynamically
+    # Regular: Cap at the row's specific OT limit
+    daily_df["Regular_Hrs"] = np.minimum(
+        daily_df["Hours_Worked"], daily_df["limit_ot_day"]
+    )
+
+    # OT: (Hours - OT Limit), capped at (DT Limit - OT Limit). E.g., max 4 OT hours globally, or 4.5 OT hours for 2JT
+    ot_potential = daily_df["Hours_Worked"] - daily_df["limit_ot_day"]
+    max_ot_allowed = daily_df["limit_dt_day"] - daily_df["limit_ot_day"]
+    daily_df["OT_Hrs"] = np.maximum(0, np.minimum(ot_potential, max_ot_allowed))
+
+    # DT: Everything over the DT Limit
+    daily_df["DT_Hrs"] = np.maximum(
+        0, daily_df["Hours_Worked"] - daily_df["limit_dt_day"]
+    )
+
+    # Clean up helper columns
+    daily_df = daily_df.drop(columns=["limit_ot_day", "limit_dt_day"])
+    daily_df = daily_df.sort_values(by=["ID", "Attributed_Workday"]).reset_index(
+        drop=True
+    )
+
+    return daily_df
 
 
 def drop_rows(df, system_config):
@@ -385,38 +614,6 @@ def add_ot_and_dt_cols(
     # Broadcast to every row belonging to that "ID"
     df["Total OT Hours Pay Period"] = df["ID"].map(totalsOT).round(4)
     df["Total DT Hours Pay Period"] = df["ID"].map(totalsDT).round(4)
-
-    ##DEBUG 1#####
-    debug_id = "GUH0007980"
-    debug_cols = [
-        "ID",
-        "Employee",
-        "Date",
-        "In Punch",
-        "Out Punch",
-        "Punch Length (hrs) Raw",
-        "Punch Length (hrs)",
-        "Punch Number in Shift",
-        "Shift Number",
-        "Hours Worked Shift",
-        "Workday Hours",
-        "Work Week",
-        "Week Hours",
-        "Total Hours Pay Period",
-        "OT Day Max",
-        "OT Week Max",
-        "Workday OT Hours",
-        "Sum of Workday OT Hours",
-        "Week OT Hours Gross",
-        "Week OT Hours Net",
-        "Total OT Hours Week",
-        "Total DT Hours Week",
-        "Adjusted Total OT Hours Week",
-        "Adjusted Total DT Hours Week",
-        "Total OT Hours Pay Period",
-        "Total DT Hours Pay Period",
-    ]
-    debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
 
     return df
 
