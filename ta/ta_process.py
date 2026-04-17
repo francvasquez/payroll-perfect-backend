@@ -1,5 +1,5 @@
 from helper.db_utils import save_ta_to_db, get_db_connection
-from client_config import PP_REQUIRED_COLUMNS
+from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
 import utility
 from . import ta_utility
 import logging
@@ -112,7 +112,9 @@ def process_data_ta(
     daily_df = ta_utility.apply_weekly_rules(daily_df, client_params)
 
     # Add pay period totals
-    daily_df = ta_utility.apply_pay_period_totals(daily_df, client_params, pay_date)
+    daily_df = ta_utility.apply_pay_period_totals(
+        daily_df, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
+    )
 
     debug_cols = [
         "Employee",
