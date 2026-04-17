@@ -6,7 +6,6 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 import app_config
-import client_config
 import logging
 import json
 from datetime import datetime, timedelta
@@ -241,7 +240,7 @@ def handle_get_ta_columns(clientId):
 
         # Columns to EXCLUDE from the pulldown (User shouldn't pick these)
         selectable_cols = [
-            c for c in all_cols if c not in client_config.EXCLUDE_FROM_PULLDOWN
+            c for c in all_cols if c not in app_config.EXCLUDE_FROM_PULLDOWN
         ]
 
         cur.close()
