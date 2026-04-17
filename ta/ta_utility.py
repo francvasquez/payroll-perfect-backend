@@ -8,6 +8,58 @@ import logging
 logger = logging.getLogger()
 
 
+def apply_pay_period_totals(
+    daily_df: pd.DataFrame, client_params: dict, pay_date_anchor: str
+) -> pd.DataFrame:
+    """
+    Calculates the Fiscal Pay Date dynamically using an anchor date,
+    and broadcasts the total OT and DT for that period to every row.
+    """
+    df = daily_df.copy()
+
+    # 1. Extract Parameters
+    pp_length = client_params["global"]["pay_period_length"]
+    days_to_pay = client_params["global"]["days_bet_payroll_end_and_pay_date"]
+
+    # 2. Date Math Setup
+    df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"])
+    anchor_date = pd.to_datetime(pay_date_anchor)
+
+    # Calculate the boundaries of the specific pay period tied to the anchor
+    anchor_end_date = anchor_date - pd.to_timedelta(days_to_pay, unit="D")
+    anchor_start_date = anchor_end_date - pd.to_timedelta(pp_length - 1, unit="D")
+
+    # 3. Dynamically Assign Fiscal_Pay_Date
+    # Calculate how many days each workday is from the anchor's start date
+    delta_days = (df["Attributed_Workday"] - anchor_start_date).dt.days
+
+    # Use floor division to find how many pay periods away this row is (handles past & future dates)
+    period_offset = np.floor(delta_days / pp_length)
+
+    # Calculate the specific pay date for this row
+    row_period_end = anchor_end_date + pd.to_timedelta(
+        period_offset * pp_length, unit="D"
+    )
+    df["Fiscal_Pay_Date"] = row_period_end + pd.to_timedelta(days_to_pay, unit="D")
+
+    # Convert to clean date format without timestamps
+    df["Fiscal_Pay_Date"] = df["Fiscal_Pay_Date"].dt.date
+
+    # --- 4. Broadcast Pay Period Totals ---
+    # Group by the specific employee and their newly calculated pay date
+    group_cols = ["Employee", "ID", "Fiscal_Pay_Date"]
+
+    # .transform('sum') calculates the group total and broadcasts it to every row in the group
+    df["OT_Hours_Pay_Period"] = df.groupby(group_cols)["OT_Hrs"].transform("sum")
+    df["DT_Hours_Pay_Period"] = df.groupby(group_cols)["DT_Hrs"].transform("sum")
+
+    # Rounding for clean float math
+    df["OT_Hours_Pay_Period"] = df["OT_Hours_Pay_Period"].round(4)
+    df["DT_Hours_Pay_Period"] = df["DT_Hours_Pay_Period"].round(4)
+
+    return df
+
+
 def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
     """
     Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically

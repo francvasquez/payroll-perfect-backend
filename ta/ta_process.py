@@ -111,6 +111,9 @@ def process_data_ta(
     # Add to daily_df 40 hours and consecutive days calcs
     daily_df = ta_utility.apply_weekly_rules(daily_df, client_params)
 
+    # Add pay period totals
+    daily_df = ta_utility.apply_pay_period_totals(daily_df, client_params, pay_date)
+
     debug_cols = [
         "Employee",
         "ID",
@@ -119,6 +122,9 @@ def process_data_ta(
         "Regular_Hrs",
         "OT_Hrs",
         "DT_Hrs",
+        "Fiscal_Pay_Date",
+        "OT_Hours_Pay_Period",
+        "DT_Hours_Pay_Period",
         "Workweek_ID",
         "Days_Worked_In_Week",
         "Is_7th_Day_Rule",
