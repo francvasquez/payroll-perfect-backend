@@ -1,7 +1,7 @@
 import time
 import pandas as pd
 import json
-from config import CORS_HEADERS
+from app_config import CORS_HEADERS
 
 
 def parse_event_params(event):

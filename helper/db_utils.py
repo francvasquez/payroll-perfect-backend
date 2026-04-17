@@ -5,7 +5,7 @@ import os, uuid
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
-import config
+import app_config
 import client_config
 import logging
 import json
@@ -125,7 +125,7 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     # Filter DF to COLUMN_TO_KEEP_DB
     try:
         cols_to_keep = [
-            col for sublist in config.COLUMN_TO_KEEP_DB.values() for col in sublist
+            col for sublist in app_config.COLUMN_TO_KEEP_DB.values() for col in sublist
         ]
         df = df[cols_to_keep].copy()
     except KeyError as e:
@@ -249,7 +249,7 @@ def handle_get_ta_columns(clientId):
 
         return {
             "statusCode": 200,
-            "headers": config.CORS_HEADERS,
+            "headers": app_config.CORS_HEADERS,
             "body": json.dumps(selectable_cols),
         }
     except Exception as e:
@@ -263,7 +263,7 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
         if conn is None:
             return {
                 "statusCode": 503,  # Service Unavailable
-                "headers": config.CORS_HEADERS,
+                "headers": app_config.CORS_HEADERS,
                 "body": json.dumps(
                     {"error": "Database is currently unreachable. Check network/VPN."}
                 ),
@@ -318,7 +318,7 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
 
         return {
             "statusCode": 200,
-            "headers": config.CORS_HEADERS,
+            "headers": app_config.CORS_HEADERS,
             "body": json.dumps(
                 results, default=str
             ),  # default=str handles Date/Timestamp conversion
@@ -328,6 +328,6 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
         print(f"Query Error: {str(e)}")
         return {
             "statusCode": 500,
-            "headers": config.CORS_HEADERS,
+            "headers": app_config.CORS_HEADERS,
             "body": json.dumps({"error": f"Database query failed: {str(e)}"}),
         }

@@ -1,5 +1,5 @@
 import pandas as pd
-from config import (
+from app_config import (
     DEFAULT_PAY_PERIOD_LENGTH,
     DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE,
     DEFAULT_MIN_WAGE,

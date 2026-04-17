@@ -1,5 +1,5 @@
 import json
-from config import *
+from app_config import *
 from helper.aux import parse_event_params
 from helper.action_router import route_action
 

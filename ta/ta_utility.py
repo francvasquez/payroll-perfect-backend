@@ -14,6 +14,7 @@ def apply_pay_period_totals(
     """
     Calculates the Fiscal Pay Date dynamically using an anchor date,
     and broadcasts the total OT and DT for that period to every row.
+    Adds columns OT_Hours_Pay_Period and DT_Hours_Pay_Period to the daily_df.
     """
     df = daily_df.copy()
 

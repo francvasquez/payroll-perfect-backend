@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from ta import ta_masks
 from wfn import wfn_masks
-import config
+import app_config
 from helper.aux import convert_datetime_columns_to_iso
 from datetime import datetime
 
@@ -93,7 +93,7 @@ def generate_results(
                 "waiver_process_time_ms": waiver_process_time,
             },
         },
-        "db_cols": config.COLUMN_TO_KEEP_DB,
+        "db_cols": app_config.COLUMN_TO_KEEP_DB,
         "wfn": {
             ##Overtime Checks Variances
             "overtime_checks_variances": filter_and_sort_df_to_dict(
@@ -102,7 +102,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance"),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW,
+                cols=app_config.COLUMNS_TO_SHOW,
                 rename_map={
                     "Variance": "Variance ($)",
                     "1.5 OT Earnings Due": "1.5 OT Earnings Due ($)",
@@ -116,7 +116,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Dble"),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_DBLE,
+                cols=app_config.COLUMNS_TO_SHOW_DBLE,
                 rename_map={
                     "Double Time Due": "Double Time Due ($)",
                     "Actual Pay Check Double": "Actual Pay Check Double ($)",
@@ -130,7 +130,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance BrkCrd"),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_BRKCRD,
+                cols=app_config.COLUMNS_TO_SHOW_BRKCRD,
                 rename_map={
                     "Actual Pay BrkCrd": "Actual Paid Break Credit",
                     "Variance BrkCrd": "Variance Break Credit",
@@ -143,7 +143,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance RestCrd"),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_REST,
+                cols=app_config.COLUMNS_TO_SHOW_REST,
                 rename_map={
                     "Actual Pay RestCrd": "Actual Paid Rest Credit ($)",
                     "Variance RestCrd": "Variance Rest Credit ($)",
@@ -156,7 +156,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Sick"),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_SICK,
+                cols=app_config.COLUMNS_TO_SHOW_SICK,
                 rename_map={
                     "Sick Credit Due": "Sick Credit Due ($)",
                     "Sick Paid": "Actual Paid Sick Credit ($)",
@@ -171,7 +171,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.flsa(processed_wfn_df),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_FLSA,
+                cols=app_config.COLUMNS_TO_SHOW_FLSA,
             ),
             ##Minimum Wage Check
             "min_wage_check": filter_and_sort_df_to_dict(
@@ -180,7 +180,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.min_wage_check(processed_wfn_df),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_MINWAGE,
+                cols=app_config.COLUMNS_TO_SHOW_MINWAGE,
             ),
             ##Non-Active Check
             "non_active_check": filter_and_sort_df_to_dict(
@@ -189,7 +189,7 @@ def generate_results(
                 ascending=True,
                 base_filter=wfn_masks.non_active_check(processed_wfn_df),
                 max_rows=200,
-                cols=config.COLUMNS_TO_SHOW_NONACTIVE,
+                cols=app_config.COLUMNS_TO_SHOW_NONACTIVE,
                 rename_map={
                     "V_Vacation_Hours": "Vacation Hours",
                     "Job Title Description": "Job Description",
@@ -208,7 +208,7 @@ def generate_results(
                 base_filter=ta_masks.non_zero_var(anomalies_df_new),
                 ascending=False,
                 max_rows=200,
-                cols=config.COLS_ANOMALIES,
+                cols=app_config.COLS_ANOMALIES,
             ),
             ##1a. Short Break: Earned credits
             "short_break_earned_credits": filter_and_sort_df_to_dict(
@@ -217,7 +217,7 @@ def generate_results(
                 ascending=True,
                 base_filter=ta_masks.break_less_than_30(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT3a,
+                cols=app_config.COLS_PRINT3a,
                 rename_map={
                     "Regular Rate Paid": "Straight Rate ($)",
                 },
@@ -229,7 +229,7 @@ def generate_results(
                 ascending=True,
                 base_filter=ta_masks.did_not_break_new(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT2_B,
+                cols=app_config.COLS_PRINT2_B,
             ),
             ##1e. Second Meal Break Check
             "over_12_hours": filter_and_sort_df_to_dict(
@@ -238,7 +238,7 @@ def generate_results(
                 ascending=True,
                 base_filter=ta_masks.over_twelve(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT7,
+                cols=app_config.COLS_PRINT7,
             ),
             ## NEW ##
             ##2. Employees with Seven Consecutive Days
@@ -248,7 +248,7 @@ def generate_results(
                 ascending=True,
                 base_filter=ta_masks.check_seven_consec(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT8,
+                cols=app_config.COLS_PRINT8,
                 rename_map={
                     "In Punch": "Trigger Date",
                     "Punch Length (hrs) Raw": "Punch Length (hrs)",
@@ -265,7 +265,7 @@ def generate_results(
                     & ta_masks.OT_var_mask(processed_ta_df)
                 ),
                 max_rows=200,
-                cols=config.COLS_PRINT9,
+                cols=app_config.COLS_PRINT9,
                 # rename_map={"Total OT Hours Pay Period": "OT Hours on Time Card"},
             ),
             ##3a. Check Doubletime (DT) hours versus WFN
@@ -279,7 +279,7 @@ def generate_results(
                     & ta_masks.DT_var_mask(processed_ta_df)
                 ),
                 max_rows=200,
-                cols=config.COLS_PRINT9a,
+                cols=app_config.COLS_PRINT9a,
                 # rename_map={"Total DT Hours Pay Period": "DT Hours on Time Card"},
             ),
             ##4. Split Shift Check
@@ -289,7 +289,7 @@ def generate_results(
                 ascending=True,
                 base_filter=ta_masks.split_shift(processed_ta_df),
                 max_rows=200,
-                cols=config.COLS_PRINT5,
+                cols=app_config.COLS_PRINT5,
                 rename_map={"Regular Rate Paid": "Straight Rate ($)"},
             ),
         },

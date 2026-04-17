@@ -1,7 +1,7 @@
 import json, boto3, io, json
 from datetime import datetime, timezone
 import pandas as pd
-from config import S3_BUCKET, CORS_HEADERS
+from app_config import S3_BUCKET, CORS_HEADERS
 from client_config import CLIENT_CONFIGS
 from io import StringIO
 from botocore.exceptions import ClientError
