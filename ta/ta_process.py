@@ -132,7 +132,7 @@ def process_data_ta(
         "Weekly_OT_Spillover",
     ]
 
-    debug_to_s3(daily_df, "1DI0002949", debug_cols, "pp-debug-bucket")
+    debug_to_s3(daily_df, "GUH0007980", debug_cols, "pp-debug-bucket")
 
     # Add columns for OT and DT vs WFN variance analysis.
     df = ta_utility.add_ot_and_dt_cols(
