@@ -8,6 +8,38 @@ import logging
 logger = logging.getLogger()
 
 
+def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
+    # Perform check of time cards vs payroll OT
+    daily_df = add_col_from_another_df(
+        home_df=daily_df,
+        lookup_df=processed_wfn_df,
+        home_ref="ID",
+        lookup_ref="IDX",
+        lookup_tgt="OT",
+        home_new_col="OT_Hours_Paid",
+    )
+
+    # Perform check of time cards vs payroll DT
+    daily_df = add_col_from_another_df(
+        home_df=daily_df,
+        lookup_df=processed_wfn_df,
+        home_ref="ID",
+        lookup_ref="IDX",
+        lookup_tgt="DBLTIME HRS",
+        home_new_col="DT_Hours_Paid",
+    )
+
+    # Add TA vs WFN variances cols.
+    daily_df["OT_Variance_(hrs)"] = (
+        (daily_df["OT_Hours_Pay_Period"] - daily_df["OT_Hours_Paid"])
+    ).round(4)
+    daily_df["DT_Variance_(hrs)"] = (
+        (daily_df["DT_Hours_Pay_Period"] - daily_df["DT_Hours_Paid"])
+    ).round(4)
+
+    return daily_df
+
+
 def apply_pay_period_totals(
     daily_df: pd.DataFrame, client_params: dict, pay_date_anchor: str
 ) -> pd.DataFrame:

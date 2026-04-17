@@ -105,7 +105,7 @@ def process_data_ta(
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
 
-    # Create the daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
+    # Create the Daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
     daily_df = ta_utility.create_daily_df(df, client_params)
 
     # Add to daily_df 40 hours and consecutive days calcs
@@ -115,6 +115,8 @@ def process_data_ta(
     daily_df = ta_utility.apply_pay_period_totals(
         daily_df, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
     )
+    # Add OT and DT actually paid from WFN for variance analysis
+    daily_df = ta_utility.apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df)
 
     debug_cols = [
         "Employee",
@@ -127,6 +129,10 @@ def process_data_ta(
         "Fiscal_Pay_Date",
         "OT_Hours_Pay_Period",
         "DT_Hours_Pay_Period",
+        "OT_Hours_Paid",
+        "DT_Hours_Paid",
+        "OT_Variance_(hrs)",
+        "DT_Variance_(hrs)",
         "Workweek_ID",
         "Days_Worked_In_Week",
         "Is_7th_Day_Rule",
@@ -147,32 +153,32 @@ def process_data_ta(
     )  # SLOW TODO Optimize by only calculating for employees/dates that are close to the threshold, or calculate in a separate step only for those that meet the consecutive days criteria based on the Date Helper Cols.
 
     # Perform check of time cards vs payroll OT
-    df = ta_utility.add_col_from_another_df(
-        home_df=df,
-        lookup_df=processed_wfn_df,
-        home_ref="ID",
-        lookup_ref="IDX",
-        lookup_tgt="OT",
-        home_new_col="OT Hours Paid",
-    )
+    # df = ta_utility.add_col_from_another_df(
+    #     home_df=df,
+    #     lookup_df=processed_wfn_df,
+    #     home_ref="ID",
+    #     lookup_ref="IDX",
+    #     lookup_tgt="OT",
+    #     home_new_col="OT Hours Paid",
+    # )
 
     # Perform check of time cards vs payroll DT
-    df = ta_utility.add_col_from_another_df(
-        home_df=df,
-        lookup_df=processed_wfn_df,
-        home_ref="ID",
-        lookup_ref="IDX",
-        lookup_tgt="DBLTIME HRS",
-        home_new_col="DT Hours Paid",
-    )
+    # df = ta_utility.add_col_from_another_df(
+    #     home_df=df,
+    #     lookup_df=processed_wfn_df,
+    #     home_ref="ID",
+    #     lookup_ref="IDX",
+    #     lookup_tgt="DBLTIME HRS",
+    #     home_new_col="DT Hours Paid",
+    # )
 
     # Add OT vs WFN variances cols.
-    df["OT Variance (hrs)"] = (
-        (df["Total OT Hours Pay Period"] - df["OT Hours Paid"])
-    ).round(4)
-    df["DT Variance (hrs)"] = (
-        (df["Total DT Hours Pay Period"] - df["DT Hours Paid"])
-    ).round(4)
+    # df["OT Variance (hrs)"] = (
+    #     (df["Total OT Hours Pay Period"] - df["OT Hours Paid"])
+    # ).round(4)
+    # df["DT Variance (hrs)"] = (
+    #     (df["Total DT Hours Pay Period"] - df["DT Hours Paid"])
+    # ).round(4)
 
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)
