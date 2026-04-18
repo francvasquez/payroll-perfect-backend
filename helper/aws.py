@@ -573,7 +573,9 @@ def put_result_to_s3(
     s3_client.put_object(
         Bucket=S3_BUCKET,
         Key=s3_key,
-        Body=json.dumps(result),
+        Body=json.dumps(
+            result, default=str
+        ),  # default=str to handle non-serializable objects, e.g. Pandas datetime
         ContentType="application/json",
     )
     print(f"Saved 'result' as JSON to: s3://{S3_BUCKET}/{s3_key}")
