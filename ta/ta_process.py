@@ -3,6 +3,7 @@ from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
 import utility
 from . import ta_utility
 import logging
+import json
 import pandas as pd
 from helper.aws import debug_to_s3
 
@@ -48,10 +49,23 @@ def process_data_ta(
     # 4. Drops rows that are not punches base on client configuration
     df = ta_utility.drop_rows(df, system_config)
 
-    ######### DF PROCESSING #################
-
-    # Assure timestamps are in Panda's datetime format
+    # 5. Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
+
+    # 6. Ensure inputed Pay Date matches the contents of the file
+    is_valid, msg = ta_utility.validate_intake_pay_date(df, pay_date, client_params)
+    if not is_valid:
+        # Return a 400 Bad Request to tell React the user messed up
+        return {
+            "statusCode": 400,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",  # Critical so React can read the error!
+                "Content-Type": "application/json",
+            },
+            "body": json.dumps({"error": msg}),  # Pass your detailed string here
+        }
+
+    ######### DF PROCESSING #################
 
     # Add Location. TODO Base on Client Settings for scalability
     df["Location"] = df["ID"].str[:3]

@@ -7,6 +7,57 @@ import logging
 
 logger = logging.getLogger()
 
+import pandas as pd
+
+
+def validate_intake_pay_date(
+    raw_df: pd.DataFrame, target_pay_date: str, client_params: dict
+) -> tuple[bool, str]:
+    """
+    Validates user-inputted pay date against the actual punch timestamps in the raw file.
+    Returns a tuple: (is_valid: bool, status_message: str)
+    """
+    # 1. Catch completely invalid date strings (e.g., "2026-13-45" or text)
+    try:
+        target_date = pd.to_datetime(target_pay_date).normalize()
+    except Exception:
+        return False, f"Intake Error: '{target_pay_date}' is not a valid date format."
+
+    # 2. Extract configuration logic
+    pp_length = client_params["global"]["pay_period_length"]
+    days_to_pay = client_params["global"]["days_bet_payroll_end_and_pay_date"]
+
+    # 3. Calculate the expected work window for the inputted pay date
+    expected_end = target_date - pd.to_timedelta(days_to_pay, unit="D")
+    expected_start = expected_end - pd.to_timedelta(pp_length - 1, unit="D")
+
+    # 4. Extract the actual physical boundaries of the raw data
+    # (Using .min() and .max() is highly optimized and very fast in Pandas)
+    actual_min = raw_df["In Punch"].min().normalize()
+    actual_max = raw_df["In Punch"].max().normalize()
+
+    # 5. Sanity Check: Is there an overlap?
+    # If the expected window is completely BEFORE or completely AFTER the data in the file
+    if expected_end < actual_min or expected_start > actual_max:
+        error_msg = (
+            f"Date Mismatch! You entered Pay Date: {target_date.date()}.\n"
+            f"That corresponds to a work period of {expected_start.date()} to {expected_end.date()}.\n"
+            f"However, the uploaded file only contains data from {actual_min.date()} to {actual_max.date()}."
+        )
+        return False, error_msg
+
+    # 6. Optional: Strict bounds check (Warning only)
+    # If the file overlaps, but seems to be missing the start or end of the expected period
+    if actual_min > expected_start or actual_max < expected_end:
+        warning_msg = (
+            f"Warning: The file was accepted, but the data range ({actual_min.date()} to {actual_max.date()}) "
+            f"does not fully cover the expected period ({expected_start.date()} to {expected_end.date()}). "
+            f"Calculations may be incomplete."
+        )
+        return True, warning_msg
+
+    return True, "Validation Passed."
+
 
 def filter_target_pay_period(df: pd.DataFrame, target_pay_date: str) -> pd.DataFrame:
     """
