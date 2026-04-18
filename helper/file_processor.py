@@ -106,7 +106,7 @@ def handle_file_upload(event, params):
             f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
         )
         ta_start = time.time()
-        processed_ta_df, anomalies_df_new = process_data_ta(
+        processed_ta_df, daily_df, anomalies_df_new = process_data_ta(
             ta_df,
             client_params,
             locations_config,
@@ -139,6 +139,7 @@ def handle_file_upload(event, params):
         ### 10. Generate result for React front-end
         result = generate_results(
             processed_ta_df,
+            daily_df,
             anomalies_df_new,
             processed_wfn_df,
             processed_waiver_df,

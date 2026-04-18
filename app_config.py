@@ -169,24 +169,24 @@ COLS_PRINT7 = [
 COLS_PRINT8 = [
     "Employee",
     "ID",
-    "In Punch",
-    "Hours in Consecutive Days",
-    "Punch Length (hrs) Raw",
-    "First day of Streak",
+    "In Punch",  # Trigger Date
+    "First_Day_of_Streak",
+    "Consec_OT_Hours",
+    "Consec_DT_Hours",
 ]
 COLS_PRINT9 = [
     "Employee",
     "ID",
-    "Total OT Hours Pay Period",
-    "OT Hours Paid",
-    "OT Variance (hrs)",
+    "OT_Hours_Pay_Period",
+    "OT_Hours_Paid",
+    "OT_Variance_(hrs)",
 ]
 COLS_PRINT9a = [
     "Employee",
     "ID",
-    "Total DT Hours Pay Period",
-    "DT Hours Paid",
-    "DT Variance (hrs)",
+    "DT_Hours_Pay_Period",
+    "DT_Hours_Paid",
+    "DT_Variance_(hrs)",
 ]
 
 # For DB UI: Columns that the user should not be able to see on the pulldown,

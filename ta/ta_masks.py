@@ -90,10 +90,10 @@ def non_zero_var(df):
 
 def zero_rows_ot_dt(df):
     mask = (
-        (df["Total OT Hours Pay Period"] == 0)
-        & (df["OT Hours Paid"] == 0)
-        & (df["Total DT Hours Pay Period"] == 0)
-        & (df["DT Hours Paid"] == 0)
+        (df["OT_Hours_Pay_Period"] == 0)
+        & (df["OT_Hours_Paid"] == 0)
+        & (df["DT_Hours_Pay_Period"] == 0)
+        & (df["DT_Hours_Paid"] == 0)
     )
     return mask
 
@@ -113,17 +113,17 @@ def over_twelve(df):
     return mask
 
 
-def check_seven_consec(df):
-    return df["Hours in Consecutive Days"] > 0
+def check_consec(df):
+    return df["Consec_OT_Hours"] > 0
 
 
 def OT_var_mask(df):
-    mask = df["OT Variance (hrs)"].abs() >= 0.01
+    mask = df["OT_Variance_(hrs)"].abs() >= 0.01
     return mask
 
 
 def DT_var_mask(df):
-    mask = df["DT Variance (hrs)"].abs() >= 0.01
+    mask = df["DT_Variance_(hrs)"].abs() >= 0.01
     return mask
 
 

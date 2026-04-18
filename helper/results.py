@@ -57,6 +57,7 @@ def filter_and_sort_df_to_dict(
 
 def generate_results(
     processed_ta_df,
+    daily_df,
     anomalies_df_new,
     processed_wfn_df,
     processed_waiver_df,
@@ -243,10 +244,10 @@ def generate_results(
             ## NEW ##
             ##2. Employees with Seven Consecutive Days
             "seven_consecutive": filter_and_sort_df_to_dict(
-                df=processed_ta_df,
+                df=daily_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=ta_masks.check_seven_consec(processed_ta_df),
+                base_filter=ta_masks.check_consec(daily_df),
                 max_rows=200,
                 cols=app_config.COLS_PRINT8,
                 rename_map={
@@ -256,13 +257,13 @@ def generate_results(
             ),
             ##3. Check Overtime (OT) hours versus WFN
             "ot_vs_wfn": filter_and_sort_df_to_dict(
-                df=processed_ta_df,
+                df=daily_df,
                 sort_col="Employee",
                 ascending=True,
                 base_filter=(
-                    ta_masks.unique_ids(processed_ta_df)
-                    & ~ta_masks.zero_rows_ot_dt(processed_ta_df)
-                    & ta_masks.OT_var_mask(processed_ta_df)
+                    ta_masks.unique_ids(daily_df)
+                    & ~ta_masks.zero_rows_ot_dt(daily_df)
+                    & ta_masks.OT_var_mask(daily_df)
                 ),
                 max_rows=200,
                 cols=app_config.COLS_PRINT9,
@@ -270,13 +271,13 @@ def generate_results(
             ),
             ##3a. Check Doubletime (DT) hours versus WFN
             "dt_vs_wfn": filter_and_sort_df_to_dict(
-                df=processed_ta_df,
+                df=daily_df,
                 sort_col="Employee",
                 ascending=True,
                 base_filter=(
-                    ta_masks.unique_ids(processed_ta_df)
-                    & ~ta_masks.zero_rows_ot_dt(processed_ta_df)
-                    & ta_masks.DT_var_mask(processed_ta_df)
+                    ta_masks.unique_ids(daily_df)
+                    & ~ta_masks.zero_rows_ot_dt(daily_df)
+                    & ta_masks.DT_var_mask(daily_df)
                 ),
                 max_rows=200,
                 cols=app_config.COLS_PRINT9a,

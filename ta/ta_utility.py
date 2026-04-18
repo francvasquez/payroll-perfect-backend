@@ -7,7 +7,65 @@ import logging
 
 logger = logging.getLogger()
 
-import pandas as pd
+
+def add_consec_day_reporting(
+    daily_df: pd.DataFrame, client_params: dict
+) -> pd.DataFrame:
+    """
+    Adds explicit reporting columns for consecutive day violations,
+    including the start date of the streak and the exact hours penalized.
+    Columns added are:
+    "First_Day_of_Streak", "Consec_OT_Hours", "Consec_DT_Hours"
+    """
+    df = daily_df.copy()
+
+    # 1. Fetch dynamic OT limits in case locations have different rules for the 8-hour threshold
+    g_ot_day = client_params["global"]["ot_day_max"]
+    if "Location" in df.columns:
+        locs = client_params.get("locations", {})
+        ot_day_map = {
+            loc: config.get("ot_day_max", g_ot_day) for loc, config in locs.items()
+        }
+        limit_ot_day = df["Location"].map(ot_day_map).fillna(g_ot_day)
+    else:
+        # Fallback just in case Location was dropped in a previous step
+        limit_ot_day = g_ot_day
+
+    # 2. Find the First Day of the Streak
+    # Since the streak is contained within a specific workweek, the start of the streak
+    # is mathematically just the earliest 'Attributed_Workday' in that week's group.
+    first_days_of_week = df.groupby(["Employee", "ID", "Workweek_ID"])[
+        "Attributed_Workday"
+    ].transform("min")
+
+    # Initialize the new columns with empty defaults
+    df["First_Day_of_Streak"] = pd.NaT
+    df["Consec_OT_Hours"] = 0.0
+    df["Consec_DT_Hours"] = 0.0
+
+    # 3. Apply the logic ONLY to rows that triggered the violation
+    mask_consec = df["Is_Consecutive_Day_Rule"] == True
+
+    if mask_consec.any():
+        # Tag the start date of the streak
+        df.loc[mask_consec, "First_Day_of_Streak"] = first_days_of_week[mask_consec]
+
+        # Calculate the split: First 8 hours (or custom limit) to OT, remainder to DT
+        df.loc[mask_consec, "Consec_OT_Hours"] = np.minimum(
+            df.loc[mask_consec, "Hours_Worked"], limit_ot_day[mask_consec]
+        )
+        df.loc[mask_consec, "Consec_DT_Hours"] = np.maximum(
+            0, df.loc[mask_consec, "Hours_Worked"] - limit_ot_day[mask_consec]
+        )
+
+    # 4. Clean up the date formatting for clean JSON serialization to React
+    df["First_Day_of_Streak"] = pd.to_datetime(df["First_Day_of_Streak"]).dt.date
+
+    # Optional: Round the float columns
+    df["Consec_OT_Hours"] = df["Consec_OT_Hours"].round(4)
+    df["Consec_DT_Hours"] = df["Consec_DT_Hours"].round(4)
+
+    return df
 
 
 def validate_intake_pay_date(
@@ -77,6 +135,7 @@ def filter_target_pay_period(df: pd.DataFrame, target_pay_date: str) -> pd.DataF
 def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
     # TODO: Need to incorporate pay date otherwise some of the variances won't make sense
     # Perform check of time cards vs payroll OT
+    "Columns created in this step are: OT_Hours_Paid, DT_Hours_Paid, OT_Variance_(hrs), DT_Variance_(hrs)"  # For reference
     daily_df = add_col_from_another_df(
         home_df=daily_df,
         lookup_df=processed_wfn_df,
@@ -113,7 +172,7 @@ def apply_pay_period_totals(
     """
     Calculates the Fiscal Pay Date dynamically using an anchor date,
     and broadcasts the total OT and DT for that period to every row.
-    Adds columns OT_Hours_Pay_Period and DT_Hours_Pay_Period to the daily_df.
+    Columns created in this step are: Fiscal_Pay_Date, OT_Hours_Pay_Period, DT_Hours_Pay_Period
     """
     df = daily_df.copy()
 
@@ -164,9 +223,7 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
     """
     Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically
     based on Location overrides.
-    Columns of the returned DataFrame:
-    "Employee", "ID", "Attributed_Workday", "Hours_Worked", "Regular_Hrs", "OT_Hrs",        "DT_Hrs", "Workweek_ID", "Days_Worked_In_Week", "Is_7th_Day_Rule", "Cum_Reg_Hrs",
-    "Weekly_OT_Spillover",
+    Columns created in this step are: Workweek_ID, Days_Worked_In_Week, Is_Consecutive_Day_Rule, Cum_Reg_Hrs, Weekly_OT_Spillover
     """
     df = daily_df.copy()
 
@@ -278,7 +335,7 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
 def create_daily_df(df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
     """
     Transforms the punch dataframe into a daily aggregated dataframe with  OT and DT calculations, applying dynamic thresholds based on the employee's Location.
-    Columns will be: Employee, ID, Location, Attributed_Workday, Hours_Worked, Regular_Hrs, OT_Hrs, DT_Hrs
+    Columns created in this step are: Employee, ID, Location, Attributed_Workday, Hours_Worked, Regular_Hrs, OT_Hrs, DT_Hrs
     """
     # 1. Filter to required columns
     required_cols = [
