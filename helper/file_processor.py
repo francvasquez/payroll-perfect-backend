@@ -159,7 +159,7 @@ def handle_file_upload(event, params):
         return {
             "statusCode": 200,
             "headers": CORS_HEADERS,
-            "body": json.dumps(result),
+            "body": json.dumps(result, default=str),
         }
     except ValueError as ve:
         print(f"Value error during file processing: {str(ve)}")
