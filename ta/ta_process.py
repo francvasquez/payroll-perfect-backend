@@ -156,6 +156,9 @@ def process_data_ta(
         "Workweek_ID",
         "Days_Worked_In_Week",
         "Is_Consecutive_Day_Rule",
+        "First_Day_of_Streak",
+        "Consec_OT_Hours",
+        "Consec_DT_Hours",
         "Cum_Reg_Hrs",
         "Weekly_OT_Spillover",
     ]
