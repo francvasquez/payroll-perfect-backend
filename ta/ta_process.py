@@ -118,6 +118,9 @@ def process_data_ta(
     # Add OT and DT actually paid from WFN for variance analysis
     daily_df = ta_utility.apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df)
 
+    # Drop workdays that don't belong to the pay period
+    daily_df = ta_utility.filter_target_pay_period(daily_df, pay_date)
+
     debug_cols = [
         "Employee",
         "ID",
@@ -153,32 +156,32 @@ def process_data_ta(
     )  # SLOW TODO Optimize by only calculating for employees/dates that are close to the threshold, or calculate in a separate step only for those that meet the consecutive days criteria based on the Date Helper Cols.
 
     # Perform check of time cards vs payroll OT
-    # df = ta_utility.add_col_from_another_df(
-    #     home_df=df,
-    #     lookup_df=processed_wfn_df,
-    #     home_ref="ID",
-    #     lookup_ref="IDX",
-    #     lookup_tgt="OT",
-    #     home_new_col="OT Hours Paid",
-    # )
+    df = ta_utility.add_col_from_another_df(
+        home_df=df,
+        lookup_df=processed_wfn_df,
+        home_ref="ID",
+        lookup_ref="IDX",
+        lookup_tgt="OT",
+        home_new_col="OT Hours Paid",
+    )
 
     # Perform check of time cards vs payroll DT
-    # df = ta_utility.add_col_from_another_df(
-    #     home_df=df,
-    #     lookup_df=processed_wfn_df,
-    #     home_ref="ID",
-    #     lookup_ref="IDX",
-    #     lookup_tgt="DBLTIME HRS",
-    #     home_new_col="DT Hours Paid",
-    # )
+    df = ta_utility.add_col_from_another_df(
+        home_df=df,
+        lookup_df=processed_wfn_df,
+        home_ref="ID",
+        lookup_ref="IDX",
+        lookup_tgt="DBLTIME HRS",
+        home_new_col="DT Hours Paid",
+    )
 
     # Add OT vs WFN variances cols.
-    # df["OT Variance (hrs)"] = (
-    #     (df["Total OT Hours Pay Period"] - df["OT Hours Paid"])
-    # ).round(4)
-    # df["DT Variance (hrs)"] = (
-    #     (df["Total DT Hours Pay Period"] - df["DT Hours Paid"])
-    # ).round(4)
+    df["OT Variance (hrs)"] = (
+        (df["Total OT Hours Pay Period"] - df["OT Hours Paid"])
+    ).round(4)
+    df["DT Variance (hrs)"] = (
+        (df["Total DT Hours Pay Period"] - df["DT Hours Paid"])
+    ).round(4)
 
     # Create new anomalies DF
     anomalies_df_new = ta_utility.create_anomalies_new(df)

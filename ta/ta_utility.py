@@ -8,7 +8,23 @@ import logging
 logger = logging.getLogger()
 
 
+def filter_target_pay_period(df: pd.DataFrame, target_pay_date: str) -> pd.DataFrame:
+    """
+    Filters the dataframe to isolate only the pay period(s) the user explicitly wants to audit,
+    dropping incomplete tails from previous or future periods.
+    """
+    # 1. Convert the passed string to a Pandas date object to match the dataframe column
+    target_date = pd.to_datetime(target_pay_date).date()
+
+    # 2. Apply the boolean mask to keep only the matching rows
+    filtered_df = df[df["Fiscal_Pay_Date"] == target_date].copy()
+
+    # 3. Reset the index for a clean output
+    return filtered_df.reset_index(drop=True)
+
+
 def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
+    # TODO: Need to incorporate pay date otherwise some of the variances won't make sense
     # Perform check of time cards vs payroll OT
     daily_df = add_col_from_another_df(
         home_df=daily_df,
