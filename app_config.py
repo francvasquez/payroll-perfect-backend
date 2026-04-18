@@ -169,7 +169,7 @@ COLS_PRINT7 = [
 COLS_PRINT8 = [
     "Employee",
     "ID",
-    "In Punch",  # Trigger Date
+    "Attributed_Workday",  # Trigger Date
     "First_Day_of_Streak",
     "Consec_OT_Hours",
     "Consec_DT_Hours",

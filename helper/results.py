@@ -251,8 +251,7 @@ def generate_results(
                 max_rows=200,
                 cols=app_config.COLS_PRINT8,
                 rename_map={
-                    "In Punch": "Trigger Date",
-                    "Punch Length (hrs) Raw": "Punch Length (hrs)",
+                    "Attributed_Workday": "Trigger Date",
                 },
             ),
             ##3. Check Overtime (OT) hours versus WFN
