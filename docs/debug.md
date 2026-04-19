@@ -1,5 +1,5 @@
 ## Use debug_to_s3 function in aws.py - then pull it using local code. For example
-    debug_id = "2JV0005917"
+    debug_id = "18F0015984"
         debug_cols = [
         "Employee",
         "ID",
