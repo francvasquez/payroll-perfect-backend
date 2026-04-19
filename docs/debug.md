@@ -24,4 +24,4 @@
         "Cum_Reg_Hrs",
         "Weekly_OT_Spillover",
     ]
-    debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
+    debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")

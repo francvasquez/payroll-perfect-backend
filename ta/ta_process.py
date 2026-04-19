@@ -163,7 +163,7 @@ def process_data_ta(
         "Cum_Reg_Hrs",
         "Weekly_OT_Spillover",
     ]
-    debug_to_s3(df, debug_id, debug_cols, "pp-debug-bucket")
+    debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
 
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
