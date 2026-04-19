@@ -140,7 +140,11 @@ def process_data_ta(
     # Add reporting columns for consecutive day calcs
     daily_df = ta_utility.add_consec_day_reporting(daily_df, client_params)
 
-    debug_id = "18F0000501"
+    debug_ids = [
+        "22R0005886",
+        "2JV0005396",
+        "1DI0080974",
+    ]  # Example IDs to check in debug
     debug_cols = [
         "Employee",
         "ID",
@@ -165,7 +169,8 @@ def process_data_ta(
         "Cum_Reg_Hrs",
         "Weekly_OT_Spillover",
     ]
-    debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
+    for debug_id in debug_ids:
+        debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
 
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
