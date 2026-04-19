@@ -23,11 +23,16 @@ def add_consec_day_reporting(
     # Removed - fixed Standard CA Consecutive Day math: First 8 hours = OT, everything over 8 = DT
 
     # 2. Find the First Day of the Streak
-    # Since the streak is contained within a specific workweek, the start of the streak
-    # is mathematically just the earliest 'Attributed_Workday' in that week's group.
-    first_days_of_week = df.groupby(["Employee", "ID", "Workweek_ID"])[
-        "Attributed_Workday"
-    ].transform("min")
+    # We group by the specific Streak_ID so if there was a gap, the start date resets!
+    if "Streak_ID" in df.columns:
+        first_days_of_week = df.groupby(["Employee", "ID", "Workweek_ID", "Streak_ID"])[
+            "Attributed_Workday"
+        ].transform("min")
+    else:
+        # Fallback just in case
+        first_days_of_week = df.groupby(["Employee", "ID", "Workweek_ID"])[
+            "Attributed_Workday"
+        ].transform("min")
 
     # Initialize the new columns with empty defaults
     df["First_Day_of_Streak"] = pd.NaT
@@ -55,6 +60,10 @@ def add_consec_day_reporting(
     # Optional: Round the float columns
     df["Consec_OT_Hours"] = df["Consec_OT_Hours"].round(4)
     df["Consec_DT_Hours"] = df["Consec_DT_Hours"].round(4)
+
+    # Clean up the Streak_ID so it doesn't clutter the final export
+    if "Streak_ID" in df.columns:
+        df = df.drop(columns=["Streak_ID"])
 
     return df
 
@@ -259,12 +268,27 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
         by=["Employee", "ID", "Workweek_ID", "Attributed_Workday"]
     ).reset_index(drop=True)
 
-    # --- 4. Dynamic Consecutive Day Logic ---
+    # --- 4. Dynamic Consecutive Day Logic (Strictly Consecutive) ---
+    # Calculate the gap in days between this shift and the previous shift
+    df["Prev_Workday"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+        "Attributed_Workday"
+    ].shift(1)
+    df["Days_Diff"] = (df["Attributed_Workday"] - df["Prev_Workday"]).dt.days
+
+    # A new streak starts if the gap is greater than 1 day (or on the first day of the week)
+    df["New_Streak"] = df["Days_Diff"] != 1
+
+    # Create a unique ID for each uninterrupted streak
+    df["Streak_ID"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+        "New_Streak"
+    ].cumsum()
+
+    # Count consecutive days strictly within the uninterrupted Streak_ID
     df["Days_Worked_In_Week"] = (
-        df.groupby(["Employee", "ID", "Workweek_ID"]).cumcount() + 1
+        df.groupby(["Employee", "ID", "Workweek_ID", "Streak_ID"]).cumcount() + 1
     )
 
-    # Trigger is true if days worked EXCEEDS the 'before_ot' threshold
+    # Trigger is true if consecutive days worked EXCEEDS the 'before_ot' threshold
     df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
 
     mask_consec = df["Is_Consecutive_Day_Rule"]
@@ -275,6 +299,9 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
     df.loc[mask_consec, "DT_Hrs"] = np.maximum(
         0, df.loc[mask_consec, "Hours_Worked"] - 8.0
     )
+
+    # Drop intermediate helpers, but KEEP Streak_ID for the reporting function!
+    df = df.drop(columns=["Prev_Workday", "Days_Diff", "New_Streak"])
 
     # --- 5. Dynamic Weekly Overtime Logic ---
     df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
