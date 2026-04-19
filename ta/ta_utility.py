@@ -20,16 +20,7 @@ def add_consec_day_reporting(
     df = daily_df.copy()
 
     # 1. Fetch dynamic OT limits in case locations have different rules for the 8-hour threshold
-    g_ot_day = client_params["global"]["ot_day_max"]
-    if "Location" in df.columns:
-        locs = client_params.get("locations", {})
-        ot_day_map = {
-            loc: config.get("ot_day_max", g_ot_day) for loc, config in locs.items()
-        }
-        limit_ot_day = df["Location"].map(ot_day_map).fillna(g_ot_day)
-    else:
-        # Fallback just in case Location was dropped in a previous step
-        limit_ot_day = g_ot_day
+    # Removed - fixed Standard CA Consecutive Day math: First 8 hours = OT, everything over 8 = DT
 
     # 2. Find the First Day of the Streak
     # Since the streak is contained within a specific workweek, the start of the streak
@@ -50,12 +41,12 @@ def add_consec_day_reporting(
         # Tag the start date of the streak
         df.loc[mask_consec, "First_Day_of_Streak"] = first_days_of_week[mask_consec]
 
-        # Calculate the split: First 8 hours (or custom limit) to OT, remainder to DT
+        # Calculate the split: First 8 hours to OT, remainder to DT
         df.loc[mask_consec, "Consec_OT_Hours"] = np.minimum(
-            df.loc[mask_consec, "Hours_Worked"], limit_ot_day[mask_consec]
+            df.loc[mask_consec, "Hours_Worked"], 8.0
         )
         df.loc[mask_consec, "Consec_DT_Hours"] = np.maximum(
-            0, df.loc[mask_consec, "Hours_Worked"] - limit_ot_day[mask_consec]
+            0, df.loc[mask_consec, "Hours_Worked"] - 8.0
         )
 
     # 4. Clean up the date formatting for clean JSON serialization to React
@@ -278,11 +269,12 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
 
     mask_consec = df["Is_Consecutive_Day_Rule"]
 
-    df.loc[mask_consec, "DT_Hrs"] = (
-        df.loc[mask_consec, "DT_Hrs"] + df.loc[mask_consec, "OT_Hrs"]
-    )
-    df.loc[mask_consec, "OT_Hrs"] = df.loc[mask_consec, "Regular_Hrs"]
+    # Standard CA Consecutive Day math: First 8 hours = OT, everything over 8 = DT
     df.loc[mask_consec, "Regular_Hrs"] = 0.0
+    df.loc[mask_consec, "OT_Hrs"] = np.minimum(df.loc[mask_consec, "Hours_Worked"], 8.0)
+    df.loc[mask_consec, "DT_Hrs"] = np.maximum(
+        0, df.loc[mask_consec, "Hours_Worked"] - 8.0
+    )
 
     # --- 5. Dynamic Weekly Overtime Logic ---
     df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
