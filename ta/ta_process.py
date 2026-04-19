@@ -53,7 +53,9 @@ def process_data_ta(
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
 
     # 6. Ensure inputed Pay Date matches the contents of the file
-    is_valid, msg = ta_utility.validate_intake_pay_date(df, pay_date, client_params)
+    is_valid, msg = ta_utility.validate_intake_pay_date(
+        df, pay_date, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
+    )
     if not is_valid:
         # Return a 400 Bad Request to tell React the user messed up
         return {

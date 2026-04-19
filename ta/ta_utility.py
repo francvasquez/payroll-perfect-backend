@@ -69,13 +69,17 @@ def add_consec_day_reporting(
 
 
 def validate_intake_pay_date(
-    raw_df: pd.DataFrame, target_pay_date: str, client_params: dict
+    raw_df: pd.DataFrame,
+    target_pay_date: str,
+    client_params: dict,
+    pay_date_anchor: str,
 ) -> tuple[bool, str]:
     """
     Validates user-inputted pay date against the actual punch timestamps in the raw file.
     Returns a tuple: (is_valid: bool, status_message: str)
     """
-    # 1. Catch completely invalid date strings (e.g., "2026-13-45" or text)
+
+    # 1. Catch completely invalid date strings FIRST
     try:
         target_date = pd.to_datetime(target_pay_date).normalize()
     except Exception:
@@ -85,17 +89,28 @@ def validate_intake_pay_date(
     pp_length = client_params["global"]["pay_period_length"]
     days_to_pay = client_params["global"]["days_bet_payroll_end_and_pay_date"]
 
-    # 3. Calculate the expected work window for the inputted pay date
+    # 3. --- Checks against anchor pay date ---
+    master_anchor = pd.to_datetime(pay_date_anchor).normalize()
+
+    # 4. Check if the inputted date is an exact multiple of 14 days from the master anchor
+    days_diff = (target_date - master_anchor).days
+    if days_diff % pp_length != 0:
+        error_msg = (
+            f"Invalid Pay Date! {target_date.date()} does not align with the company's {pp_length}-day payroll cycle.\n"
+            f"Please double-check the date. Valid pay dates fall exactly every {pp_length} days."
+        )
+        return False, error_msg
+    # ------------------------------------------
+
+    # 5. Calculate the expected work window for the inputted pay date
     expected_end = target_date - pd.to_timedelta(days_to_pay, unit="D")
     expected_start = expected_end - pd.to_timedelta(pp_length - 1, unit="D")
 
-    # 4. Extract the actual physical boundaries of the raw data
-    # (Using .min() and .max() is highly optimized and very fast in Pandas)
+    # 6. Extract the actual physical boundaries of the raw data
     actual_min = raw_df["In Punch"].min().normalize()
     actual_max = raw_df["In Punch"].max().normalize()
 
-    # 5. Sanity Check: Is there an overlap?
-    # If the expected window is completely BEFORE or completely AFTER the data in the file
+    # 7. Sanity Check: Is there an overlap?
     if expected_end < actual_min or expected_start > actual_max:
         error_msg = (
             f"Date Mismatch! You entered Pay Date: {target_date.date()}.\n"
@@ -104,8 +119,7 @@ def validate_intake_pay_date(
         )
         return False, error_msg
 
-    # 6. Optional: Strict bounds check (Warning only)
-    # If the file overlaps, but seems to be missing the start or end of the expected period
+    # 8. Optional: Strict bounds check (Warning only)
     if actual_min > expected_start or actual_max < expected_end:
         warning_msg = (
             f"Warning: The file was accepted, but the data range ({actual_min.date()} to {actual_max.date()}) "
