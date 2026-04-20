@@ -375,70 +375,108 @@ def handle_get_ta_columns(clientId):
 
 def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCols):
     try:
-        conn = get_db_connection()  # Use your existing connection engine
-        # --- ADD THIS CHECK ---
+        conn = get_db_connection()
         if conn is None:
             return {
-                "statusCode": 503,  # Service Unavailable
+                "statusCode": 503,
                 "headers": app_config.CORS_HEADERS,
                 "body": json.dumps(
                     {"error": "Database is currently unreachable. Check network/VPN."}
                 ),
             }
-        # -----------------------
+
         cur = conn.cursor()
 
-        table_name = f"{clientId}_ta"
-
-        # 1. Table Name & Column Safety
-        table_name = f"{clientId}_ta"
-        base_cols = ["ID", "In Punch", "Out Punch", "Employee"]  # Added ID for clarity
+        # ==========================================
+        # 1. FETCH RAW PUNCHES (The "Cause")
+        # ==========================================
+        raw_table_name = f"{clientId}_ta"
+        base_cols = ["ID", "In Punch", "Out Punch", "Employee"]
         all_cols = base_cols + [c for c in selectedCols if c not in base_cols]
 
-        # 2. Build secure dynamic SQL
-        # Using psycopg2.sql to prevent injection on identifiers
         select_clause = sql.SQL(", ").join(map(sql.Identifier, all_cols))
-
-        query = sql.SQL("SELECT {fields} FROM {table} WHERE 1=1").format(
-            fields=select_clause, table=sql.Identifier(table_name)
+        raw_query = sql.SQL("SELECT {fields} FROM {table} WHERE 1=1").format(
+            fields=select_clause, table=sql.Identifier(raw_table_name)
         )
 
-        params = []
+        raw_params = []
+        exclusive_end = None
 
-        # 3. Apply Filters
         if employeeId:
-            query += sql.SQL(' AND "ID" = %s')
-            params.append(employeeId)
+            raw_query += sql.SQL(' AND "ID" = %s')
+            raw_params.append(employeeId)
 
         if startDate and endDate:
             end_dt = datetime.strptime(endDate, "%Y-%m-%d") + timedelta(days=1)
             exclusive_end = end_dt.strftime("%Y-%m-%d")
 
-            query += sql.SQL(' AND "In Punch" >= %s AND "In Punch" < %s')
-            params.append(startDate)  # e.g., "2026-02-21" (Includes start of day)
-            params.append(
-                exclusive_end
-            )  # e.g., "2026-02-22" (Excludes start of next day)
+            raw_query += sql.SQL(' AND "In Punch" >= %s AND "In Punch" < %s')
+            raw_params.append(startDate)
+            raw_params.append(exclusive_end)
 
-        # 4. Sorting & Execution
-        query += sql.SQL(' ORDER BY "In Punch" ASC LIMIT 300')
+        raw_query += sql.SQL(' ORDER BY "In Punch" ASC LIMIT 300')
+        cur.execute(raw_query, tuple(raw_params))
 
-        cur.execute(query, tuple(params))
+        raw_columns = [desc[0] for desc in cur.description]
+        raw_results = [dict(zip(raw_columns, row)) for row in cur.fetchall()]
 
-        # 4. Map results to a list of dictionaries for the React UI
-        columns = [desc[0] for desc in cur.description]
-        results = [dict(zip(columns, row)) for row in cur.fetchall()]
+        # ==========================================
+        # 2. FETCH DAILY TOTALS (The "Effect")
+        # ==========================================
+        daily_results = []
+        daily_table_name = f"{clientId}_daily_df"
 
-        # Close connection
+        # Safety Check: Does the daily_df table exist for this client yet?
+        cur.execute(
+            """
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = %s
+            );
+        """,
+            (daily_table_name,),
+        )
+
+        if cur.fetchone()[0]:
+            # Table exists, let's grab the aggregated data
+            # Selecting all columns (*) so React has access to everything
+            daily_query = sql.SQL("SELECT * FROM {table} WHERE 1=1").format(
+                table=sql.Identifier(daily_table_name)
+            )
+            daily_params = []
+
+            if employeeId:
+                daily_query += sql.SQL(' AND "ID" = %s')
+                daily_params.append(employeeId)
+
+            if startDate and endDate and exclusive_end:
+                # We can safely reuse the inclusive start and exclusive end
+                daily_query += sql.SQL(
+                    ' AND "Attributed_Workday" >= %s AND "Attributed_Workday" < %s'
+                )
+                daily_params.append(startDate)
+                daily_params.append(exclusive_end)
+
+            daily_query += sql.SQL(' ORDER BY "Attributed_Workday" ASC')
+            cur.execute(daily_query, tuple(daily_params))
+
+            daily_columns = [desc[0] for desc in cur.description]
+            daily_results = [dict(zip(daily_columns, row)) for row in cur.fetchall()]
+
         cur.close()
         conn.close()
+
+        # ==========================================
+        # 3. PACKAGE AND RETURN SPLIT DATA
+        # ==========================================
+        split_data = {"daily_totals": daily_results, "raw_punches": raw_results}
 
         return {
             "statusCode": 200,
             "headers": app_config.CORS_HEADERS,
             "body": json.dumps(
-                results, default=str
-            ),  # default=str handles Date/Timestamp conversion
+                split_data, default=str  # Handles Date/Timestamp conversion
+            ),
         }
 
     except Exception as e:
