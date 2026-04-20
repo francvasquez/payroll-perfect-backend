@@ -1,4 +1,4 @@
-from helper.db_utils import save_ta_to_db, get_db_connection
+from helper.db_utils import save_ta_to_db, save_daily_df_to_db, get_db_connection
 from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
 import utility
 from . import ta_utility
@@ -14,15 +14,8 @@ logger.setLevel(logging.INFO)
 def process_data_ta(
     df,
     client_params,
-    # locations_config,
     system_config,
-    # number_of_consec_days_before_ot,
     min_wage,
-    # ot_day_max,
-    # ot_week_max,
-    # dt_day_max,
-    # first_date,
-    # last_date,
     pay_date,
     clientId,
     processed_waiver_df=None,
@@ -140,35 +133,35 @@ def process_data_ta(
     # Add reporting columns for consecutive day calcs
     daily_df = ta_utility.add_consec_day_reporting(daily_df, client_params)
 
-    debug_ids = [
-        "23J0005906",
-    ]  # Example IDs to check in debug
-    debug_cols = [
-        "Employee",
-        "ID",
-        "Attributed_Workday",
-        "Hours_Worked",
-        "Regular_Hrs",
-        "OT_Hrs",
-        "DT_Hrs",
-        "Fiscal_Pay_Date",
-        "OT_Hours_Pay_Period",
-        "DT_Hours_Pay_Period",
-        "OT_Hours_Paid",
-        "DT_Hours_Paid",
-        "OT_Variance_(hrs)",
-        "DT_Variance_(hrs)",
-        "Workweek_ID",
-        "Days_Worked_In_Week",
-        "Is_Consecutive_Day_Rule",
-        "First_Day_of_Streak",
-        "Consec_OT_Hours",
-        "Consec_DT_Hours",
-        "Cum_Reg_Hrs",
-        "Weekly_OT_Spillover",
-    ]
-    for debug_id in debug_ids:
-        debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
+    # debug_ids = [
+    #     "23J0005906",
+    # ]  # Example IDs to check in debug
+    # debug_cols = [
+    #     "Employee",
+    #     "ID",
+    #     "Attributed_Workday",
+    #     "Hours_Worked",
+    #     "Regular_Hrs",
+    #     "OT_Hrs",
+    #     "DT_Hrs",
+    #     "Fiscal_Pay_Date",
+    #     "OT_Hours_Pay_Period",
+    #     "DT_Hours_Pay_Period",
+    #     "OT_Hours_Paid",
+    #     "DT_Hours_Paid",
+    #     "OT_Variance_(hrs)",
+    #     "DT_Variance_(hrs)",
+    #     "Workweek_ID",
+    #     "Days_Worked_In_Week",
+    #     "Is_Consecutive_Day_Rule",
+    #     "First_Day_of_Streak",
+    #     "Consec_OT_Hours",
+    #     "Consec_DT_Hours",
+    #     "Cum_Reg_Hrs",
+    #     "Weekly_OT_Spillover",
+    # ]
+    # for debug_id in debug_ids:
+    #     debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
 
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
@@ -177,7 +170,8 @@ def process_data_ta(
     conn = get_db_connection()
     if conn:
         try:
-            save_ta_to_db(df, clientId, pay_date, conn)
+            save_ta_to_db(df, clientId, pay_date, conn)  # punch dataframe
+            save_daily_df_to_db(daily_df, clientId, pay_date, conn)  # workday dataframe
         except Exception as e:
             logger.error(f"Failed to save to database: {e}")
         finally:

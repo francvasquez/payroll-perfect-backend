@@ -22,6 +22,124 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
+def save_daily_df_to_db(
+    daily_df: pd.DataFrame, clientId: str, target_pay_date: str, conn
+):
+    """
+    Saves the daily_df to PostgreSQL using a transactional Wipe & Reload pattern
+    to prevent ghost records, and dynamically manages schema evolution.
+    """
+    if daily_df.empty:
+        logger.info("daily_df is empty. Nothing to save.")
+        return
+
+    # 1. Prepare Metadata and Table Naming
+    # PostgreSQL prefers lowercase table names to avoid quoting headaches
+    table_name = f"{clientId}_daily_df".lower()
+
+    df = daily_df.copy()
+    df["Last_Updated"] = pd.Timestamp.now(tz="America/Los_Angeles")
+
+    # Critical: psycopg2 crashes on Pandas NaN/NaT. Convert them to Python None (SQL NULL)
+    df = df.where(pd.notnull(df), None)
+
+    cursor = conn.cursor()
+
+    try:
+        # --- 2. DYNAMIC SCHEMA MANAGEMENT ---
+        # Map Pandas data types to PostgreSQL data types
+        def get_pg_type(dtype):
+            dtype_str = str(dtype)
+            if "int" in dtype_str:
+                return "INTEGER"
+            if "float" in dtype_str:
+                return "NUMERIC"
+            if "bool" in dtype_str:
+                return "BOOLEAN"
+            if "datetime" in dtype_str:
+                return "TIMESTAMP WITH TIME ZONE"
+            return "TEXT"
+
+        # Check if table exists
+        cursor.execute(
+            """
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = %s
+            );
+        """,
+            (table_name,),
+        )
+
+        table_exists = cursor.fetchone()[0]
+
+        if not table_exists:
+            # Auto-create the table with the composite primary key
+            cols = [f'"{col}" {get_pg_type(dtype)}' for col, dtype in df.dtypes.items()]
+            create_query = f"""
+                CREATE TABLE {table_name} (
+                    {', '.join(cols)}, 
+                    PRIMARY KEY ("ID", "Attributed_Workday")
+                );
+            """
+            cursor.execute(create_query)
+        else:
+            # Check for missing columns and auto-alter the table
+            cursor.execute(
+                """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s;
+            """,
+                (table_name,),
+            )
+            existing_cols = [row[0] for row in cursor.fetchall()]
+
+            for col in df.columns:
+                # Postgres lowercases column names in information_schema unless they were created with quotes
+                if col.lower() not in existing_cols:
+                    alter_query = f'ALTER TABLE {table_name} ADD COLUMN "{col}" {get_pg_type(df[col].dtype)};'
+                    cursor.execute(alter_query)
+
+        # --- 2.5 CREATE FAST LOOKUP INDEX ON Fiscal_Pay_Date ---
+        index_name = f"idx_{table_name}_pay_date"
+        index_query = f"""
+            CREATE INDEX IF NOT EXISTS {index_name} 
+            ON {table_name} ("Fiscal_Pay_Date");
+        """
+        cursor.execute(index_query)
+
+        # --- 3. WIPE AND RELOAD (TRANSACTIONAL) ---
+        # Erase existing records for this specific pay period to clear stragglers
+        delete_query = f'DELETE FROM {table_name} WHERE "Fiscal_Pay_Date" = %s;'
+        # Note: If target_pay_date is a string, we pass it directly.
+        cursor.execute(delete_query, (str(target_pay_date),))
+
+        # --- 4. BULK INSERT ---
+        columns = [f'"{col}"' for col in df.columns]
+        insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES %s"
+
+        # Convert dataframe to a list of tuples for psycopg2
+        values = [tuple(row) for row in df.to_numpy()]
+
+        # execute_values is highly optimized for bulk inserts in psycopg2
+        execute_values(cursor, insert_query, values)
+
+        # Commit the entire Wipe + Insert transaction
+        conn.commit()
+        logger.info(
+            f"Successfully saved {len(df)} rows to {table_name} for pay date {target_pay_date}."
+        )
+
+    except Exception as e:
+        # If anything fails (like a bad data type), undo the DELETE so we don't lose data
+        conn.rollback()
+        logger.error(f"Error saving daily_df to DB: {e}")
+        raise e
+    finally:
+        cursor.close()
+
+
 def get_db_connection():
     """
     Attempts to connect to the DB, graceful exit continues code if unreachable.
