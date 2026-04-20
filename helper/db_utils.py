@@ -22,6 +22,28 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
+def worker_save_ta(df, clientId, pay_date):
+    """Worker thread for raw punches. Gets its own isolated connection."""
+    conn = get_db_connection()
+    if not conn:
+        raise ConnectionError("Raw TA Worker: DB connection failed.")
+    try:
+        save_ta_to_db(df, clientId, pay_date, conn)
+    finally:
+        conn.close()
+
+
+def worker_save_daily(daily_df, clientId, pay_date):
+    """Worker thread for daily totals. Gets its own isolated connection."""
+    conn = get_db_connection()
+    if not conn:
+        raise ConnectionError("Daily DF Worker: DB connection failed.")
+    try:
+        save_daily_df_to_db(daily_df, clientId, pay_date, conn)
+    finally:
+        conn.close()
+
+
 def save_daily_df_to_db(
     daily_df: pd.DataFrame, clientId: str, target_pay_date: str, conn
 ):
@@ -140,89 +162,6 @@ def save_daily_df_to_db(
         cursor.close()
 
 
-def get_db_connection():
-    """
-    Attempts to connect to the DB, graceful exit continues code if unreachable.
-    Returns the connection object if successful, or None if the DB is unreachable.
-    """
-    try:
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT", "5432"),
-            database=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            connect_timeout=5,  # Reduced timeout for faster feedback
-        )
-        return conn
-    except psycopg2.OperationalError as e:
-        # This catches "Connection Refused" (Instance paused)
-        logger.warning(
-            f"NOTICE: Database is currently unreachable or paused. Skipping DB operations. Details: {e}"
-        )
-        return None
-    except Exception as e:
-        # Catches other issues like wrong passwords
-        logger.error(f"ERROR: Unexpected connection error: {e}")
-        return None
-
-
-def get_pg_type(dtype):
-    """Maps pandas dtypes to PostgreSQL types."""
-    if pd.api.types.is_integer_dtype(dtype):
-        return "INTEGER"
-    if pd.api.types.is_float_dtype(dtype):
-        return "DOUBLE PRECISION"
-    if pd.api.types.is_datetime64_any_dtype(dtype):
-        return "TIMESTAMP"
-    if pd.api.types.is_bool_dtype(dtype):
-        return "BOOLEAN"
-    return "TEXT"
-
-
-def delete_ta_from_db(conn, clientId, pay_date):
-    """
-    Deletes all rows for a specific pay date from ta table.
-    """
-    full_table_name = f"{clientId}_ta"
-
-    try:
-        # 'with conn' handles the COMMIT/ROLLBACK
-        with conn:
-            with conn.cursor() as cur:
-                # 1. Verify table exists to prevent a 42P01 (Undefined Table) error
-                cur.execute(
-                    """
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_name = %s
-                    );
-                """,
-                    (full_table_name,),
-                )
-
-                if not cur.fetchone()[0]:
-                    print(
-                        f"Table {full_table_name} does not exist. Skipping DB delete."
-                    )
-                    return 0
-
-                # 2. Execute the deletion
-                # Table name is string-formatted (safe if internal), value is parameterized
-                query = f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s'
-                cur.execute(query, (pay_date,))
-
-                deleted_rows = cur.rowcount
-                print(
-                    f"✓ Successfully deleted {deleted_rows} rows from {full_table_name} for {pay_date}"
-                )
-                return deleted_rows
-
-    except Exception as e:
-        print(f"Error deleting from database table {full_table_name}: {e}")
-        raise e
-
-
 def save_ta_to_db(df, clientId, pay_date, conn):
 
     # Add Metadata
@@ -336,6 +275,89 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     finally:
         # Do NOT put a return statement here
         print("Closing database cursor logic.")
+
+
+def get_db_connection():
+    """
+    Attempts to connect to the DB, graceful exit continues code if unreachable.
+    Returns the connection object if successful, or None if the DB is unreachable.
+    """
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432"),
+            database=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            connect_timeout=5,  # Reduced timeout for faster feedback
+        )
+        return conn
+    except psycopg2.OperationalError as e:
+        # This catches "Connection Refused" (Instance paused)
+        logger.warning(
+            f"NOTICE: Database is currently unreachable or paused. Skipping DB operations. Details: {e}"
+        )
+        return None
+    except Exception as e:
+        # Catches other issues like wrong passwords
+        logger.error(f"ERROR: Unexpected connection error: {e}")
+        return None
+
+
+def get_pg_type(dtype):
+    """Maps pandas dtypes to PostgreSQL types."""
+    if pd.api.types.is_integer_dtype(dtype):
+        return "INTEGER"
+    if pd.api.types.is_float_dtype(dtype):
+        return "DOUBLE PRECISION"
+    if pd.api.types.is_datetime64_any_dtype(dtype):
+        return "TIMESTAMP"
+    if pd.api.types.is_bool_dtype(dtype):
+        return "BOOLEAN"
+    return "TEXT"
+
+
+def delete_ta_from_db(conn, clientId, pay_date):
+    """
+    Deletes all rows for a specific pay date from ta table.
+    """
+    full_table_name = f"{clientId}_ta"
+
+    try:
+        # 'with conn' handles the COMMIT/ROLLBACK
+        with conn:
+            with conn.cursor() as cur:
+                # 1. Verify table exists to prevent a 42P01 (Undefined Table) error
+                cur.execute(
+                    """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = %s
+                    );
+                """,
+                    (full_table_name,),
+                )
+
+                if not cur.fetchone()[0]:
+                    print(
+                        f"Table {full_table_name} does not exist. Skipping DB delete."
+                    )
+                    return 0
+
+                # 2. Execute the deletion
+                # Table name is string-formatted (safe if internal), value is parameterized
+                query = f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s'
+                cur.execute(query, (pay_date,))
+
+                deleted_rows = cur.rowcount
+                print(
+                    f"✓ Successfully deleted {deleted_rows} rows from {full_table_name} for {pay_date}"
+                )
+                return deleted_rows
+
+    except Exception as e:
+        print(f"Error deleting from database table {full_table_name}: {e}")
+        raise e
 
 
 def handle_get_ta_columns(clientId):

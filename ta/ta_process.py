@@ -1,4 +1,8 @@
-from helper.db_utils import save_ta_to_db, save_daily_df_to_db, get_db_connection
+from helper.db_utils import (
+    get_db_connection,
+    worker_save_daily,
+    worker_save_ta,
+)
 from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
 import utility
 from . import ta_utility
@@ -6,6 +10,7 @@ import logging
 import json
 import pandas as pd
 from helper.aws import debug_to_s3
+import concurrent.futures
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -167,17 +172,32 @@ def process_data_ta(
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
     # Write to DB TODO Improve error handling
-    conn = get_db_connection()
-    if conn:
+    # 1. Quick ping to see if the DB is awake before spinning up threads
+    ping_conn = get_db_connection()
+
+    if ping_conn:
+        # Close the ping connection immediately! The threads will get their own.
+        ping_conn.close()
+
         try:
-            save_ta_to_db(df, clientId, pay_date, conn)  # punch dataframe
-            save_daily_df_to_db(daily_df, clientId, pay_date, conn)  # workday dataframe
+            # 2. Spin up the ThreadPool
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+
+                # Submit both jobs to run simultaneously
+                future_ta = executor.submit(worker_save_ta, df, clientId, pay_date)
+                future_daily = executor.submit(
+                    worker_save_daily, daily_df, clientId, pay_date
+                )
+
+                # 3. Wait for them to finish.
+                # .result() will raise any exceptions that happened inside the threads.
+                future_ta.result()
+                future_daily.result()
+
         except Exception as e:
-            logger.error(f"Failed to save to database: {e}")
-        finally:
-            conn.close()
+            logger.error(f"Failed to save to database concurrently: {e}")
     else:
-        # We just log it and move on, we don't 'return' here
+        # DB is paused fallback
         logger.warning(
             "DB is paused. Skipping the save step, but continuing with the response."
         )
