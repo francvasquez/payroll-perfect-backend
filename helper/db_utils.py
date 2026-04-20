@@ -93,11 +93,11 @@ def save_daily_df_to_db(
             """,
                 (table_name,),
             )
-            existing_cols = [row[0] for row in cursor.fetchall()]
+            existing_cols_lower = [row[0].lower() for row in cursor.fetchall()]
 
             for col in df.columns:
                 # Postgres lowercases column names in information_schema unless they were created with quotes
-                if col.lower() not in existing_cols:
+                if col.lower() not in existing_cols_lower:
                     alter_query = f'ALTER TABLE {table_name} ADD COLUMN "{col}" {get_pg_type(df[col].dtype)};'
                     cursor.execute(alter_query)
 
