@@ -141,9 +141,7 @@ def process_data_ta(
     daily_df = ta_utility.add_consec_day_reporting(daily_df, client_params)
 
     debug_ids = [
-        "22R0005886",
-        "2JV0005396",
-        "1DI0080974",
+        "23J0005906",
     ]  # Example IDs to check in debug
     debug_cols = [
         "Employee",
