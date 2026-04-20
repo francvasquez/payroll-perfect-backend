@@ -9,7 +9,8 @@ from . import ta_utility
 import logging
 import json
 import pandas as pd
-from helper.aws import debug_to_s3
+
+# from helper.aws import debug_to_s3
 import concurrent.futures
 
 logger = logging.getLogger()
@@ -137,36 +138,6 @@ def process_data_ta(
 
     # Add reporting columns for consecutive day calcs
     daily_df = ta_utility.add_consec_day_reporting(daily_df, client_params)
-
-    # debug_ids = [
-    #     "23J0005906",
-    # ]  # Example IDs to check in debug
-    # debug_cols = [
-    #     "Employee",
-    #     "ID",
-    #     "Attributed_Workday",
-    #     "Hours_Worked",
-    #     "Regular_Hrs",
-    #     "OT_Hrs",
-    #     "DT_Hrs",
-    #     "Fiscal_Pay_Date",
-    #     "OT_Hours_Pay_Period",
-    #     "DT_Hours_Pay_Period",
-    #     "OT_Hours_Paid",
-    #     "DT_Hours_Paid",
-    #     "OT_Variance_(hrs)",
-    #     "DT_Variance_(hrs)",
-    #     "Workweek_ID",
-    #     "Days_Worked_In_Week",
-    #     "Is_Consecutive_Day_Rule",
-    #     "First_Day_of_Streak",
-    #     "Consec_OT_Hours",
-    #     "Consec_DT_Hours",
-    #     "Cum_Reg_Hrs",
-    #     "Weekly_OT_Spillover",
-    # ]
-    # for debug_id in debug_ids:
-    #     debug_to_s3(daily_df, debug_id, debug_cols, "pp-debug-bucket")
 
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
