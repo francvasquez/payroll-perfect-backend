@@ -256,14 +256,14 @@ def apply_weekly_rules(
 
     # NEW 1.2 If needs_carryover, get carryover dictionary from db
     # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day (regardless of CBA rule toggle at this point)
-    print(f"DEBUG: Carryover logic starting")
+    logger.info(f"DEBUG: Carryover logic starting")
     carryover_dict = {}
     if needs_carryover:
         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
 
         # --- NEW DEBUG LOG (provide a sample of IDs with carry over) ---
         num_found = len(carryover_dict)
-        print(f"DEBUG: carryover_dict length:", num_found)
+        logger.info(f"DEBUG: carryover_dict length:", num_found)
         # Safely grab the first 3 keys (if there are less than 3, Python handles it gracefully)
         sample_ids = list(carryover_dict.keys())[:3]
 
@@ -287,9 +287,15 @@ def apply_weekly_rules(
         loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
     }
 
-    df["limit_ot_week"] = df["Location"].map(ot_week_map).fillna(g_ot_week)
-    df["limit_consec"] = df["Location"].map(consec_map).fillna(g_consec)
-    df["is_cba_rolling"] = df["Location"].map(cba_map).fillna(g_cba)
+    df["limit_ot_week"] = (
+        df["Location"].map(ot_week_map).fillna(g_ot_week).infer_objects(copy=False)
+    )
+    df["limit_consec"] = (
+        df["Location"].map(consec_map).fillna(g_consec).infer_objects(copy=False)
+    )
+    df["is_cba_rolling"] = (
+        df["Location"].map(cba_map).fillna(g_cba).infer_objects(copy=False)
+    )
 
     # 3. --- Generate Workweek_ID ---
     day_map = {
@@ -380,7 +386,7 @@ def apply_weekly_rules(
 
     # 4C. Execute the Traffic Cop across all employees
     # (Since we sort chronologically in Step 3, the rolling math works perfectly)
-    df = df.groupby("ID", group_keys=False).apply(apply_streaks)
+    df = df.groupby("ID", group_keys=False)[df.columns].apply(apply_streaks)
 
     # 4D. Trigger the Penalty based on the dynamic limit mapped in Step 2!
     df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
