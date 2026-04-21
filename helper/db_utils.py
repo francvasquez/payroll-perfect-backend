@@ -25,9 +25,8 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 def get_carryover_streaks(client_id, pay_date, client_params):
     """
     Opens an isolated DB connection, calculates the last day of the prior pay period,
-    and fetches streak carryovers for CBA rolling logic.
+    and fetches streak carryovers exclusively for locations where cba_consec_anyweek is True.
     """
-    # 1. Borrow a quick connection specifically for this check
     conn = get_db_connection()
     if not conn:
         logger.warning(
@@ -36,7 +35,7 @@ def get_carryover_streaks(client_id, pay_date, client_params):
         return {}
 
     try:
-        # 2. Calculate the exact target date
+        # 1. Calculate the exact target date
         pay_date_obj = pd.to_datetime(pay_date)
         days_bet_payroll_end_and_pay_date = client_params.get("global", {}).get(
             "days_bet_payroll_end_and_pay_date", 6
@@ -48,22 +47,39 @@ def get_carryover_streaks(client_id, pay_date, client_params):
             - pd.Timedelta(days=pay_period_length)
         ).strftime("%Y-%m-%d")
 
-        # 3. Query the database
+        # 2. Query the database (NEW: We added "Location" to the SELECT statement)
         query = f"""
-            SELECT "ID", "Days_Worked_In_Week"
+            SELECT "ID", "Days_Worked_In_Week", "Location"
             FROM {client_id}_daily_df
             WHERE "Attributed_Workday" = %s
         """
 
         with conn.cursor() as cur:
             cur.execute(query, (last_day_prior_pay_period,))
-            return {row[0]: row[1] for row in cur.fetchall()}
+
+            # 3. Filter the results dynamically based on the JSON config
+            filtered_dict = {}
+            g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
+
+            for row in cur.fetchall():
+                emp_id = row[0]
+                streak = row[1]
+                loc = row[2]
+
+                # Check for a location-specific override, fallback to the global default
+                loc_config = client_params.get("locations", {}).get(loc, {})
+                is_cba = loc_config.get("cba_consec_anyweek", g_cba)
+
+                # Only add them to the dictionary if they are subject to the rolling CBA rule
+                if is_cba:
+                    filtered_dict[emp_id] = streak
+
+            return filtered_dict
 
     except Exception as e:
         logger.error(f"Failed to fetch carryover streaks: {e}")
         return {}
     finally:
-        # 4. ALWAYS close the connection so the ThreadPool can use the DB later!
         conn.close()
 
 

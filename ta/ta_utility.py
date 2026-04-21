@@ -255,7 +255,7 @@ def apply_weekly_rules(
             break
 
     # NEW 1.2 If needs_carryover, get carryover dictionary from db
-    # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day (regardless of CBA rule toggle at this point)
+    # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day and have CBA rule for consec days anytime.
     logger.info(f"DEBUG: Carryover logic starting")
     carryover_dict = {}
     if needs_carryover:
@@ -263,7 +263,6 @@ def apply_weekly_rules(
 
         # --- NEW DEBUG LOG (provide a sample of IDs with carry over) ---
         num_found = len(carryover_dict)
-        logger.info(f"DEBUG: carryover_dict length: {num_found}")
         # Safely grab the first 3 keys (if there are less than 3, Python handles it gracefully)
         sample_ids = list(carryover_dict.keys())[:3]
 
