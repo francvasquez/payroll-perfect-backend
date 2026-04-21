@@ -9,17 +9,6 @@ from helper.db_utils import get_carryover_streaks
 logger = logging.getLogger()
 
 
-def get_effective_param(client_params, location, param_name):
-    """Fetches a parameter from client_params prioritizing location overrides over global defaults."""
-    # 1. Check if the location exists in the config and has the specific parameter
-    if location in client_params.get("locations", {}):
-        if param_name in client_params["locations"][location]:
-            return client_params["locations"][location][param_name]
-
-    # 2. Fallback to the global parameter
-    return client_params.get("global", {}).get(param_name)
-
-
 def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds explicit reporting columns for consecutive day violations,
