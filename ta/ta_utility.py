@@ -3,9 +3,21 @@ import pandas as pd
 from . import ta_masks
 import utility
 import logging
+from helper.db_utils import get_carryover_streaks
 
 
 logger = logging.getLogger()
+
+
+def get_effective_param(client_params, location, param_name):
+    """Fetches a parameter from client_params prioritizing location overrides over global defaults."""
+    # 1. Check if the location exists in the config and has the specific parameter
+    if location in client_params.get("locations", {}):
+        if param_name in client_params["locations"][location]:
+            return client_params["locations"][location][param_name]
+
+    # 2. Fallback to the global parameter
+    return client_params.get("global", {}).get(param_name)
 
 
 def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
@@ -231,22 +243,34 @@ def apply_pay_period_totals(
     return df
 
 
-def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
+def apply_weekly_rules(
+    daily_df: pd.DataFrame, client_params: dict, clientId: str, pay_date: str
+) -> pd.DataFrame:
     """
-    Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically
-    based on Location overrides.
+    Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically based on Location overrides. If an employee worked the last day of the preceding pay period, and has a true boolean for cba_consec_anyweek, the streak count will carry over across pay periods instead of resetting at the start of each workweek.
     Columns created in this step are: Workweek_ID, Days_Worked_In_Week, Is_Consecutive_Day_Rule, Cum_Reg_Hrs, Weekly_OT_Spillover
     """
     df = daily_df.copy()
 
-    # 1. Extract Config
+    # 1. --- Extract Config ---
     workweek_start = client_params["global"]["workweek_start"]
     locs = client_params.get("locations", {})
-
     g_ot_week = client_params["global"]["ot_week_max"]
     g_consec = client_params["global"]["number_of_consec_days_before_ot"]
 
-    # 2. Map Limits to Dataframe
+    # NEW 1.1 Check if ANY location requires the rolling CBA logic (cba_consec_anyweek)
+    needs_carryover = client_params.get("global", {}).get("cba_consec_anyweek", False)
+    for loc_data in client_params.get("locations", {}).values():
+        if loc_data.get("cba_consec_anyweek", False):
+            needs_carryover = True
+            break
+
+    # NEW 1.2 If needs_carryover, get carryover dictionary from db
+    carryover_dict = {}
+    if needs_carryover:
+        carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
+
+    # 2. --- Map Limits to Dataframe ---
     ot_week_map = {
         loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
     }
@@ -254,11 +278,17 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
         loc: config.get("number_of_consec_days_before_ot", g_consec)
         for loc, config in locs.items()
     }
+    # NEW: Map the CBA boolean!
+    g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
+    cba_map = {
+        loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
+    }
 
     df["limit_ot_week"] = df["Location"].map(ot_week_map).fillna(g_ot_week)
     df["limit_consec"] = df["Location"].map(consec_map).fillna(g_consec)
+    df["is_cba_rolling"] = df["Location"].map(cba_map).fillna(g_cba)
 
-    # 3. Generate Workweek_ID
+    # 3. --- Generate Workweek_ID ---
     day_map = {
         "Monday": 0,
         "Tuesday": 1,
@@ -280,27 +310,76 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
         by=["Employee", "ID", "Workweek_ID", "Attributed_Workday"]
     ).reset_index(drop=True)
 
-    # --- 4. Dynamic Consecutive Day Logic (Strictly Consecutive) ---
-    # Calculate the gap in days between this shift and the previous shift
+    # --- 4. Dynamic Consecutive Day Logic ---
+    # 4A. Calculate Standard Workweek-Bounded Math (Your existing logic)
     df["Prev_Workday"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
         "Attributed_Workday"
     ].shift(1)
     df["Days_Diff"] = (df["Attributed_Workday"] - df["Prev_Workday"]).dt.days
-
-    # A new streak starts if the gap is greater than 1 day (or on the first day of the week)
     df["New_Streak"] = df["Days_Diff"] != 1
-
-    # Create a unique ID for each uninterrupted streak
     df["Streak_ID"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
         "New_Streak"
     ].cumsum()
-
-    # Count consecutive days strictly within the uninterrupted Streak_ID
-    df["Days_Worked_In_Week"] = (
+    # Save this into a temporary column
+    df["Days_Worked_Standard"] = (
         df.groupby(["Employee", "ID", "Workweek_ID", "Streak_ID"]).cumcount() + 1
     )
 
-    # Trigger is true if consecutive days worked EXCEEDS the 'before_ot' threshold
+    # 4B. Define the Traffic Cop Function
+
+    # 4B1. NEW: Calculate the exact date of "yesterday" (relative to the new pay period)
+    pay_date_obj = pd.to_datetime(pay_date)
+    days_bet_payroll_end_and_pay_date = client_params.get("global", {}).get(
+        "days_bet_payroll_end_and_pay_date", 6
+    )
+    pay_period_length = client_params.get("global", {}).get("pay_period_length", 14)
+    prior_period_date = (
+        pay_date_obj
+        - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+        - pd.Timedelta(days=pay_period_length)
+    )
+
+    def apply_streaks(group):
+        is_cba = group["is_cba_rolling"].iloc[0]
+        emp_id = group["ID"].iloc[0]
+
+        if not is_cba:
+            group["Days_Worked_In_Week"] = group["Days_Worked_Standard"]
+            return group
+
+        # --- THE FIX ---
+        current_streak = carryover_dict.get(emp_id, 0)
+        streaks = []
+
+        # 4B2. Seed the loop with the actual calendar date of the previous period's final day
+        last_date = prior_period_date
+
+        for current_date in group["Attributed_Workday"]:
+
+            # If they didn't work on the final day of the prior period, they have no streak to continue.
+            if current_streak == 0:
+                current_streak = 1
+
+            # If the gap between this shift and 'last_date' is exactly 1 day, the streak continues!
+            # (If this is their first shift of the period, it perfectly checks against 'prior_period_date')
+            elif (current_date - last_date).days == 1:
+                current_streak += 1
+
+            # A gap of 2+ days occurred. The streak breaks.
+            else:
+                current_streak = 1
+
+            streaks.append(current_streak)
+            last_date = current_date
+
+        group["Days_Worked_In_Week"] = streaks
+        return group
+
+    # 4C. Execute the Traffic Cop across all employees
+    # (Since we sort chronologically in Step 3, the rolling math works perfectly)
+    df = df.groupby("ID", group_keys=False).apply(apply_streaks)
+
+    # 4D. Trigger the Penalty based on the dynamic limit mapped in Step 2!
     df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
 
     mask_consec = df["Is_Consecutive_Day_Rule"]
@@ -312,8 +391,16 @@ def apply_weekly_rules(daily_df: pd.DataFrame, client_params: dict) -> pd.DataFr
         0, df.loc[mask_consec, "Hours_Worked"] - 8.0
     )
 
-    # Drop intermediate helpers, but KEEP Streak_ID for the reporting function!
-    df = df.drop(columns=["Prev_Workday", "Days_Diff", "New_Streak"])
+    # Clean up intermediate helpers (Leave Streak_ID for your reporting function!)
+    df = df.drop(
+        columns=[
+            "Prev_Workday",
+            "Days_Diff",
+            "New_Streak",
+            "Days_Worked_Standard",
+            "is_cba_rolling",
+        ]
+    )
 
     # --- 5. Dynamic Weekly Overtime Logic ---
     df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[

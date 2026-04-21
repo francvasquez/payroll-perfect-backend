@@ -123,8 +123,10 @@ def process_data_ta(
     # Create the Daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
     daily_df = ta_utility.create_daily_df(df, client_params)
 
-    # Add to daily_df 40 hours and consecutive days calcs
-    daily_df = ta_utility.apply_weekly_rules(daily_df, client_params)
+    # Add to daily_df 40 hours and consecutive days calcs. This will make a db call to check for previous periods punches if the employee worked the last day of the previous period and has the cba_consec_anyweek boolean set to true.
+    daily_df = ta_utility.apply_weekly_rules(
+        daily_df, client_params, clientId, pay_date
+    )
 
     # Add pay period totals
     daily_df = ta_utility.apply_pay_period_totals(

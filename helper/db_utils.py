@@ -22,6 +22,51 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 
+def get_carryover_streaks(client_id, pay_date, client_params):
+    """
+    Opens an isolated DB connection, calculates the last day of the prior pay period,
+    and fetches streak carryovers for CBA rolling logic.
+    """
+    # 1. Borrow a quick connection specifically for this check
+    conn = get_db_connection()
+    if not conn:
+        logger.warning(
+            "Could not connect to DB for carryover streaks. Defaulting to empty dictionary."
+        )
+        return {}
+
+    try:
+        # 2. Calculate the exact target date
+        pay_date_obj = pd.to_datetime(pay_date)
+        days_bet_payroll_end_and_pay_date = client_params.get("global", {}).get(
+            "days_bet_payroll_end_and_pay_date", 6
+        )
+        pay_period_length = client_params.get("global", {}).get("pay_period_length", 14)
+        last_day_prior_pay_period = (
+            pay_date_obj
+            - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+            - pd.Timedelta(days=pay_period_length)
+        ).strftime("%Y-%m-%d")
+
+        # 3. Query the database
+        query = f"""
+            SELECT "ID", "Days_Worked_In_Week"
+            FROM {client_id}_daily_df
+            WHERE "Attributed_Workday" = %s
+        """
+
+        with conn.cursor() as cur:
+            cur.execute(query, (last_day_prior_pay_period,))
+            return {row[0]: row[1] for row in cur.fetchall()}
+
+    except Exception as e:
+        logger.error(f"Failed to fetch carryover streaks: {e}")
+        return {}
+    finally:
+        # 4. ALWAYS close the connection so the ThreadPool can use the DB later!
+        conn.close()
+
+
 def worker_save_ta(df, clientId, pay_date):
     """Worker thread for raw punches. Gets its own isolated connection."""
     conn = get_db_connection()
