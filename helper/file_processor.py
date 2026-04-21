@@ -57,12 +57,6 @@ def handle_file_upload(event, params):
         pay_periods_per_year = global_config.get(
             "pay_periods_per_year", DEFAULT_PAY_PERIODS_PER_YEAR
         )
-        # ot_day_max = global_config.get("ot_day_max", DEFAULT_OT_DAY_MAX)
-        # ot_week_max = global_config.get("ot_week_max", DEFAULT_OT_WEEK_MAX)
-        # dt_day_max = global_config.get("dt_day_max", DEFAULT_DT_DAY_MAX)
-        # number_of_consec_days_before_ot = global_config.get(
-        #     "number_of_consec_days_before_ot", DEFAULT_CONSEC_DAYS_BEFORE_OT
-        # )
 
         ### 4. Extract pay_date and calculate first_date
         pay_date = pd.to_datetime(params["payDate"])

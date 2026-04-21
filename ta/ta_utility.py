@@ -772,6 +772,7 @@ def add_ot_and_dt_cols(
     ].transform("sum")
 
     ## OVERRIDE COLUMNS ## process time 0.02 seconds
+    ## TODO: This is an older system to determine overrides versus what we have in daily_df. We should consider unifying the approach for cleanup. This does work well however.
 
     # Is there a location based day overtime trigger? Else take global "ot_day_max"
     df["OT Day Max"] = utility.apply_override_else_global(
