@@ -182,21 +182,29 @@ def save_daily_df_to_db(
         # Note: If target_pay_date is a string, we pass it directly.
         cursor.execute(delete_query, (str(target_pay_date),))
 
-        # --- 4. BULK INSERT ---
+        # --- 4. BULK UPSERT (Insert or Update) ---
         columns = [f'"{col}"' for col in df.columns]
-        insert_query = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES %s"
+
+        # Dynamically build the update string (e.g. "Hours_Worked" = EXCLUDED."Hours_Worked")
+        # We skip the primary keys ("ID", "Attributed_Workday") because they are the conflict trigger and don't need updating
+        update_cols = [
+            f'"{col}" = EXCLUDED."{col}"'
+            for col in df.columns
+            if col not in ("ID", "Attributed_Workday")
+        ]
+
+        insert_query = f"""
+            INSERT INTO {table_name} ({', '.join(columns)}) 
+            VALUES %s
+            ON CONFLICT ("ID", "Attributed_Workday") 
+            DO UPDATE SET {', '.join(update_cols)};
+        """
 
         # Convert dataframe to a list of tuples for psycopg2
         values = [tuple(row) for row in df.to_numpy()]
 
         # execute_values is highly optimized for bulk inserts in psycopg2
         execute_values(cursor, insert_query, values)
-
-        # Commit the entire Wipe + Insert transaction
-        conn.commit()
-        logger.info(
-            f"Successfully saved {len(df)} rows to {table_name} for pay date {target_pay_date}."
-        )
 
     except Exception as e:
         # If anything fails (like a bad data type), undo the DELETE so we don't lose data
