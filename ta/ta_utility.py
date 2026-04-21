@@ -8,9 +8,7 @@ import logging
 logger = logging.getLogger()
 
 
-def add_consec_day_reporting(
-    daily_df: pd.DataFrame, client_params: dict
-) -> pd.DataFrame:
+def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds explicit reporting columns for consecutive day violations,
     including the start date of the streak and the exact hours penalized.

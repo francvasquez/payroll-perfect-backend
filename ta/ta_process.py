@@ -137,7 +137,7 @@ def process_data_ta(
     daily_df = ta_utility.filter_target_pay_period(daily_df, pay_date)
 
     # Add reporting columns for consecutive day calcs
-    daily_df = ta_utility.add_consec_day_reporting(daily_df, client_params)
+    daily_df = ta_utility.add_consec_day_reporting(daily_df)
 
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
