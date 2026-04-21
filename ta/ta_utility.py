@@ -260,6 +260,18 @@ def apply_weekly_rules(
     if needs_carryover:
         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
 
+        # --- NEW DEBUG LOG (provide a sample of IDs with carry over) ---
+        num_found = len(carryover_dict)
+        # Safely grab the first 3 keys (if there are less than 3, Python handles it gracefully)
+        sample_ids = list(carryover_dict.keys())[:3]
+
+        # Format the IDs into a clean string, e.g., "ID1, ID2, ID3"
+        samples_str = ", ".join(sample_ids) if sample_ids else "None"
+
+        # Log it to CloudWatch! (Assuming your logger is imported and configured)
+        logger.info(f"{num_found} carryover IDs found: {samples_str}")
+        # ---------------------
+
     # 2. --- Broadcast config to each row based on Global or Location override ---
     ot_week_map = {
         loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
