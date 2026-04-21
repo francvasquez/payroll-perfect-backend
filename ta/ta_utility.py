@@ -263,6 +263,7 @@ def apply_weekly_rules(
 
         # --- NEW DEBUG LOG (provide a sample of IDs with carry over) ---
         num_found = len(carryover_dict)
+        print(f"DEBUG: carryover_dict length:", num_found)
         # Safely grab the first 3 keys (if there are less than 3, Python handles it gracefully)
         sample_ids = list(carryover_dict.keys())[:3]
 
