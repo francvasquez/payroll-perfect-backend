@@ -255,11 +255,12 @@ def apply_weekly_rules(
             break
 
     # NEW 1.2 If needs_carryover, get carryover dictionary from db
+    # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day (regardless of CBA rule toggle at this point)
     carryover_dict = {}
     if needs_carryover:
         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
 
-    # 2. --- Map Limits to Dataframe ---
+    # 2. --- Broadcast config to each row based on Global or Location override ---
     ot_week_map = {
         loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
     }
@@ -267,7 +268,6 @@ def apply_weekly_rules(
         loc: config.get("number_of_consec_days_before_ot", g_consec)
         for loc, config in locs.items()
     }
-    # NEW: Map the CBA boolean!
     g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
     cba_map = {
         loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
