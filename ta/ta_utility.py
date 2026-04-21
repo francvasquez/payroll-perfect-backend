@@ -256,6 +256,7 @@ def apply_weekly_rules(
 
     # NEW 1.2 If needs_carryover, get carryover dictionary from db
     # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day (regardless of CBA rule toggle at this point)
+    print(f"DEBUG: Carryover logic starting")
     carryover_dict = {}
     if needs_carryover:
         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
