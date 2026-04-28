@@ -353,7 +353,7 @@ def apply_weekly_rules(
 
     ot_parts: list[pd.DataFrame] = []
 
-    for (emp_id, ww_id), ww_group in df.groupby(["ID", "Workweek_ID"], sort=False):
+    for (_, _), ww_group in df.groupby(["ID", "Workweek_ID"], sort=False):
         emp_location = ww_group["Location"].iloc[0]
         ot_week_max: float = float(_resolve(client_params, emp_location, "ot_week_max"))
         ww_group = _apply_weekly_ot(ww_group, ot_week_max)
