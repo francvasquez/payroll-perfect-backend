@@ -368,5 +368,16 @@ def apply_weekly_rules(
     df["Cum_Reg_Hrs"] = df["Cum_Reg_Hrs"].astype("float64")
     df["Weekly_OT_Spillover"] = df["Weekly_OT_Spillover"].astype("float64")
     df["Workweek_ID"] = pd.to_datetime(df["Workweek_ID"])
+    # --- THE FIX: Round all float columns to 4 decimal places ---
+    float_cols = [
+        "Hours_Worked",
+        "Regular_Hrs",
+        "OT_Hrs",
+        "DT_Hrs",
+        "Cum_Reg_Hrs",
+        "Weekly_OT_Spillover",
+    ]
+    df[float_cols] = df[float_cols].round(4)
+    # ------------------------------------------------------------
 
     return df
