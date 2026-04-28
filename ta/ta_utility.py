@@ -296,7 +296,27 @@ def apply_weekly_rules(
     df["is_cba_rolling"] = (
         df["Location"].map(cba_map).fillna(g_cba).infer_objects(copy=False)
     )
+    # --- TEMPORARY DEBUG BLOCK ---
+    try:
+        logger.info("=== MAPPING DEBUG START ===")
 
+        # 1. Look at the exact keys the JSON gave us
+        logger.info(f"cba_map keys: {[repr(k) for k in cba_map.keys()]}")
+
+        # 2. Look at the exact unique locations in the dataframe
+        unique_locs = df["Location"].unique().tolist()
+        logger.info(f"DF Locations: {[repr(loc) for loc in unique_locs]}")
+
+        # 3. Look at Acosta's rows right after the mapping
+        acosta_sample = df[df["ID"] == "18J0005747"][
+            ["Attributed_Workday", "Location", "is_cba_rolling"]
+        ].head(3)
+
+        logger.info(f"Acosta Mapping Check:\n{acosta_sample.to_string()}")
+        logger.info("=== MAPPING DEBUG END ===")
+    except Exception as e:
+        logger.error(f"Debug block failed: {e}")
+    # -----------------------------
     # 3. --- Generate Workweek_ID ---
     day_map = {
         "Monday": 0,
