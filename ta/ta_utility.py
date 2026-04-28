@@ -261,18 +261,6 @@ def apply_weekly_rules(
     if needs_carryover:
         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
 
-        # --- NEW DEBUG LOG (provide a sample of IDs with carry over) ---
-        num_found = len(carryover_dict)
-        # Safely grab the first 3 keys (if there are less than 3, Python handles it gracefully)
-        sample_ids = list(carryover_dict.keys())[:3]
-
-        # Format the IDs into a clean string, e.g., "ID1, ID2, ID3"
-        samples_str = ", ".join(sample_ids) if sample_ids else "None"
-
-        # Log it to CloudWatch! (Assuming your logger is imported and configured)
-        logger.info(f"{num_found} carryover IDs found: {samples_str}")
-        # ---------------------
-
     # 2. --- Broadcast config to each row based on Global or Location override ---
     ot_week_map = {
         loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
@@ -345,41 +333,44 @@ def apply_weekly_rules(
         - pd.Timedelta(days=days_gap)
         - pd.Timedelta(days=pay_period_length)
     )
-    # --- TRAP 1 DEBUG: DATE CHECK ---
-    try:
-        logger.info("=== DATE TRAP DEBUG ===")
-        logger.info(f"Raw pay_date passed to function: {repr(pay_date)}")
-        logger.info(f"pay_date_obj evaluated as: {repr(pay_date_obj)}")
-        logger.info(f"prior_period_date evaluated as: {repr(prior_period_date)}")
-    except Exception as e:
-        pass
 
-    # --------------------------------
     def apply_streaks(group):
         emp_id = group["ID"].iloc[0]
-        # --- TRAP 2 DEBUG: ACOSTA DICTIONARY CHECK ---
-        if "18J0005747" in str(emp_id):
-            try:
-                logger.info("=== DICTIONARY TRAP DEBUG (ACOSTA) ===")
-                logger.info(f"Raw emp_id from Dataframe: {repr(emp_id)}")
-                # Safely pull a matching key from the dict to compare
-                matching_keys = [
-                    k for k in carryover_dict.keys() if "18J0005747" in str(k)
-                ]
-                logger.info(
-                    f"Matching keys found in dict: {[repr(k) for k in matching_keys]}"
-                )
-
-                # Test the actual lookup
-                test_val = carryover_dict.get(emp_id, "FAILED_LOOKUP")
-                logger.info(f"Result of carryover_dict.get(emp_id): {test_val}")
-            except Exception as e:
-                pass
-        # ---------------------------------------------
         current_streak = carryover_dict.get(emp_id, 0)
         streaks = []
-
         last_date = prior_period_date
+
+        # --- MISALIGNMENT PROOF DEBUG (ACOSTA) ---
+        if "18J0005747" in str(emp_id):
+            try:
+                logger.info("=== MISALIGNMENT PROOF START ===")
+
+                # 1. Print what the Dataframe visually looks like to us
+                visual_df = group[
+                    ["Attributed_Workday", "is_cba_rolling", "Days_Worked_Standard"]
+                ].copy()
+                logger.info(
+                    f"1. What Pandas sees (Visual Order):\n{visual_df.to_string()}"
+                )
+
+                # 2. Print what the zip() loop is actually receiving from memory
+                logger.info("2. What the zip() loop sees (Memory Order):")
+                zipped_data = list(
+                    zip(
+                        group["Attributed_Workday"],
+                        group["is_cba_rolling"],
+                        group["Days_Worked_Standard"],
+                    )
+                )
+                for i, (d, cba, std) in enumerate(zipped_data):
+                    logger.info(
+                        f"   Loop Step {i}: Date={d.strftime('%Y-%m-%d')}, is_cba={cba}, std_streak={std}"
+                    )
+
+                logger.info("=== MISALIGNMENT PROOF END ===")
+            except Exception as e:
+                logger.error(f"Misalignment debug failed: {e}")
+        # -----------------------------------------
 
         # Zip evaluates row-by-row, allowing fluid location transfers mid-week
         for current_date, is_cba, std_streak in zip(
