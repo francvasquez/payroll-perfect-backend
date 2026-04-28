@@ -315,9 +315,9 @@ def apply_weekly_rules(
         days_to_subtract, unit="D"
     )
 
-    df = df.sort_values(
-        by=["Employee", "ID", "Workweek_ID", "Attributed_Workday"]
-    ).reset_index(drop=True)
+    df = df.sort_values(by=["Employee", "ID", "Attributed_Workday"]).reset_index(
+        drop=True
+    )
 
     # --- 4. Dynamic Consecutive Day Logic ---
     # 4A. Calculate Standard Workweek-Bounded Math (Your existing logic)
