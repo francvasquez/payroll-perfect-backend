@@ -121,7 +121,6 @@ def save_daily_df_to_db(
         return
 
     # 1. Prepare Metadata and Table Naming
-    # PostgreSQL prefers lowercase table names to avoid quoting headaches
     table_name = f"{clientId}_daily_df".lower()
 
     df = daily_df.copy()
@@ -130,109 +129,107 @@ def save_daily_df_to_db(
     # Critical: psycopg2 crashes on Pandas NaN/NaT. Convert them to Python None (SQL NULL)
     df = df.where(pd.notnull(df), None)
 
-    cursor = conn.cursor()
+    logger.info(f"Connected to DB - preparing to upsert to {table_name}")
 
     try:
-        # --- 2. DYNAMIC SCHEMA MANAGEMENT ---
-        # Map Pandas data types to PostgreSQL data types
-        def get_pg_type(dtype):
-            dtype_str = str(dtype)
-            if "int" in dtype_str:
-                return "INTEGER"
-            if "float" in dtype_str:
-                return "NUMERIC"
-            if "bool" in dtype_str:
-                return "BOOLEAN"
-            if "datetime" in dtype_str:
-                return "TIMESTAMP WITH TIME ZONE"
-            return "TEXT"
+        # 'with conn' automatically COMMITS on success and ROLLS BACK on failure
+        with conn:
+            # 'with conn.cursor()' automatically CLOSES the cursor when the block exits
+            with conn.cursor() as cursor:
 
-        # Check if table exists
-        cursor.execute(
-            """
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_schema = 'public' AND table_name = %s
-            );
-        """,
-            (table_name,),
-        )
+                # --- 2. DYNAMIC SCHEMA MANAGEMENT ---
+                def get_pg_type(dtype):
+                    dtype_str = str(dtype)
+                    if "int" in dtype_str:
+                        return "INTEGER"
+                    if "float" in dtype_str:
+                        return "NUMERIC"
+                    if "bool" in dtype_str:
+                        return "BOOLEAN"
+                    if "datetime" in dtype_str:
+                        return "TIMESTAMP WITH TIME ZONE"
+                    return "TEXT"
 
-        table_exists = cursor.fetchone()[0]
+                # Check if table exists
+                cursor.execute(
+                    """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' AND table_name = %s
+                    );
+                """,
+                    (table_name,),
+                )
 
-        if not table_exists:
-            # Auto-create the table with the composite primary key
-            cols = [f'"{col}" {get_pg_type(dtype)}' for col, dtype in df.dtypes.items()]
-            create_query = f"""
-                CREATE TABLE {table_name} (
-                    {', '.join(cols)}, 
-                    PRIMARY KEY ("ID", "Attributed_Workday")
-                );
-            """
-            cursor.execute(create_query)
-        else:
-            # Check for missing columns and auto-alter the table
-            cursor.execute(
+                table_exists = cursor.fetchone()[0]
+
+                if not table_exists:
+                    # Auto-create the table
+                    cols = [
+                        f'"{col}" {get_pg_type(dtype)}'
+                        for col, dtype in df.dtypes.items()
+                    ]
+                    create_query = f"""
+                        CREATE TABLE {table_name} (
+                            {', '.join(cols)}, 
+                            PRIMARY KEY ("ID", "Attributed_Workday")
+                        );
+                    """
+                    cursor.execute(create_query)
+                else:
+                    # Check for missing columns and auto-alter
+                    cursor.execute(
+                        """
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = %s;
+                    """,
+                        (table_name,),
+                    )
+                    existing_cols_lower = [row[0].lower() for row in cursor.fetchall()]
+
+                    for col in df.columns:
+                        if col.lower() not in existing_cols_lower:
+                            alter_query = f'ALTER TABLE {table_name} ADD COLUMN "{col}" {get_pg_type(df[col].dtype)};'
+                            cursor.execute(alter_query)
+
+                # --- 2.5 CREATE FAST LOOKUP INDEX ---
+                index_name = f"idx_{table_name}_pay_date"
+                index_query = f"""
+                    CREATE INDEX IF NOT EXISTS {index_name} 
+                    ON {table_name} ("Fiscal_Pay_Date");
                 """
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name = %s;
-            """,
-                (table_name,),
-            )
-            existing_cols_lower = [row[0].lower() for row in cursor.fetchall()]
+                cursor.execute(index_query)
 
-            for col in df.columns:
-                # Postgres lowercases column names in information_schema unless they were created with quotes
-                if col.lower() not in existing_cols_lower:
-                    alter_query = f'ALTER TABLE {table_name} ADD COLUMN "{col}" {get_pg_type(df[col].dtype)};'
-                    cursor.execute(alter_query)
+                # --- 3. WIPE AND RELOAD ---
+                delete_query = f'DELETE FROM {table_name} WHERE "Fiscal_Pay_Date" = %s;'
+                cursor.execute(delete_query, (str(target_pay_date),))
 
-        # --- 2.5 CREATE FAST LOOKUP INDEX ON Fiscal_Pay_Date ---
-        index_name = f"idx_{table_name}_pay_date"
-        index_query = f"""
-            CREATE INDEX IF NOT EXISTS {index_name} 
-            ON {table_name} ("Fiscal_Pay_Date");
-        """
-        cursor.execute(index_query)
+                # --- 4. BULK UPSERT ---
+                columns = [f'"{col}"' for col in df.columns]
 
-        # --- 3. WIPE AND RELOAD (TRANSACTIONAL) ---
-        # Erase existing records for this specific pay period to clear stragglers
-        delete_query = f'DELETE FROM {table_name} WHERE "Fiscal_Pay_Date" = %s;'
-        # Note: If target_pay_date is a string, we pass it directly.
-        cursor.execute(delete_query, (str(target_pay_date),))
+                update_cols = [
+                    f'"{col}" = EXCLUDED."{col}"'
+                    for col in df.columns
+                    if col not in ("ID", "Attributed_Workday")
+                ]
 
-        # --- 4. BULK UPSERT (Insert or Update) ---
-        columns = [f'"{col}"' for col in df.columns]
+                insert_query = f"""
+                    INSERT INTO {table_name} ({', '.join(columns)}) 
+                    VALUES %s
+                    ON CONFLICT ("ID", "Attributed_Workday") 
+                    DO UPDATE SET {', '.join(update_cols)};
+                """
 
-        # Dynamically build the update string (e.g. "Hours_Worked" = EXCLUDED."Hours_Worked")
-        # We skip the primary keys ("ID", "Attributed_Workday") because they are the conflict trigger and don't need updating
-        update_cols = [
-            f'"{col}" = EXCLUDED."{col}"'
-            for col in df.columns
-            if col not in ("ID", "Attributed_Workday")
-        ]
+                values = [tuple(row) for row in df.to_numpy()]
+                execute_values(cursor, insert_query, values)
 
-        insert_query = f"""
-            INSERT INTO {table_name} ({', '.join(columns)}) 
-            VALUES %s
-            ON CONFLICT ("ID", "Attributed_Workday") 
-            DO UPDATE SET {', '.join(update_cols)};
-        """
-
-        # Convert dataframe to a list of tuples for psycopg2
-        values = [tuple(row) for row in df.to_numpy()]
-
-        # execute_values is highly optimized for bulk inserts in psycopg2
-        execute_values(cursor, insert_query, values)
+                logger.info(f"✓ Successfully upserted {len(df)} rows to {table_name}")
 
     except Exception as e:
-        # If anything fails (like a bad data type), undo the DELETE so we don't lose data
-        conn.rollback()
+        # The 'with conn' block already handled the rollback!
         logger.error(f"Error saving daily_df to DB: {e}")
         raise e
-    finally:
-        cursor.close()
 
 
 def save_ta_to_db(df, clientId, pay_date, conn):
