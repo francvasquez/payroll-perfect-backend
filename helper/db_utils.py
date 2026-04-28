@@ -26,6 +26,10 @@ def get_carryover_streaks(client_id, pay_date, client_params):
     """
     Opens an isolated DB connection, calculates the last day of the prior pay period,
     and fetches streak carryovers exclusively for locations where cba_consec_anyweek is True.
+
+    Returns:
+        dict: A mapping of Employee IDs to their consecutive day streak count.
+              Example: {"18F0015984": 4, "18J0005747": 6}
     """
     conn = get_db_connection()
     if not conn:

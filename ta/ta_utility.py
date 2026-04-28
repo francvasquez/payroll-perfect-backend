@@ -282,6 +282,7 @@ def apply_weekly_rules(
         for loc, config in locs.items()
     }
     g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
+    df["Location"] = df["Location"].astype(str).str.strip()  # rid of white spaces
     cba_map = {
         loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
     }
@@ -308,7 +309,7 @@ def apply_weekly_rules(
     }
     start_day_int = day_map.get(workweek_start, 6)
 
-    df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"])
+    df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"]).dt.normalize()
     days_to_subtract = (df["Attributed_Workday"].dt.dayofweek - start_day_int) % 7
     df["Workweek_ID"] = df["Attributed_Workday"] - pd.to_timedelta(
         days_to_subtract, unit="D"
@@ -334,48 +335,41 @@ def apply_weekly_rules(
     )
 
     # 4B. Define the Traffic Cop Function
-
-    # 4B1. NEW: Calculate the exact date of "yesterday" (relative to the new pay period)
     pay_date_obj = pd.to_datetime(pay_date)
-    days_bet_payroll_end_and_pay_date = client_params.get("global", {}).get(
+    days_gap = client_params.get("global", {}).get(
         "days_bet_payroll_end_and_pay_date", 6
     )
     pay_period_length = client_params.get("global", {}).get("pay_period_length", 14)
     prior_period_date = (
         pay_date_obj
-        - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+        - pd.Timedelta(days=days_gap)
         - pd.Timedelta(days=pay_period_length)
     )
 
     def apply_streaks(group):
-        is_cba = group["is_cba_rolling"].iloc[0]
         emp_id = group["ID"].iloc[0]
-
-        if not is_cba:
-            group["Days_Worked_In_Week"] = group["Days_Worked_Standard"]
-            return group
-
-        # --- THE FIX ---
         current_streak = carryover_dict.get(emp_id, 0)
         streaks = []
 
-        # 4B2. Seed the loop with the actual calendar date of the previous period's final day
         last_date = prior_period_date
 
-        for current_date in group["Attributed_Workday"]:
-
-            # If they didn't work on the final day of the prior period, they have no streak to continue.
-            if current_streak == 0:
-                current_streak = 1
-
-            # If the gap between this shift and 'last_date' is exactly 1 day, the streak continues!
-            # (If this is their first shift of the period, it perfectly checks against 'prior_period_date')
-            elif (current_date - last_date).days == 1:
-                current_streak += 1
-
-            # A gap of 2+ days occurred. The streak breaks.
+        # Zip evaluates row-by-row, allowing fluid location transfers mid-week
+        for current_date, is_cba, std_streak in zip(
+            group["Attributed_Workday"],
+            group["is_cba_rolling"],
+            group["Days_Worked_Standard"],
+        ):
+            if not is_cba:
+                # Non-CBA location: seamlessly adopt the standard Sunday-reset math
+                current_streak = std_streak
             else:
-                current_streak = 1
+                # CBA location: trigger the rolling carryover timeline
+                if current_streak == 0:
+                    current_streak = 1
+                elif (current_date - last_date).days == 1:
+                    current_streak += 1
+                else:
+                    current_streak = 1
 
             streaks.append(current_streak)
             last_date = current_date
