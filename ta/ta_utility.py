@@ -296,27 +296,7 @@ def apply_weekly_rules(
     df["is_cba_rolling"] = (
         df["Location"].map(cba_map).fillna(g_cba).infer_objects(copy=False)
     )
-    # --- TEMPORARY DEBUG BLOCK ---
-    try:
-        logger.info("=== MAPPING DEBUG START ===")
 
-        # 1. Look at the exact keys the JSON gave us
-        logger.info(f"cba_map keys: {[repr(k) for k in cba_map.keys()]}")
-
-        # 2. Look at the exact unique locations in the dataframe
-        unique_locs = df["Location"].unique().tolist()
-        logger.info(f"DF Locations: {[repr(loc) for loc in unique_locs]}")
-
-        # 3. Look at Acosta's rows right after the mapping
-        acosta_sample = df[df["ID"] == "18J0005747"][
-            ["Attributed_Workday", "Location", "is_cba_rolling"]
-        ].head(3)
-
-        logger.info(f"Acosta Mapping Check:\n{acosta_sample.to_string()}")
-        logger.info("=== MAPPING DEBUG END ===")
-    except Exception as e:
-        logger.error(f"Debug block failed: {e}")
-    # -----------------------------
     # 3. --- Generate Workweek_ID ---
     day_map = {
         "Monday": 0,
@@ -365,9 +345,37 @@ def apply_weekly_rules(
         - pd.Timedelta(days=days_gap)
         - pd.Timedelta(days=pay_period_length)
     )
+    # --- TRAP 1 DEBUG: DATE CHECK ---
+    try:
+        logger.info("=== DATE TRAP DEBUG ===")
+        logger.info(f"Raw pay_date passed to function: {repr(pay_date)}")
+        logger.info(f"pay_date_obj evaluated as: {repr(pay_date_obj)}")
+        logger.info(f"prior_period_date evaluated as: {repr(prior_period_date)}")
+    except Exception as e:
+        pass
 
+    # --------------------------------
     def apply_streaks(group):
         emp_id = group["ID"].iloc[0]
+        # --- TRAP 2 DEBUG: ACOSTA DICTIONARY CHECK ---
+        if "18J0005747" in str(emp_id):
+            try:
+                logger.info("=== DICTIONARY TRAP DEBUG (ACOSTA) ===")
+                logger.info(f"Raw emp_id from Dataframe: {repr(emp_id)}")
+                # Safely pull a matching key from the dict to compare
+                matching_keys = [
+                    k for k in carryover_dict.keys() if "18J0005747" in str(k)
+                ]
+                logger.info(
+                    f"Matching keys found in dict: {[repr(k) for k in matching_keys]}"
+                )
+
+                # Test the actual lookup
+                test_val = carryover_dict.get(emp_id, "FAILED_LOOKUP")
+                logger.info(f"Result of carryover_dict.get(emp_id): {test_val}")
+            except Exception as e:
+                pass
+        # ---------------------------------------------
         current_streak = carryover_dict.get(emp_id, 0)
         streaks = []
 
