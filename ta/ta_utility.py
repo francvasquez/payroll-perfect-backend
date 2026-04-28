@@ -3,7 +3,8 @@ import pandas as pd
 from . import ta_masks
 import utility
 import logging
-from helper.db_utils import get_carryover_streaks
+
+# from helper.db_utils import get_carryover_streaks
 
 
 logger = logging.getLogger()
@@ -232,243 +233,243 @@ def apply_pay_period_totals(
     return df
 
 
-def apply_weekly_rules(
-    daily_df: pd.DataFrame, client_params: dict, clientId: str, pay_date: str
-) -> pd.DataFrame:
-    """
-    Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically based on Location overrides. If an employee worked the last day of the preceding pay period, and has a true boolean for cba_consec_anyweek, the streak count will carry over across pay periods instead of resetting at the start of each workweek.
-    Columns created in this step are: Workweek_ID, Days_Worked_In_Week, Is_Consecutive_Day_Rule, Cum_Reg_Hrs, Weekly_OT_Spillover
-    """
-    df = daily_df.copy()
+# def apply_weekly_rules(
+#     daily_df: pd.DataFrame, client_params: dict, clientId: str, pay_date: str
+# ) -> pd.DataFrame:
+#     """
+#     Applies weekly overtime (>40 hours) and consecutive day premium rules dynamically based on Location overrides. If an employee worked the last day of the preceding pay period, and has a true boolean for cba_consec_anyweek, the streak count will carry over across pay periods instead of resetting at the start of each workweek.
+#     Columns created in this step are: Workweek_ID, Days_Worked_In_Week, Is_Consecutive_Day_Rule, Cum_Reg_Hrs, Weekly_OT_Spillover
+#     """
+#     df = daily_df.copy()
 
-    # 1. --- Extract Config ---
-    workweek_start = client_params["global"]["workweek_start"]
-    locs = client_params.get("locations", {})
-    g_ot_week = client_params["global"]["ot_week_max"]
-    g_consec = client_params["global"]["number_of_consec_days_before_ot"]
+#     # 1. --- Extract Config ---
+#     workweek_start = client_params["global"]["workweek_start"]
+#     locs = client_params.get("locations", {})
+#     g_ot_week = client_params["global"]["ot_week_max"]
+#     g_consec = client_params["global"]["number_of_consec_days_before_ot"]
 
-    # NEW 1.1 Check if ANY location requires the rolling CBA logic (cba_consec_anyweek)
-    needs_carryover = client_params.get("global", {}).get("cba_consec_anyweek", False)
-    for loc_data in client_params.get("locations", {}).values():
-        if loc_data.get("cba_consec_anyweek", False):
-            needs_carryover = True
-            break
+#     # NEW 1.1 Check if ANY location requires the rolling CBA logic (cba_consec_anyweek)
+#     needs_carryover = client_params.get("global", {}).get("cba_consec_anyweek", False)
+#     for loc_data in client_params.get("locations", {}).values():
+#         if loc_data.get("cba_consec_anyweek", False):
+#             needs_carryover = True
+#             break
 
-    # NEW 1.2 If needs_carryover, get carryover dictionary from db
-    # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day and have CBA rule for consec days anytime.
-    logger.info(f"DEBUG: Carryover logic starting")
-    carryover_dict = {}
-    if needs_carryover:
-        carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
+#     # NEW 1.2 If needs_carryover, get carryover dictionary from db
+#     # This dictionary is ID and Days_Worked_In_Week for the last date of the preceding pay period for any employee that worked that day and have CBA rule for consec days anytime.
+#     logger.info(f"DEBUG: Carryover logic starting")
+#     carryover_dict = {}
+#     if needs_carryover:
+#         carryover_dict = get_carryover_streaks(clientId, pay_date, client_params)
 
-    # 2. --- Broadcast config to each row based on Global or Location override ---
-    ot_week_map = {
-        loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
-    }
-    consec_map = {
-        loc: config.get("number_of_consec_days_before_ot", g_consec)
-        for loc, config in locs.items()
-    }
-    g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
-    df["Location"] = df["Location"].astype(str).str.strip()  # rid of white spaces
-    cba_map = {
-        loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
-    }
+#     # 2. --- Broadcast config to each row based on Global or Location override ---
+#     ot_week_map = {
+#         loc: config.get("ot_week_max", g_ot_week) for loc, config in locs.items()
+#     }
+#     consec_map = {
+#         loc: config.get("number_of_consec_days_before_ot", g_consec)
+#         for loc, config in locs.items()
+#     }
+#     g_cba = client_params.get("global", {}).get("cba_consec_anyweek", False)
+#     df["Location"] = df["Location"].astype(str).str.strip()  # rid of white spaces
+#     cba_map = {
+#         loc: config.get("cba_consec_anyweek", g_cba) for loc, config in locs.items()
+#     }
 
-    df["limit_ot_week"] = (
-        df["Location"].map(ot_week_map).fillna(g_ot_week).infer_objects(copy=False)
-    )
-    df["limit_consec"] = (
-        df["Location"].map(consec_map).fillna(g_consec).infer_objects(copy=False)
-    )
-    df["is_cba_rolling"] = (
-        df["Location"].map(cba_map).fillna(g_cba).infer_objects(copy=False)
-    )
+#     df["limit_ot_week"] = (
+#         df["Location"].map(ot_week_map).fillna(g_ot_week).infer_objects(copy=False)
+#     )
+#     df["limit_consec"] = (
+#         df["Location"].map(consec_map).fillna(g_consec).infer_objects(copy=False)
+#     )
+#     df["is_cba_rolling"] = (
+#         df["Location"].map(cba_map).fillna(g_cba).infer_objects(copy=False)
+#     )
 
-    # 3. --- Generate Workweek_ID ---
-    day_map = {
-        "Monday": 0,
-        "Tuesday": 1,
-        "Wednesday": 2,
-        "Thursday": 3,
-        "Friday": 4,
-        "Saturday": 5,
-        "Sunday": 6,
-    }
-    start_day_int = day_map.get(workweek_start, 6)
+#     # 3. --- Generate Workweek_ID ---
+#     day_map = {
+#         "Monday": 0,
+#         "Tuesday": 1,
+#         "Wednesday": 2,
+#         "Thursday": 3,
+#         "Friday": 4,
+#         "Saturday": 5,
+#         "Sunday": 6,
+#     }
+#     start_day_int = day_map.get(workweek_start, 6)
 
-    df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"]).dt.normalize()
-    days_to_subtract = (df["Attributed_Workday"].dt.dayofweek - start_day_int) % 7
-    df["Workweek_ID"] = df["Attributed_Workday"] - pd.to_timedelta(
-        days_to_subtract, unit="D"
-    )
+#     df["Attributed_Workday"] = pd.to_datetime(df["Attributed_Workday"]).dt.normalize()
+#     days_to_subtract = (df["Attributed_Workday"].dt.dayofweek - start_day_int) % 7
+#     df["Workweek_ID"] = df["Attributed_Workday"] - pd.to_timedelta(
+#         days_to_subtract, unit="D"
+#     )
 
-    df = df.sort_values(by=["Employee", "ID", "Attributed_Workday"]).reset_index(
-        drop=True
-    )
+#     df = df.sort_values(by=["Employee", "ID", "Attributed_Workday"]).reset_index(
+#         drop=True
+#     )
 
-    # --- 4. Dynamic Consecutive Day Logic ---
-    # 4A. Calculate Standard Workweek-Bounded Math (Your existing logic)
-    df["Prev_Workday"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
-        "Attributed_Workday"
-    ].shift(1)
-    df["Days_Diff"] = (df["Attributed_Workday"] - df["Prev_Workday"]).dt.days
-    df["New_Streak"] = df["Days_Diff"] != 1
-    df["Streak_ID"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
-        "New_Streak"
-    ].cumsum()
-    # Save this into a temporary column
-    df["Days_Worked_Standard"] = (
-        df.groupby(["Employee", "ID", "Workweek_ID", "Streak_ID"]).cumcount() + 1
-    )
+#     # --- 4. Dynamic Consecutive Day Logic ---
+#     # 4A. Calculate Standard Workweek-Bounded Math (Your existing logic)
+#     df["Prev_Workday"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+#         "Attributed_Workday"
+#     ].shift(1)
+#     df["Days_Diff"] = (df["Attributed_Workday"] - df["Prev_Workday"]).dt.days
+#     df["New_Streak"] = df["Days_Diff"] != 1
+#     df["Streak_ID"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+#         "New_Streak"
+#     ].cumsum()
+#     # Save this into a temporary column
+#     df["Days_Worked_Standard"] = (
+#         df.groupby(["Employee", "ID", "Workweek_ID", "Streak_ID"]).cumcount() + 1
+#     )
 
-    # 4B. Define the Traffic Cop Function
-    pay_date_obj = pd.to_datetime(pay_date)
-    days_gap = client_params.get("global", {}).get(
-        "days_bet_payroll_end_and_pay_date", 6
-    )
-    pay_period_length = client_params.get("global", {}).get("pay_period_length", 14)
-    prior_period_date = (
-        pay_date_obj
-        - pd.Timedelta(days=days_gap)
-        - pd.Timedelta(days=pay_period_length)
-    )
+#     # 4B. Define the Traffic Cop Function
+#     pay_date_obj = pd.to_datetime(pay_date)
+#     days_gap = client_params.get("global", {}).get(
+#         "days_bet_payroll_end_and_pay_date", 6
+#     )
+#     pay_period_length = client_params.get("global", {}).get("pay_period_length", 14)
+#     prior_period_date = (
+#         pay_date_obj
+#         - pd.Timedelta(days=days_gap)
+#         - pd.Timedelta(days=pay_period_length)
+#     )
 
-    def apply_streaks(group):
-        emp_id = group["ID"].iloc[0]
-        current_streak = carryover_dict.get(emp_id, 0)
-        streaks = []
-        last_date = prior_period_date
+#     def apply_streaks(group):
+#         emp_id = group["ID"].iloc[0]
+#         current_streak = carryover_dict.get(emp_id, 0)
+#         streaks = []
+#         last_date = prior_period_date
 
-        # --- MISALIGNMENT PROOF DEBUG (ACOSTA) ---
-        if "18J0005747" in str(emp_id):
-            try:
-                logger.info("=== MISALIGNMENT PROOF START ===")
+#         # --- MISALIGNMENT PROOF DEBUG (ACOSTA) ---
+#         if "18J0005747" in str(emp_id):
+#             try:
+#                 logger.info("=== MISALIGNMENT PROOF START ===")
 
-                # 1. Print what the Dataframe visually looks like to us
-                visual_df = group[
-                    ["Attributed_Workday", "is_cba_rolling", "Days_Worked_Standard"]
-                ].copy()
-                logger.info(
-                    f"1. What Pandas sees (Visual Order):\n{visual_df.to_string()}"
-                )
+#                 # 1. Print what the Dataframe visually looks like to us
+#                 visual_df = group[
+#                     ["Attributed_Workday", "is_cba_rolling", "Days_Worked_Standard"]
+#                 ].copy()
+#                 logger.info(
+#                     f"1. What Pandas sees (Visual Order):\n{visual_df.to_string()}"
+#                 )
 
-                # 2. Print what the zip() loop is actually receiving from memory
-                logger.info("2. What the zip() loop sees (Memory Order):")
-                zipped_data = list(
-                    zip(
-                        group["Attributed_Workday"],
-                        group["is_cba_rolling"],
-                        group["Days_Worked_Standard"],
-                    )
-                )
-                for i, (d, cba, std) in enumerate(zipped_data):
-                    logger.info(
-                        f"   Loop Step {i}: Date={d.strftime('%Y-%m-%d')}, is_cba={cba}, std_streak={std}"
-                    )
+#                 # 2. Print what the zip() loop is actually receiving from memory
+#                 logger.info("2. What the zip() loop sees (Memory Order):")
+#                 zipped_data = list(
+#                     zip(
+#                         group["Attributed_Workday"],
+#                         group["is_cba_rolling"],
+#                         group["Days_Worked_Standard"],
+#                     )
+#                 )
+#                 for i, (d, cba, std) in enumerate(zipped_data):
+#                     logger.info(
+#                         f"   Loop Step {i}: Date={d.strftime('%Y-%m-%d')}, is_cba={cba}, std_streak={std}"
+#                     )
 
-                logger.info("=== MISALIGNMENT PROOF END ===")
-            except Exception as e:
-                logger.error(f"Misalignment debug failed: {e}")
-        # -----------------------------------------
+#                 logger.info("=== MISALIGNMENT PROOF END ===")
+#             except Exception as e:
+#                 logger.error(f"Misalignment debug failed: {e}")
+#         # -----------------------------------------
 
-        # Zip evaluates row-by-row, allowing fluid location transfers mid-week
-        for current_date, is_cba, std_streak in zip(
-            group["Attributed_Workday"],
-            group["is_cba_rolling"],
-            group["Days_Worked_Standard"],
-        ):
-            if not is_cba:
-                # Non-CBA location: seamlessly adopt the standard Sunday-reset math
-                current_streak = std_streak
-            else:
-                # CBA location: trigger the rolling carryover timeline
-                if current_streak == 0:
-                    current_streak = 1
-                elif (current_date - last_date).days == 1:
-                    current_streak += 1
-                else:
-                    current_streak = 1
+#         # Zip evaluates row-by-row, allowing fluid location transfers mid-week
+#         for current_date, is_cba, std_streak in zip(
+#             group["Attributed_Workday"],
+#             group["is_cba_rolling"],
+#             group["Days_Worked_Standard"],
+#         ):
+#             if not is_cba:
+#                 # Non-CBA location: seamlessly adopt the standard Sunday-reset math
+#                 current_streak = std_streak
+#             else:
+#                 # CBA location: trigger the rolling carryover timeline
+#                 if current_streak == 0:
+#                     current_streak = 1
+#                 elif (current_date - last_date).days == 1:
+#                     current_streak += 1
+#                 else:
+#                     current_streak = 1
 
-            streaks.append(current_streak)
-            last_date = current_date
+#             streaks.append(current_streak)
+#             last_date = current_date
 
-        group["Days_Worked_In_Week"] = streaks
-        return group
+#         group["Days_Worked_In_Week"] = streaks
+#         return group
 
-    # 4C. Execute the Traffic Cop across all employees
-    # (Since we sort chronologically in Step 3, the rolling math works perfectly)
-    df = df.groupby("ID", group_keys=False)[df.columns].apply(apply_streaks)
+#     # 4C. Execute the Traffic Cop across all employees
+#     # (Since we sort chronologically in Step 3, the rolling math works perfectly)
+#     df = df.groupby("ID", group_keys=False)[df.columns].apply(apply_streaks)
 
-    # 4D. Trigger the Penalty based on the dynamic limit mapped in Step 2!
-    df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
+#     # 4D. Trigger the Penalty based on the dynamic limit mapped in Step 2!
+#     df["Is_Consecutive_Day_Rule"] = df["Days_Worked_In_Week"] > df["limit_consec"]
 
-    mask_consec = df["Is_Consecutive_Day_Rule"]
+#     mask_consec = df["Is_Consecutive_Day_Rule"]
 
-    # Standard CA Consecutive Day math: First 8 hours = OT, everything over 8 = DT
-    df.loc[mask_consec, "Regular_Hrs"] = 0.0
-    df.loc[mask_consec, "OT_Hrs"] = np.minimum(df.loc[mask_consec, "Hours_Worked"], 8.0)
-    df.loc[mask_consec, "DT_Hrs"] = np.maximum(
-        0, df.loc[mask_consec, "Hours_Worked"] - 8.0
-    )
+#     # Standard CA Consecutive Day math: First 8 hours = OT, everything over 8 = DT
+#     df.loc[mask_consec, "Regular_Hrs"] = 0.0
+#     df.loc[mask_consec, "OT_Hrs"] = np.minimum(df.loc[mask_consec, "Hours_Worked"], 8.0)
+#     df.loc[mask_consec, "DT_Hrs"] = np.maximum(
+#         0, df.loc[mask_consec, "Hours_Worked"] - 8.0
+#     )
 
-    # Clean up intermediate helpers (Leave Streak_ID for your reporting function!)
-    df = df.drop(
-        columns=[
-            "Prev_Workday",
-            "Days_Diff",
-            "New_Streak",
-            "Days_Worked_Standard",
-            "is_cba_rolling",
-        ]
-    )
+#     # Clean up intermediate helpers (Leave Streak_ID for your reporting function!)
+#     df = df.drop(
+#         columns=[
+#             "Prev_Workday",
+#             "Days_Diff",
+#             "New_Streak",
+#             "Days_Worked_Standard",
+#             "is_cba_rolling",
+#         ]
+#     )
 
-    # --- 5. Dynamic Weekly Overtime Logic ---
-    df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
-        "Regular_Hrs"
-    ].cumsum()
-    df["Prior_Cum_Reg"] = (
-        df.groupby(["Employee", "ID", "Workweek_ID"])["Cum_Reg_Hrs"].shift(1).fillna(0)
-    )
+#     # --- 5. Dynamic Weekly Overtime Logic ---
+#     df["Cum_Reg_Hrs"] = df.groupby(["Employee", "ID", "Workweek_ID"])[
+#         "Regular_Hrs"
+#     ].cumsum()
+#     df["Prior_Cum_Reg"] = (
+#         df.groupby(["Employee", "ID", "Workweek_ID"])["Cum_Reg_Hrs"].shift(1).fillna(0)
+#     )
 
-    df["Weekly_OT_Spillover"] = 0.0
+#     df["Weekly_OT_Spillover"] = 0.0
 
-    # Scenario A: Already crossed custom limit
-    mask_already_over = df["Prior_Cum_Reg"] >= df["limit_ot_week"]
-    df.loc[mask_already_over, "Weekly_OT_Spillover"] = df.loc[
-        mask_already_over, "Regular_Hrs"
-    ]
-    df.loc[mask_already_over, "Regular_Hrs"] = 0.0
+#     # Scenario A: Already crossed custom limit
+#     mask_already_over = df["Prior_Cum_Reg"] >= df["limit_ot_week"]
+#     df.loc[mask_already_over, "Weekly_OT_Spillover"] = df.loc[
+#         mask_already_over, "Regular_Hrs"
+#     ]
+#     df.loc[mask_already_over, "Regular_Hrs"] = 0.0
 
-    # Scenario B: Crossing custom limit today
-    mask_crossing_today = (df["Prior_Cum_Reg"] < df["limit_ot_week"]) & (
-        df["Cum_Reg_Hrs"] > df["limit_ot_week"]
-    )
-    spillover_hours = (
-        df.loc[mask_crossing_today, "Cum_Reg_Hrs"]
-        - df.loc[mask_crossing_today, "limit_ot_week"]
-    )
+#     # Scenario B: Crossing custom limit today
+#     mask_crossing_today = (df["Prior_Cum_Reg"] < df["limit_ot_week"]) & (
+#         df["Cum_Reg_Hrs"] > df["limit_ot_week"]
+#     )
+#     spillover_hours = (
+#         df.loc[mask_crossing_today, "Cum_Reg_Hrs"]
+#         - df.loc[mask_crossing_today, "limit_ot_week"]
+#     )
 
-    df.loc[mask_crossing_today, "Weekly_OT_Spillover"] = spillover_hours
-    df.loc[mask_crossing_today, "Regular_Hrs"] = (
-        df.loc[mask_crossing_today, "Regular_Hrs"] - spillover_hours
-    )
+#     df.loc[mask_crossing_today, "Weekly_OT_Spillover"] = spillover_hours
+#     df.loc[mask_crossing_today, "Regular_Hrs"] = (
+#         df.loc[mask_crossing_today, "Regular_Hrs"] - spillover_hours
+#     )
 
-    df["OT_Hrs"] = df["OT_Hrs"] + df["Weekly_OT_Spillover"]
+#     df["OT_Hrs"] = df["OT_Hrs"] + df["Weekly_OT_Spillover"]
 
-    # 6. Final Cleanup
-    df = df.drop(columns=["Prior_Cum_Reg", "limit_ot_week", "limit_consec"])
-    float_cols = [
-        "Hours_Worked",
-        "Regular_Hrs",
-        "OT_Hrs",
-        "DT_Hrs",
-        "Cum_Reg_Hrs",
-        "Weekly_OT_Spillover",
-    ]
-    df[float_cols] = df[float_cols].round(4)
+#     # 6. Final Cleanup
+#     df = df.drop(columns=["Prior_Cum_Reg", "limit_ot_week", "limit_consec"])
+#     float_cols = [
+#         "Hours_Worked",
+#         "Regular_Hrs",
+#         "OT_Hrs",
+#         "DT_Hrs",
+#         "Cum_Reg_Hrs",
+#         "Weekly_OT_Spillover",
+#     ]
+#     df[float_cols] = df[float_cols].round(4)
 
-    return df
+#     return df
 
 
 def create_daily_df(df: pd.DataFrame, client_params: dict) -> pd.DataFrame:

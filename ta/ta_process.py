@@ -9,9 +9,8 @@ from . import ta_utility
 import logging
 import json
 import pandas as pd
-
-# from helper.aws import debug_to_s3
 import concurrent.futures
+from ta_weekly_rules import apply_weekly_rules
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -124,9 +123,7 @@ def process_data_ta(
     daily_df = ta_utility.create_daily_df(df, client_params)
 
     # Add to daily_df 40 hours and consecutive days calcs. This will make a db call to check for previous periods punches if the employee worked the last day of the previous period and has the cba_consec_anyweek boolean set to true.
-    daily_df = ta_utility.apply_weekly_rules(
-        daily_df, client_params, clientId, pay_date
-    )
+    daily_df = apply_weekly_rules(daily_df, client_params, clientId, pay_date)
 
     # Add pay period totals
     daily_df = ta_utility.apply_pay_period_totals(
