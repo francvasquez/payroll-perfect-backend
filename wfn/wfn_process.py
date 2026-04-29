@@ -2,12 +2,11 @@ import numpy as np
 import utility
 
 
-def process_data_wfn(
-    df, locations_config, min_wage, state_min_wage, pay_periods_per_year
-):
+def process_data_wfn(df, client_params, min_wage, state_min_wage, pay_periods_per_year):
 
-    # Variables
+    # Variables - extract loc config
     MinE = 100
+    locations_config = client_params.get("locations", {})  ## overrides
 
     # Add Index, converting first File# to string and set it a 6 characters
     df["FILE#"] = df["FILE#"].astype(int).astype(str).str.zfill(6)

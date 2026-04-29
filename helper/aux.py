@@ -1,7 +1,47 @@
 import time
 import pandas as pd
 import json
-from app_config import CORS_HEADERS
+from app_config import (
+    CORS_HEADERS,
+    DEFAULT_PAY_PERIOD_LENGTH,
+    DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE,
+    DEFAULT_MIN_WAGE,
+    DEFAULT_STATE_MIN_WAGE,
+    DEFAULT_PAY_PERIODS_PER_YEAR,
+    CORS_HEADERS,
+)
+
+
+def extract_global_config(params: dict) -> tuple:
+    global_config = params["client_config"]["global"]
+    pay_period_length = global_config.get(
+        "pay_period_length", DEFAULT_PAY_PERIOD_LENGTH
+    )
+    days_bet_payroll_end_and_pay_date = global_config.get(
+        "days_bet_payroll_end_and_pay_date", DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE
+    )
+    min_wage = global_config.get("min_wage", DEFAULT_MIN_WAGE)
+    state_min_wage = global_config.get("state_min_wage", DEFAULT_STATE_MIN_WAGE)
+    pay_periods_per_year = global_config.get(
+        "pay_periods_per_year", DEFAULT_PAY_PERIODS_PER_YEAR
+    )
+    pay_date = pd.to_datetime(params["payDate"])
+    first_date = (
+        pay_date
+        - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+        - pd.Timedelta(days=pay_period_length)
+        + pd.Timedelta(days=1)
+    )
+    last_date = pay_date - pd.Timedelta(days=days_bet_payroll_end_and_pay_date)
+
+    return (
+        min_wage,
+        state_min_wage,
+        pay_periods_per_year,
+        pay_date,
+        first_date,
+        last_date,
+    )
 
 
 def parse_event_params(event):
