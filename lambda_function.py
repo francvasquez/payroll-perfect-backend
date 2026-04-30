@@ -1,7 +1,16 @@
-import json
+import json, traceback
 from app_config import *
 from helper.aux import parse_event_params
 from helper.action_router import route_action
+from exceptions import AppError
+
+
+def _make_error_response(status_code: int, message: str) -> dict:
+    return {
+        "statusCode": status_code,
+        "headers": CORS_HEADERS,
+        "body": json.dumps({"error": message}),
+    }
 
 
 def lambda_handler(event, _):
@@ -21,13 +30,13 @@ def lambda_handler(event, _):
         action = params.get("action")
         return route_action(action, params, event)
 
-    except Exception as e:
-        print(f"Error in lambda_handler: {str(e)}")
-        import traceback
+    except AppError as e:
+        # Known, safe-to-expose errors (400, 404, etc.)
+        print(f"App error [{e.status_code}]: {e.message}")
+        return _make_error_response(e.status_code, e.message)
 
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": str(e)}),
-        }
+    except Exception as e:
+        # Unexpected errors — never leak internals to the client
+        print(f"Unhandled error: {e}")
+        traceback.print_exc()
+        return _make_error_response(500, "Internal server error")

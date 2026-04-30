@@ -2,14 +2,13 @@ import time
 import pandas as pd
 import json
 from app_config import (
-    CORS_HEADERS,
     DEFAULT_PAY_PERIOD_LENGTH,
     DEFAULT_DAYS_BET_PAYROLL_END_AND_PAY_DATE,
     DEFAULT_MIN_WAGE,
     DEFAULT_STATE_MIN_WAGE,
     DEFAULT_PAY_PERIODS_PER_YEAR,
-    CORS_HEADERS,
 )
+from exceptions import ValidationError
 
 
 def extract_global_config(params: dict) -> tuple:
@@ -72,15 +71,7 @@ def verify_files(params):
     ta_key = params.get("ta_key")
 
     if not all([waiver_key, wfn_key, ta_key]):
-        return {
-            "statusCode": 400,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(
-                {"error": "All three files (waiver, wfn, ta) are required"}
-            ),
-        }
-    # Return None to indicate success
-    return None
+        raise ValidationError("All three files (waiver, wfn, ta) are required")
 
 
 def convert_datetime_columns_to_iso(df: pd.DataFrame) -> pd.DataFrame:

@@ -1,5 +1,5 @@
 class AppError(Exception):
-    """Base class for all handled application errors."""
+    """Base class for all handled application errors. Will not pass specifics to React"""
 
     def __init__(self, message: str, status_code: int = 400):
         self.message = message
