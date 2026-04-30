@@ -116,7 +116,7 @@ def handle_file_upload(event, params):
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 
-    ### 11. Add any annotation info to the result so front-end can display it after processing
+    ### 11. Add any details to the result dictionary so front-end can display it after processing
     result["details"] = {
         "del_annot_msg": del_annot_msg
         # You can easily add more here later!

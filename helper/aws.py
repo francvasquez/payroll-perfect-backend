@@ -577,81 +577,49 @@ def save_table_json_s3(
 
 
 def handle_get_client_config(client_id):
+    # 1. RAISE validation errors (Don't return HTTP dicts)
     if not client_id:
-        return {
-            "statusCode": 400,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps({"error": "clientId is required"}),
-        }
-    try:
-        # Build S3 key path
-        config_key = f"clients/{client_id}/config.json"
+        raise AppError("clientId is required", status_code=400)
 
+    try:
+        config_key = f"clients/{client_id}/config.json"
         print(f"Fetching config from S3: s3://{S3_BUCKET}/{config_key}")
 
-        # Fetch from S3
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=config_key)
         config_data = json.loads(response["Body"].read().decode("utf-8"))
 
         print(f"Successfully loaded config for client: {client_id}")
 
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"config": config_data}),
-        }
+        # 2. RETURN PURE DATA! (No statusCode, no headers, no json.dumps)
+        # Your lambda_handler will wrap this automatically.
+        return {"config": config_data}
 
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
+        error_code = e.response.get("Error", {}).get("Code")
 
+        # 3. TRANSLATE specific AWS errors into AppErrors
         if error_code == "NoSuchKey":
-            print(f"Config file not found for client: {client_id} at {config_key}")
-            return {
-                "statusCode": 404,
-                "headers": CORS_HEADERS,
-                "body": json.dumps(
-                    {"error": f"Configuration not found for client: {client_id}"}
-                ),
-            }
+            print(f"Config file not found: {config_key}")
+            raise AppError(
+                f"Configuration not found for client: {client_id}", status_code=404
+            )
+
         elif error_code == "NoSuchBucket":
             print(f"Bucket not found: {S3_BUCKET}")
-            return {
-                "statusCode": 500,
-                "headers": CORS_HEADERS,
-                "body": json.dumps({"error": "Storage bucket not configured"}),
-            }
+            raise AppError("Storage bucket not configured", status_code=500)
+
         else:
             print(f"S3 error: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": CORS_HEADERS,
-                "body": json.dumps({"error": f"Failed to fetch config: {str(e)}"}),
-            }
+            raise AppError(
+                "Failed to fetch configuration from storage", status_code=500
+            )
 
     except json.JSONDecodeError as e:
         print(f"Invalid JSON in config file: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps({"error": "Invalid configuration file format"}),
-        }
+        raise AppError("Invalid configuration file format", status_code=500)
 
-    except Exception as e:
-        print(f"Unexpected error: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": {
-                "Content-Type": "application/json",
-                "Access-Control-Allow-Origin": "*",
-            },
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+    # NOTE: The generic `except Exception as e:` block is GONE!
+    # If anything unexpected happens, it instantly bubbles up to lambda_handler.
 
 
 def handle_save_client_config(client_id, config):
