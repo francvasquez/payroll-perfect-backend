@@ -28,7 +28,14 @@ def lambda_handler(event, _):
 
         ### 2. Route based on action
         action = params.get("action")
-        return route_action(action, params, event)
+        payload = route_action(action, params, event)
+
+        ### 3. Return successful response to API Gateway
+        return {
+            "statusCode": 200,
+            "headers": CORS_HEADERS,
+            "body": json.dumps(payload, default=str),
+        }
 
     except AppError as e:
         # Known, safe-to-expose errors (400, 404, etc.)

@@ -50,5 +50,5 @@ def route_action(action, params, event):
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
     else:
-        # This only runs if NONE of the above actions matched
+        # This will pass return dictionary to lambda_handler which will convert it to API Gateway response
         return handle_file_upload(event, params)

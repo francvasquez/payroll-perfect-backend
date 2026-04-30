@@ -6,6 +6,7 @@ from client_config import CLIENT_CONFIGS
 from io import StringIO
 from botocore.exceptions import ClientError
 from helper.db_utils import delete_ta_from_db, get_db_connection
+from exceptions import AppError
 
 s3_client = boto3.client("s3")
 ses = boto3.client("ses", region_name="us-west-1")
@@ -285,46 +286,13 @@ def delete_annotations(client_id, pay_date):
 
     try:
         s3_client.delete_object(Bucket=S3_BUCKET, Key=s3_key)
-
         print(f"Deleted annotations from: s3://{S3_BUCKET}/{s3_key}")
-
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"message": "Annotations deleted successfully"}),
-        }
-
+        # For React use
+        return {"message": "Annotations cleared"}
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-
-        # If file doesn't exist, that's fine - nothing to delete
-        if error_code == "NoSuchKey":
-            print(f"No annotations to delete for {client_id}/{pay_date}")
-            return {
-                "statusCode": 200,
-                "headers": CORS_HEADERS,
-                "body": json.dumps({"message": "No annotations to delete"}),
-            }
-        else:
-            print(f"S3 error deleting annotations: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": CORS_HEADERS,
-                "body": json.dumps(
-                    {"error": f"Failed to delete annotations: {str(e)}"}
-                ),
-            }
-
-    except Exception as e:
-        print(f"Unexpected error deleting annotations: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        # If we hit this, it's a real problem (e.g., AccessDenied, KMS issue)
+        print(f"S3 error deleting annotations: {e}")
+        raise AppError("Failed to delete annotations from storage", status_code=503)
 
 
 def list_pay_periods(client_id):

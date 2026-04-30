@@ -50,7 +50,7 @@ def handle_file_upload(event, params):
     ### 5. Delete existing annotations before reprocessing
     if client_id and pay_date:
         print(f"Deleting annotations for {client_id}/{pay_date} b4 reprocessing.")
-        delete_annotations(client_id, pay_date)
+        annotation_result = delete_annotations(client_id, pay_date)
 
     ### 6. Process WAIVER
     waiver_df = read_excel_from_s3(params["waiver_key"])
@@ -116,9 +116,13 @@ def handle_file_upload(event, params):
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 
-    # Return to front end upon uploading files
+    # To be passed to front-end upon success via lambda_handler
     return {
-        "statusCode": 200,
-        "headers": CORS_HEADERS,
-        "body": json.dumps(result, default=str),
+        "status": "success",
+        "details": {
+            "annotations": annotation_result[
+                "message"
+            ],  # Add other success details as needed for UI
+        },
+        "result": result,
     }
