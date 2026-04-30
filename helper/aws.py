@@ -426,29 +426,23 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
     )
 
 
-# Make sure to import your AppError!
-from exceptions import AppError
-
-
-def handle_presigned_url_request(params):
+def handle_presigned_url_request(event):
     """
     Generates presigned URL for direct S3 upload
     Returns pure Python data.
     """
-    # 1. Grab inputs directly from the already-parsed params
-    file_name = params.get("fileName")
-    s3_path = params.get("s3Path")
+    # 2. Parse the body exactly like your old code did to guarantee we get the data
+    body = json.loads(event.get("body", "{}"))
+    file_name = body.get("fileName")
+    s3_path = body.get("s3Path")
 
-    # Optional but recommended: Validate inputs immediately
+    # The safety net!
     if not file_name or not s3_path:
-        raise AppError(
-            "Missing fileName or s3Path in request parameters.", status_code=400
-        )
+        raise AppError("Missing fileName or s3Path in request.", status_code=400)
 
     s3_key = f"{s3_path}/{file_name}"
 
     try:
-        # 2. Generate presigned URL for PUT
         presigned_url = s3_client.generate_presigned_url(
             "put_object",
             Params={
@@ -456,19 +450,15 @@ def handle_presigned_url_request(params):
                 "Key": s3_key,
                 "ContentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             },
-            ExpiresIn=300,  # 5 minutes
+            ExpiresIn=300,
         )
 
-        # 3. RETURN PURE DATA! (No statusCode, no headers, no json.dumps)
+        # 3. STILL RETURN PURE DATA!
         return {"uploadUrl": presigned_url, "s3Key": s3_key}
 
     except ClientError as e:
-        # 4. ERROR TRANSLATION: Catch AWS specific errors and raise AppError
         print(f"AWS ClientError generating presigned URL: {e}")
         raise AppError("Failed to generate secure upload link.", status_code=500)
-
-    # NOTE: No generic `except Exception as e:` block!
-    # If a typo or memory error occurs, it bubbles up to lambda_handler automatically.
 
 
 def save_csv_to_s3(df, file_type, event, s3_client=None):

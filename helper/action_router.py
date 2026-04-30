@@ -40,7 +40,7 @@ def route_action(action, params, event):
     elif action == "load-processed-results":
         return load_processed_results(clientId, payDate)
     elif action == "get-upload-url":
-        return handle_presigned_url_request(params)
+        return handle_presigned_url_request(event)
     elif action == "save-annotations":
         return save_annotations(clientId, payDate, annotations)
     elif action == "load-annotations":
