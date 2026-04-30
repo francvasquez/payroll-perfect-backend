@@ -50,7 +50,7 @@ def handle_file_upload(event, params):
     ### 5. Delete existing annotations before reprocessing
     if client_id and pay_date:
         print(f"Deleting annotations for {client_id}/{pay_date} b4 reprocessing.")
-        annotation_result = delete_annotations(client_id, pay_date)
+        del_annot_msg = delete_annotations(client_id, pay_date)
 
     ### 6. Process WAIVER
     waiver_df = read_excel_from_s3(params["waiver_key"])
@@ -116,13 +116,13 @@ def handle_file_upload(event, params):
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 
-    # To be passed to front-end upon success via lambda_handler. This are accessed in React Axios as console.log(response.data.details.annotations) etc.
-    return {
-        "status": "success",
-        "details": {
-            "annotations": annotation_result[
-                "message"
-            ],  # Add other success details as needed for UI
-        },
-        "result": result,
+    ### 11. Add any annotation info to the result so front-end can display it after processing
+    result["details"] = {
+        "del_annot_msg": del_annot_msg
+        # You can easily add more here later!
+        # "s3_backup": "Success",
+        # "email_sent": True
     }
+
+    # Return the flat dictionary so React finds exactly what it expects
+    return result

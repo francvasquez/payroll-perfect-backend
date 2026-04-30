@@ -289,7 +289,7 @@ def delete_annotations(client_id, pay_date):
         s3_client.delete_object(Bucket=S3_BUCKET, Key=s3_key)
         print(f"Deleted annotations from: s3://{S3_BUCKET}/{s3_key}")
         # For React use
-        return {"message": "Annotations cleared"}
+        return "Annotations cleared"
     except ClientError as e:
         # If we hit this, it's a real problem (e.g., AccessDenied, KMS issue)
         print(f"S3 error deleting annotations: {e}")
