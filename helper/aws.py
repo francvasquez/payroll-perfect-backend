@@ -7,6 +7,7 @@ from io import StringIO
 from botocore.exceptions import ClientError
 from helper.db_utils import delete_ta_from_db, get_db_connection
 from exceptions import AppError
+from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
 ses = boto3.client("ses", region_name="us-west-1")
@@ -425,21 +426,29 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
     )
 
 
-def handle_presigned_url_request(event):
+# Make sure to import your AppError!
+from exceptions import AppError
+
+
+def handle_presigned_url_request(params):
     """
     Generates presigned URL for direct S3 upload
-    This is called when React wants to upload a file
+    Returns pure Python data.
     """
+    # 1. Grab inputs directly from the already-parsed params
+    file_name = params.get("fileName")
+    s3_path = params.get("s3Path")
+
+    # Optional but recommended: Validate inputs immediately
+    if not file_name or not s3_path:
+        raise AppError(
+            "Missing fileName or s3Path in request parameters.", status_code=400
+        )
+
+    s3_key = f"{s3_path}/{file_name}"
+
     try:
-        # Parse request body
-        body = json.loads(event.get("body", "{}"))
-        file_name = body.get("fileName")
-        s3_path = body.get("s3Path")  # full S3 path if provided
-
-        # Create S3 key
-        s3_key = f"{s3_path}/{file_name}"
-
-        # Generate presigned URL for PUT
+        # 2. Generate presigned URL for PUT
         presigned_url = s3_client.generate_presigned_url(
             "put_object",
             Params={
@@ -450,19 +459,16 @@ def handle_presigned_url_request(event):
             ExpiresIn=300,  # 5 minutes
         )
 
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"uploadUrl": presigned_url, "s3Key": s3_key}),
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(
-                {"error": str(e), "s3Key": s3_key if "s3_key" in locals() else None}
-            ),
-        }
+        # 3. RETURN PURE DATA! (No statusCode, no headers, no json.dumps)
+        return {"uploadUrl": presigned_url, "s3Key": s3_key}
+
+    except ClientError as e:
+        # 4. ERROR TRANSLATION: Catch AWS specific errors and raise AppError
+        print(f"AWS ClientError generating presigned URL: {e}")
+        raise AppError("Failed to generate secure upload link.", status_code=500)
+
+    # NOTE: No generic `except Exception as e:` block!
+    # If a typo or memory error occurs, it bubbles up to lambda_handler automatically.
 
 
 def save_csv_to_s3(df, file_type, event, s3_client=None):

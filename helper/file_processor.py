@@ -116,7 +116,7 @@ def handle_file_upload(event, params):
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 
-    # To be passed to front-end upon success via lambda_handler
+    # To be passed to front-end upon success via lambda_handler. This are accessed in React Axios as console.log(response.data.details.annotations) etc.
     return {
         "status": "success",
         "details": {
