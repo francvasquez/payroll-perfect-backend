@@ -13,7 +13,7 @@ from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
 
 
-def route_action(action, params, contactParams, event):
+def route_action(action, params, event):
     # Pre extract params
     clientId = params.get("clientId")
     employeeId = params.get("employeeId")

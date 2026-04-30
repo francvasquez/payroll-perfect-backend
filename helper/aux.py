@@ -62,8 +62,7 @@ def parse_event_params(event):
         "wfn_key": body.get("wfn_key"),
         "ta_key": body.get("ta_key"),
     }
-    contact_params = body  # We'll deconstruct in the actual handler
-    return params, contact_params
+    return params
 
 
 def verify_files(params):

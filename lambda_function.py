@@ -14,12 +14,12 @@ def lambda_handler(event, _):
 
     try:
         ### 1. Check action, extract params
-        params, contactParams = parse_event_params(event)
+        params = parse_event_params(event)
         print("Action requested: ", params["action"], "with params: ", params)
 
         ### 2. Route based on action
         action = params.get("action")
-        return route_action(action, params, contactParams, event)
+        return route_action(action, params, event)
 
     except Exception as e:
         print(f"Error in lambda_handler: {str(e)}")
