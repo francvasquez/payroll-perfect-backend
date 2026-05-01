@@ -68,6 +68,9 @@ def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+import pandas as pd
+
+
 def validate_intake_pay_date(
     raw_df: pd.DataFrame,
     target_pay_date: str,
@@ -75,7 +78,7 @@ def validate_intake_pay_date(
     pay_date_anchor: str,
 ) -> tuple[bool, str]:
     """
-    Validates user-inputted pay date against the actual punch timestamps in the raw file.
+    Validates user-inputted pay date against schedule AND raw file timestamps.
     Returns a tuple: (is_valid: bool, status_message: str)
     """
 
@@ -92,12 +95,24 @@ def validate_intake_pay_date(
     # 3. --- Checks against anchor pay date ---
     master_anchor = pd.to_datetime(pay_date_anchor).normalize()
 
-    # 4. Check if the inputted date is an exact multiple of 14 days from the master anchor
+    # ==========================================
+    # UPGRADE 1: Predict the correct pay dates!
+    # ==========================================
     days_diff = (target_date - master_anchor).days
+
     if days_diff % pp_length != 0:
+        # Calculate exactly how far off they are
+        remainder = days_diff % pp_length
+
+        # Figure out the nearest valid dates mathematically
+        prev_valid = (target_date - pd.Timedelta(days=remainder)).date()
+        next_valid = (target_date + pd.Timedelta(days=(pp_length - remainder))).date()
+
         error_msg = (
-            f"Invalid Pay Date! {target_date.date()} does not align with the company's {pp_length}-day payroll cycle.\n"
-            f"Please double-check the date. Valid pay dates fall exactly every {pp_length} days."
+            f"Invalid Pay Date! {target_date.date()} does not align with the company's {pp_length}-day payroll cycle.\n\n"
+            f"Did you mean to type:\n"
+            f"• {prev_valid}\n"
+            f"• {next_valid}"
         )
         return False, error_msg
     # ------------------------------------------
@@ -106,28 +121,56 @@ def validate_intake_pay_date(
     expected_end = target_date - pd.to_timedelta(days_to_pay, unit="D")
     expected_start = expected_end - pd.to_timedelta(pp_length - 1, unit="D")
 
-    # 6. Extract the actual physical boundaries of the raw data
-    actual_min = raw_df["In Punch"].min().normalize()
-    actual_max = raw_df["In Punch"].max().normalize()
+    if "In Punch" not in raw_df.columns:
+        return False, "Validation Error: 'In Punch' column missing from the raw data."
 
-    # 7. Sanity Check: Is there an overlap?
+    # Safely convert punches to dates
+    punch_dates = pd.to_datetime(raw_df["In Punch"], errors="coerce").dt.normalize()
+    valid_punches = punch_dates.dropna()
+
+    if valid_punches.empty:
+        return (
+            False,
+            "Validation Error: Could not read any valid timestamps in the 'In Punch' column.",
+        )
+
+    # 6. Extract the actual physical boundaries of the raw data
+    actual_min = valid_punches.min()
+    actual_max = valid_punches.max()
+
+    # 7. Sanity Check: Is it a completely wrong file? (No overlap at all)
     if expected_end < actual_min or expected_start > actual_max:
         error_msg = (
-            f"Date Mismatch! You entered Pay Date: {target_date.date()}.\n"
-            f"That corresponds to a work period of {expected_start.date()} to {expected_end.date()}.\n"
-            f"However, the uploaded file only contains data from {actual_min.date()} to {actual_max.date()}."
+            f"Wrong File Uploaded!\n"
+            f"Pay Date {target_date.date()} expects work from {expected_start.date()} to {expected_end.date()}.\n"
+            f"But the uploaded file contains data from {actual_min.date()} to {actual_max.date()}."
         )
         return False, error_msg
 
-    # 8. Optional: Strict bounds check (Warning only)
-    if actual_min > expected_start or actual_max < expected_end:
-        warning_msg = (
-            f"Warning: The file was accepted, but the data range ({actual_min.date()} to {actual_max.date()}) "
-            f"does not fully cover the expected period ({expected_start.date()} to {expected_end.date()}). "
-            f"Calculations may be incomplete."
-        )
-        return True, warning_msg
+    # ==========================================
+    # UPGRADE 2: The Culprit Hunter (Stragglers)
+    # ==========================================
+    # Find punches that fall outside the expected bounds
+    outlier_mask = (punch_dates < expected_start) | (punch_dates > expected_end)
+    outliers_df = raw_df[outlier_mask]
 
+    if not outliers_df.empty:
+        error_msg = (
+            f"Data Mismatch! Expected punches strictly between {expected_start.date()} and {expected_end.date()}.\n\n"
+            f"Found {len(outliers_df)} straggler punches outside this window. Top culprits:\n"
+        )
+
+        # Show the worst offenders
+        sample_outliers = outliers_df[["ID", "Employee", "In Punch"]].head(4)
+        for _, row in sample_outliers.iterrows():
+            error_msg += f"• {row['Employee']} ({row['ID']}): {row['In Punch']}\n"
+
+        if len(outliers_df) > 4:
+            error_msg += f"...and {len(outliers_df) - 4} more."
+
+        return False, error_msg
+
+    # 8. If it survives everything
     return True, "Validation Passed."
 
 
