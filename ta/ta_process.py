@@ -56,6 +56,7 @@ def process_data_ta(
     )
     if not is_valid:
         # Return a 400 Bad Request to tell React the user messed up
+        print(f"Validation failed - pay date is not valid {pay_date}: {msg}")
         return {
             "statusCode": 400,
             "headers": {
