@@ -52,13 +52,16 @@ def process_data_ta(
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
 
     # 6. Ensure inputed Pay Date matches the contents of the file
-    is_valid, msg = ta_utility.validate_intake_pay_date(
+    is_valid, msg, error_type = ta_utility.validate_intake_pay_date(
         df, pay_date, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
     )
     if not is_valid:
-        # RAISE the error instead of returning a dictionary!
-        # This stops the function dead in its tracks and sends the message up.
-        raise AppError(msg, status_code=400)
+        if error_type == "STRAGGLER_WARNING":
+            # Throw a 409 Conflict! This tells React "I can proceed if you force me to."
+            raise AppError(msg, status_code=409)
+        else:
+            # Standard hard error
+            raise AppError(msg, status_code=400)
 
     ######### DF PROCESSING #################
 
