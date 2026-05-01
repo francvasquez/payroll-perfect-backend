@@ -11,6 +11,7 @@ import json
 import pandas as pd
 import concurrent.futures
 from . import ta_weekly_rules
+from exceptions import AppError
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -55,16 +56,9 @@ def process_data_ta(
         df, pay_date, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
     )
     if not is_valid:
-        # Return a 400 Bad Request to tell React the user messed up
-        print(f"Validation failed - pay date is not valid {pay_date}: {msg}")
-        return {
-            "statusCode": 400,
-            "headers": {
-                "Access-Control-Allow-Origin": "*",  # Critical so React can read the error!
-                "Content-Type": "application/json",
-            },
-            "body": json.dumps({"error": msg}),  # Pass your detailed string here
-        }
+        # RAISE the error instead of returning a dictionary!
+        # This stops the function dead in its tracks and sends the message up.
+        raise AppError(msg, status_code=400)
 
     ######### DF PROCESSING #################
 
