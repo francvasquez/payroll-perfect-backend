@@ -26,6 +26,7 @@ def process_data_ta(
     clientId,
     processed_waiver_df=None,
     processed_wfn_df=None,
+    ignore_warnings=False,
 ):
 
     ######### DF CLEANUP AND PREP #################
@@ -53,7 +54,11 @@ def process_data_ta(
 
     # 6. Ensure inputed Pay Date matches the contents of the file
     is_valid, msg, error_type = ta_utility.validate_intake_pay_date(
-        df, pay_date, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
+        df,
+        pay_date,
+        client_params,
+        CLIENT_CONFIGS[clientId]["anchor_pay_date"],
+        ignore_warnings,
     )
     if not is_valid:
         if error_type == "STRAGGLER_WARNING":

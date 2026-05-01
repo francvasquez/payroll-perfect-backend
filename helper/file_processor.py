@@ -32,6 +32,7 @@ def handle_file_upload(event, params):
     ### 2. Extract client_id and client_params
     client_id = params["clientId"]
     client_params = params["client_config"]
+    ignore_warnings = params.get("ignore_warnings", False)
 
     ### 3 & 4. Extract global parameters with default fallback
     (
@@ -85,6 +86,7 @@ def handle_file_upload(event, params):
         client_id,
         processed_waiver_df,
         processed_wfn_df,
+        ignore_warnings,
     )
     ta_process_time = round((time.time() - ta_start) * 1000, 2)
     print("TA processed")
