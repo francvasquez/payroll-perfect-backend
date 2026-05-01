@@ -74,9 +74,8 @@ def delete_pay_period(client_id, pay_date):
                     for obj in page["Contents"]:
                         objects_to_delete.append({"Key": obj["Key"]})
 
-            # Delete objects in batches (S3 delete_objects supports up to 1000 at a time)
+            # Delete in chunks of 1000
             if objects_to_delete:
-                # Delete in chunks of 1000
                 for i in range(0, len(objects_to_delete), 1000):
                     chunk = objects_to_delete[i : i + 1000]
                     delete_response = s3_client.delete_objects(
@@ -99,68 +98,42 @@ def delete_pay_period(client_id, pay_date):
             else:
                 print(f"No files found under {prefix}")
 
-        # Prepare response
-        if errors:
-            return {
-                "statusCode": 207,  # Multi-Status (partial success)
-                "headers": CORS_HEADERS,
-                "body": json.dumps(
-                    {
-                        "message": "Pay period partially deleted with some errors",
-                        "deleted_count": len(deleted_files),
-                        "deleted_files": deleted_files,
-                        "errors": errors,
-                    }
-                ),
-            }
+        # --- Database Deletion ---
+        conn = get_db_connection()
+        db_rows = 0
+        db_status = "skipped"
+
+        if conn:
+            try:
+                db_rows = delete_ta_from_db(conn, client_id, pay_date)
+                db_status = "completed"
+            except Exception as e:
+                print(f"Failed to delete from database. S3 succeeded but not db: {e}")
+                db_status = "error"
+            finally:
+                conn.close()
         else:
-            # Now deleting from database
-            conn = get_db_connection()
-            db_rows = 0
-            if conn:
-                try:
-                    # Call your new delete function
-                    db_rows = delete_ta_from_db(conn, client_id, pay_date)
-                except Exception as e:
-                    print(
-                        f"Failed to delete from database. S3 succeeded but not db: {e}"
-                    )
-                finally:
-                    conn.close()
-            else:
-                print("DB is paused or unavailable. Skipping DB row deletion.")
-            return {
-                "statusCode": 200,
-                "headers": CORS_HEADERS,
-                "body": json.dumps(
-                    {
-                        "message": f"Pay period {pay_date} deletion processed",
-                        "s3_deleted_count": len(deleted_files),
-                        "db_rows_affected": db_rows,
-                        "db_status": "skipped" if not conn else "completed",
-                    }
-                ),
-            }
+            print("DB is paused or unavailable. Skipping DB row deletion.")
+
+        # --- RETURN PURE DATA ---
+        # The lambda_handler will wrap this in a 200 OK
+        return {
+            "message": (
+                "Pay period partially deleted with some errors"
+                if errors
+                else f"Pay period {pay_date} deletion processed"
+            ),
+            "s3_deleted_count": len(deleted_files),
+            "deleted_files": deleted_files,
+            "errors": errors,
+            "db_rows_affected": db_rows,
+            "db_status": db_status,
+        }
 
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
         print(f"S3 error deleting pay period: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Failed to delete pay period: {str(e)}"}),
-        }
-
-    except Exception as e:
-        print(f"Unexpected error deleting pay period: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        # Raise AppError to be caught by the Traffic Cop
+        raise AppError("Failed to delete pay period from storage", status_code=500)
 
 
 def save_annotations(client_id, pay_date, annotations_data):
