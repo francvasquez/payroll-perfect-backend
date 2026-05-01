@@ -53,7 +53,6 @@ def process_data_ta(
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
 
     # 6. Ensure inputed Pay Date matches the contents of the file
-    print(f"DEBUG - ignore_warnings: {ignore_warnings}")
     is_valid, msg, error_type = ta_utility.validate_intake_pay_date(
         df,
         pay_date,

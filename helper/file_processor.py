@@ -77,6 +77,7 @@ def handle_file_upload(event, params):
         f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
     )
     ta_start = time.time()
+    print(f"DEBUG - ignore_warnings: {ignore_warnings}")
     processed_ta_df, daily_df, anomalies_df_new = process_data_ta(
         ta_df,
         client_params,
