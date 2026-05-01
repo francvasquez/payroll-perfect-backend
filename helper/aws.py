@@ -321,36 +321,31 @@ def load_processed_results(client_id, pay_date):
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
         results = json.loads(response["Body"].read())
         print(f"Loaded results for {pay_date}: ", results)
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"results": results}),
-        }
-    except s3_client.exceptions.NoSuchKey:
-        print(f"[DEBUG] NoSuchKey: The object does not exist at key: {key}")
 
-        # Optional: list objects under the prefix to see what exists
-        prefix = f"clients/{client_id}/processed/{pay_date}/"
-        list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
-        existing_keys = [obj["Key"] for obj in list_response.get("Contents", [])]
-        print(f"[DEBUG] Existing objects under prefix {prefix}: {existing_keys}")
+        # 1. Return the data as pure Python data, let lambda_handler wrap it
+        return {"results": results}
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code")
 
-        return {
-            "statusCode": 404,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": "No processed data for this period"}),
-        }
+        # 2. HANDLE EXPECTED 404
+        if error_code == "NoSuchKey":
+            print(f"[DEBUG] NoSuchKey: No processed data at {key}")
 
-    except Exception as e:
-        print(f"[ERROR] Unexpected error loading S3 object {key}: {str(e)}")
-        import traceback
+            #     # Optional: list objects under the prefix to see what exists
+            #     prefix = f"clients/{client_id}/processed/{pay_date}/"
+            #     list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
+            #     existing_keys = [obj["Key"] for obj in list_response.get("Contents", [])]
+            #     print(f"[DEBUG] Existing objects under prefix {prefix}: {existing_keys}")
 
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": str(e)}),
-        }
+            # Raise AppError! lambda_handler will format this as an HTTP 404.
+            raise AppError("No processed data for this period", status_code=404)
+
+        # 3. HANDLE UNEXPECTED AWS ERRORS
+        else:
+            print(f"[ERROR] AWS Error loading S3 object {key}: {str(e)}")
+            raise AppError(
+                "Failed to load processed results from storage", status_code=500
+            )
 
 
 def read_excel_from_s3(key, header=0, engine=None):
