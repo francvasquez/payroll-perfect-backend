@@ -163,12 +163,21 @@ def validate_intake_pay_date(
     outliers_df = raw_df[outlier_mask]
 
     if not outliers_df.empty and not ignore_warnings:
-        straggler_min = punch_dates[outlier_mask].min().date()
-        straggler_max = punch_dates[outlier_mask].max().date()
+
+        # 1. Grab unique dates, sort them, and take up to 5
+        unique_dates = sorted(punch_dates[outlier_mask].dt.date.unique())
+        top_dates = unique_dates[:5]
+
+        # 2. Format them into a clean, comma-separated string
+        dates_str = ", ".join(str(d) for d in top_dates)
+
+        # Add an indicator if there are more than 5 distinct dates
+        if len(unique_dates) > 5:
+            dates_str += ", ..."
 
         warning_msg = (
             f"Data Warning! Expected punches strictly between {expected_start.date()} and {expected_end.date()}.\n\n"
-            f"Found {len(outliers_df)} straggler punches ranging from {straggler_min} to {straggler_max}.\n"
+            f"Found {len(outliers_df)} straggler punches on these dates: {dates_str}.\n"
             f"Top culprits:\n"
         )
 
@@ -179,7 +188,7 @@ def validate_intake_pay_date(
         if len(outliers_df) > 4:
             warning_msg += f"...and {len(outliers_df) - 4} more."
 
-        # THIS IS OUR NEW 409 TRIGGER
+        # Return False, but tag it as a bypassable warning!
         return False, warning_msg, "STRAGGLER_WARNING"
 
     # 9. If it survives everything (or warnings were ignored)
