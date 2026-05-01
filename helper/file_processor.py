@@ -32,7 +32,16 @@ def handle_file_upload(event, params):
     ### 2. Extract client_id and client_params
     client_id = params["clientId"]
     client_params = params["client_config"]
-    ignore_warnings = params.get("ignore_warnings", False)
+
+    ### 3. Extract user bypass
+    try:
+        raw_body = json.loads(event.get("body", "{}"))
+        ignore_warnings = raw_body.get("ignore_warnings", False)
+    except Exception:
+        # Fallback just in case
+        ignore_warnings = params.get("ignore_warnings", False)
+
+    print(f"DEBUG - Final ignore_warnings flag: {ignore_warnings}")
 
     ### 3 & 4. Extract global parameters with default fallback
     (
@@ -77,7 +86,6 @@ def handle_file_upload(event, params):
         f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
     )
     ta_start = time.time()
-    print(f"DEBUG - ignore_warnings: {ignore_warnings}")
     processed_ta_df, daily_df, anomalies_df_new = process_data_ta(
         ta_df,
         client_params,
