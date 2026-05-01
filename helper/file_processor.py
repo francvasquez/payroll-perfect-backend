@@ -99,6 +99,22 @@ def handle_file_upload(event, params):
     # Store json files for ready-to-serve front consumption
     save_waiver_json_s3(waiver_df, "waiver", event)
 
+    # ================== DEBUG INTERCEPTOR ==================
+    print("\n--- PRE-FLIGHT CHECK FOR GENERATE_RESULTS ---")
+    print(f"1. Type of anomalies_df_new: {type(anomalies_df_new)}")
+
+    if isinstance(anomalies_df_new, str):
+        print(f"🚨 ALERT! It's a string! Value: '{anomalies_df_new}'")
+    else:
+        print(f"✓ It's a DataFrame. Shape: {anomalies_df_new.shape}")
+
+    # Let's also check the variable right before it, just in case!
+    print(f"2. Type of daily_df: {type(daily_df)}")
+    if isinstance(daily_df, str):
+        print(f"🚨 daily_df is a string! Value: '{daily_df}'")
+    print("---------------------------------------------------\n")
+    # =======================================================
+
     ### 10. Generate result for React front-end
     result = generate_results(
         processed_ta_df,
