@@ -312,6 +312,13 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                     f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{full_table_name}" ("Pay Date");'
                 )
 
+                # 3c. THE WIPE: Clear existing records for this pay period to prevent ghost records
+                print(f"Wiping existing records for pay date: {pay_date}")
+                cur.execute(
+                    f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s;',
+                    (pay_date,),
+                )
+
                 # 4. Temp table for upsert
                 cur.execute(
                     f'CREATE TEMP TABLE "{temp_table}" ({cols_sql}) ON COMMIT DROP;'
