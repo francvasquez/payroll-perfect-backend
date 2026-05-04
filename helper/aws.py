@@ -1,4 +1,4 @@
-import json, boto3, io, json
+import json, boto3, io, json, traceback
 from datetime import datetime, timezone
 import pandas as pd
 from app_config import S3_BUCKET, CORS_HEADERS
@@ -164,29 +164,18 @@ def save_annotations(client_id, pay_date, annotations_data):
 
         print(f"Saved annotations to: s3://{S3_BUCKET}/{s3_key}")
 
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"message": "Annotations saved successfully"}),
-        }
+        return {"message": "Annotations saved successfully"}
 
     except ClientError as e:
         print(f"S3 error saving annotations: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Failed to save annotations: {str(e)}"}),
-        }
+        # RAISE THE ERROR
+        raise AppError(f"Failed to save annotations: {str(e)}", status_code=500)
+
     except Exception as e:
         print(f"Unexpected error saving annotations: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        traceback.print_exc()
+        # RAISE THE ERROR
+        raise AppError(f"Internal server error: {str(e)}", status_code=500)
 
 
 def load_annotations(client_id, pay_date):
