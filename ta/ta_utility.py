@@ -176,9 +176,9 @@ def validate_intake_pay_date(
             dates_str += ", ..."
 
         warning_msg = (
-            f"Data Warning! Expected punches strictly between {expected_start.date()} and {expected_end.date()}.\n\n"
-            f"Found {len(outliers_df)} straggler punches on these dates: {dates_str}.\n"
-            f"Top culprits:\n"
+            f"Data Warning! Expected punches between {expected_start.date()} and {expected_end.date()}.\n\n"
+            f"Found {len(outliers_df)} punches for these dates: {dates_str}.\n"
+            f"Sample punches:\n"
         )
 
         sample_outliers = outliers_df[["ID", "Employee", "In Punch"]].head(4)
