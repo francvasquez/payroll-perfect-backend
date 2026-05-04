@@ -205,11 +205,7 @@ def load_annotations(client_id, pay_date):
         print(f"Loaded annotations from: s3://{S3_BUCKET}/{s3_key}")
 
         # [NEW] Return the entire payload, not wrapped in another "annotations" key
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(annotations_payload),
-        }
+        return annotations_payload
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "UnknownCode")
