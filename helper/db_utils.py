@@ -435,6 +435,46 @@ def delete_ta_from_db(conn, clientId, pay_date):
         raise e
 
 
+def delete_daily_df_from_db(conn, clientId, pay_date):
+    """
+    Deletes all rows for a specific pay date from the daily_df table.
+    """
+    full_table_name = f"{clientId}_daily_df"
+
+    try:
+        with conn:
+            with conn.cursor() as cur:
+                # 1. Verify table exists
+                cur.execute(
+                    """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = %s
+                    );
+                """,
+                    (full_table_name,),
+                )
+
+                if not cur.fetchone()[0]:
+                    print(f"Table {full_table_name} does not exist. Skipping.")
+                    return 0
+
+                # 2. Execute deletion using Fiscal_Pay_Date
+                # Note: We use "Fiscal_Pay_Date" as that is the unique anchor for daily records
+                query = f'DELETE FROM "{full_table_name}" WHERE "Fiscal_Pay_Date" = %s'
+                cur.execute(query, (pay_date,))
+
+                deleted_rows = cur.rowcount
+                print(
+                    f"✓ Deleted {deleted_rows} rows from {full_table_name} for {pay_date}"
+                )
+                return deleted_rows
+
+    except Exception as e:
+        print(f"Error deleting from {full_table_name}: {e}")
+        raise e
+
+
 def handle_get_ta_columns(clientId):
     try:
         conn = get_db_connection()

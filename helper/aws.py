@@ -1,11 +1,15 @@
 import json, boto3, io, json, traceback
 from datetime import datetime, timezone
 import pandas as pd
-from app_config import S3_BUCKET, CORS_HEADERS
+from app_config import S3_BUCKET
 from client_config import CLIENT_CONFIGS
 from io import StringIO
 from botocore.exceptions import ClientError
-from helper.db_utils import delete_ta_from_db, get_db_connection
+from helper.db_utils import (
+    delete_ta_from_db,
+    delete_daily_df_from_db,
+    get_db_connection,
+)
 from exceptions import AppError
 from botocore.exceptions import ClientError
 
@@ -110,23 +114,44 @@ def delete_pay_period(client_id, pay_date):
 
         # --- Database Deletion ---
         conn = get_db_connection()
+
+        # 1. Hard fail if not connected to DB
+        if not conn:
+            # We raise an AppError here! Let the user know the DB is paused.
+            raise AppError(
+                "Database is paused or unavailable. S3 files were deleted, but database records remain.",
+                status_code=503,
+            )
         db_rows = 0
         db_status = "skipped"
 
-        if conn:
-            try:
-                db_rows = delete_ta_from_db(conn, client_id, pay_date)
-                db_status = "completed"
-            except Exception as e:
-                print(f"Failed to delete from database. S3 succeeded but not db: {e}")
-                db_status = "error"
-            finally:
-                conn.close()
-        else:
-            print("DB is paused or unavailable. Skipping DB row deletion.")
+        # 2. Attempt to delete from both tables.
+        try:
+            # 1. Delete from the raw punches table
+            ta_deleted = delete_ta_from_db(conn, client_id, pay_date)
+
+            # 2. Delete from the daily totals table
+            daily_deleted = delete_daily_df_from_db(conn, client_id, pay_date)
+
+            db_rows = ta_deleted + daily_deleted
+            db_status = "completed"
+            print(
+                f"Total DB rows deleted: {db_rows} ({ta_deleted} TA, {daily_deleted} Daily)"
+            )
+        except Exception as e:
+            # 2. HARD FAIL IF DELETION CRASHES
+            print(f"Failed to delete from database. S3 succeeded but not db: {e}")
+            # Do NOT swallow the error. Raise it so the frontend shows the red warning.
+            raise AppError(
+                f"S3 files deleted, but database deletion failed: {str(e)}",
+                status_code=500,
+            )
+        finally:
+            # This safely runs even if an AppError is raised inside the try block!
+            conn.close()
 
         # --- RETURN PURE DATA ---
-        # The lambda_handler will wrap this in a 200 OK
+        # If we made it here, S3 and DB both succeeded!
         return {
             "message": (
                 "Pay period partially deleted with some errors"
@@ -137,6 +162,8 @@ def delete_pay_period(client_id, pay_date):
             "deleted_files": deleted_files,
             "errors": errors,
             "db_rows_affected": db_rows,
+            "ta_rows_deleted": ta_deleted,  # <-- NEW
+            "daily_rows_deleted": daily_deleted,  # <-- NEW
             "db_status": db_status,
         }
 
