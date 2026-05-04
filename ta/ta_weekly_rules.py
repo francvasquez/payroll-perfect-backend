@@ -103,7 +103,7 @@ def _compute_streaks_for_employee(
     """
     # Normalise dates once to avoid timezone / hour-offset bugs
     dates: np.ndarray = (
-        group["Attributed_Workday"].dt.normalize().values
+        group["Attributed_Workday"].dt.normalize().to_numpy()
     )  # numpy datetime64
 
     n = len(dates)

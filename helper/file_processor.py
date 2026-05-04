@@ -1,7 +1,3 @@
-import pandas as pd
-from app_config import (
-    CORS_HEADERS,
-)
 from helper.aux import verify_files, extract_global_config
 from helper.aws import (
     read_excel_from_s3,

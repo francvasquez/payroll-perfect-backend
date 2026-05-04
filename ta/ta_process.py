@@ -7,7 +7,6 @@ from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
 import utility
 from . import ta_utility
 import logging
-import json
 import pandas as pd
 import concurrent.futures
 from . import ta_weekly_rules

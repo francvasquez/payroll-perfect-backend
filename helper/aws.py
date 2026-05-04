@@ -72,7 +72,10 @@ def delete_pay_period(client_id, pay_date):
             for page in pages:
                 if "Contents" in page:
                     for obj in page["Contents"]:
-                        objects_to_delete.append({"Key": obj["Key"]})
+                        # Safely grab the key
+                        key = obj.get("Key")
+                        if key:
+                            objects_to_delete.append({"Key": key})
 
             # Delete in chunks of 1000
             if objects_to_delete:
@@ -85,14 +88,21 @@ def delete_pay_period(client_id, pay_date):
                     # Track successful deletions
                     if "Deleted" in delete_response:
                         for deleted in delete_response["Deleted"]:
-                            deleted_files.append(deleted["Key"])
-                            print(f"Deleted: {deleted['Key']}")
+                            # Safely grab the deleted key
+                            del_key = deleted.get("Key")
+                            if del_key:
+                                deleted_files.append(del_key)
+                                print(f"Deleted: {del_key}")
 
                     # Track errors
                     if "Errors" in delete_response:
                         for error in delete_response["Errors"]:
-                            errors.append(f"{error['Key']}: {error['Message']}")
-                            print(f"Error deleting {error['Key']}: {error['Message']}")
+                            # Provide fallback strings if Key or Message are missing
+                            err_key = error.get("Key", "UnknownKey")
+                            err_msg = error.get("Message", "Unknown Error")
+
+                            errors.append(f"{err_key}: {err_msg}")
+                            print(f"Error deleting {err_key}: {err_msg}")
 
                 print(f"Deleted {len(deleted_files)} files from {prefix}")
             else:
@@ -202,41 +212,27 @@ def load_annotations(client_id, pay_date):
         }
 
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
+        error_code = e.response.get("Error", {}).get("Code", "UnknownCode")
 
         if error_code == "NoSuchKey":
             print(f"No annotations found for {client_id}/{pay_date}")
-            return {
-                "statusCode": 200,
-                "headers": CORS_HEADERS,
-                "body": json.dumps(None),
-            }
+            # 2. PURE DATA RETURN (Valid empty state)
+            return None
         else:
             print(f"S3 error loading annotations: {str(e)}")
-            return {
-                "statusCode": 500,
-                "headers": CORS_HEADERS,
-                "body": json.dumps({"error": f"Failed to load annotations: {str(e)}"}),
-            }
+            # 3. RAISE THE ERROR
+            raise AppError(f"Failed to load annotations: {str(e)}", status_code=500)
 
     except json.JSONDecodeError as e:
         print(f"Invalid JSON in annotations file: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": "Invalid annotations file format"}),
-        }
+        # 4. RAISE THE ERROR
+        raise AppError("Invalid annotations file format", status_code=500)
 
     except Exception as e:
         print(f"Unexpected error loading annotations: {str(e)}")
-        import traceback
-
-        print(traceback.format_exc())
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        traceback.print_exc()
+        # 5. RAISE THE ERROR
+        raise AppError(f"Internal server error: {str(e)}", status_code=500)
 
 
 def delete_annotations(client_id, pay_date):
@@ -267,10 +263,15 @@ def list_pay_periods(client_id):
     # Extract dates from folder names
     periods = []
     for obj in response.get("CommonPrefixes", []):
-        # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
-        date = obj["Prefix"].split("/")[-2]
-        periods.append(date)
-        # print("AVAILABLE PERIODS: ", periods)
+        # Safely grab the Prefix
+        folder_path = obj.get("Prefix")
+
+        # Prove to Pylance that the path exists before running string methods
+        if folder_path:
+            # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
+            date = folder_path.split("/")[-2]
+            periods.append(date)
+            # print("AVAILABLE PERIODS: ", periods)
 
     return {"periods": periods}
 
@@ -582,19 +583,12 @@ def handle_get_client_config(client_id):
 def handle_save_client_config(client_id, config):
     """Save client configuration to S3"""
 
+    # 1. RAISE EARLY ERRORS
     if not client_id:
-        return {
-            "statusCode": 400,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": "clientId is required"}),
-        }
+        raise AppError("clientId is required", status_code=400)
 
     if not config:
-        return {
-            "statusCode": 400,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": "config is required"}),
-        }
+        raise AppError("config is required", status_code=400)
 
     try:
         # Build S3 key path
@@ -612,25 +606,16 @@ def handle_save_client_config(client_id, config):
 
         print(f"Successfully saved config for client: {client_id}")
 
-        return {
-            "statusCode": 200,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"message": "Configuration saved successfully"}),
-        }
+        # 2. PURE DATA RETURN (Success)
+        return {"message": "Configuration saved successfully"}
 
     except ClientError as e:
-        error_code = e.response["Error"]["Code"]
         print(f"S3 error: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Failed to save config: {str(e)}"}),
-        }
+        # 3. RAISE S3 ERRORS
+        raise AppError(f"Failed to save config: {str(e)}", status_code=500)
 
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps({"error": f"Internal server error: {str(e)}"}),
-        }
+        traceback.print_exc()
+        # 4. RAISE GENERAL ERRORS
+        raise AppError(f"Internal server error: {str(e)}", status_code=500)
