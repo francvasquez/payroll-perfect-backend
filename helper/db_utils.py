@@ -1,14 +1,12 @@
 # db_utils.py
 import pandas as pd
 import numpy as np
-import os, uuid
-import psycopg2
+import os, psycopg2, uuid, json, traceback, logging
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 import app_config
-import logging
-import json
 from datetime import datetime, timedelta
+from exceptions import AppError
 
 # Consider extendind accross other files
 logger = logging.getLogger()
@@ -476,13 +474,9 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
     try:
         conn = get_db_connection()
         if conn is None:
-            return {
-                "statusCode": 503,
-                "headers": app_config.CORS_HEADERS,
-                "body": json.dumps(
-                    {"error": "Database is currently unreachable. Check network/VPN."}
-                ),
-            }
+            raise AppError(
+                "Database is currently unreachable. Check network/VPN.", status_code=503
+            )
 
         cur = conn.cursor()
 
@@ -569,19 +563,10 @@ def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCo
         # 3. PACKAGE AND RETURN SPLIT DATA
         # ==========================================
         split_data = {"daily_totals": daily_results, "raw_punches": raw_results}
-
-        return {
-            "statusCode": 200,
-            "headers": app_config.CORS_HEADERS,
-            "body": json.dumps(
-                split_data, default=str  # Handles Date/Timestamp conversion
-            ),
-        }
+        # lambda_handler will wrap this in a 200 OK and handle the json.dumps
+        return split_data
 
     except Exception as e:
         print(f"Query Error: {str(e)}")
-        return {
-            "statusCode": 500,
-            "headers": app_config.CORS_HEADERS,
-            "body": json.dumps({"error": f"Database query failed: {str(e)}"}),
-        }
+        traceback.print_exc()  # Print full stack trace to CloudWatch!
+        raise AppError(f"Database query failed: {str(e)}", status_code=500)
