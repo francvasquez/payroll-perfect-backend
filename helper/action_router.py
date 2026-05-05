@@ -30,6 +30,7 @@ def route_action(action, params, event):
             clientId, employeeId, startDate, endDate, selectedCols
         )
     elif action == "get-ta-columns":
+        # TODO (Phase 2): Future implementation. Currently the frontend UI just gets COLUMN_TO_KEEP_DB from the backend, which we use in the backend as well to specifically say which columns to save to the DB.
         return handle_get_ta_columns(clientId)
     elif action == "get-client-config":
         return handle_get_client_config(clientId)
