@@ -1,7 +1,7 @@
 # db_utils.py
 import pandas as pd
 import numpy as np
-import os, psycopg2, uuid, json, traceback, logging
+import os, psycopg2, uuid, traceback, logging
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 import app_config
@@ -476,38 +476,48 @@ def delete_daily_df_from_db(conn, clientId, pay_date):
 
 
 def handle_get_ta_columns(clientId):
+    conn = None
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        if not conn:
+            raise AppError("Database is currently unavailable.", status_code=503)
+
         table_name = f"{clientId}_ta"
 
-        # Query PostgreSQL metadata for column names
-        cur.execute(
-            f"""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = '{table_name}'
-            ORDER BY ordinal_position
-        """
-        )
+        # Using the 'with' context manager for the cursor automatically closes it!
+        with conn.cursor() as cur:
+            # BONUS: Swapped f-string for parameterized query (%s) for better security
+            cur.execute(
+                """
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s
+                ORDER BY ordinal_position
+                """,
+                (table_name,),
+            )
 
-        all_cols = [row[0] for row in cur.fetchall()]
+            all_cols = [row[0] for row in cur.fetchall()]
 
         # Columns to EXCLUDE from the pulldown (User shouldn't pick these)
         selectable_cols = [
             c for c in all_cols if c not in app_config.EXCLUDE_FROM_PULLDOWN
         ]
 
-        cur.close()
-        conn.close()
+        # 1. PURE DATA RETURN (Success)
+        return selectable_cols
 
-        return {
-            "statusCode": 200,
-            "headers": app_config.CORS_HEADERS,
-            "body": json.dumps(selectable_cols),
-        }
     except Exception as e:
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        print(f"Error fetching columns for {clientId}: {str(e)}")
+        traceback.print_exc()
+
+        # 2. RAISE THE ERROR (Failure)
+        raise AppError(f"Failed to fetch columns: {str(e)}", status_code=500)
+
+    finally:
+        # 3. THE SAFETY NET: Always close the connection!
+        if conn:
+            conn.close()
 
 
 def handle_query_ta_records(clientId, employeeId, startDate, endDate, selectedCols):
