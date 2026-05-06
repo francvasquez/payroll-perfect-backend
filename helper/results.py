@@ -70,6 +70,8 @@ def generate_results(
     client_id,
 ):
 
+    waiver_length = len(processed_waiver_df) if processed_waiver_df is not None else 0
+
     result = {
         "success": True,
         "metadata": {
@@ -86,7 +88,7 @@ def generate_results(
                 "ta_rows": len(processed_ta_df),
                 "anomalies_rows": len(anomalies_df_new),
                 "wfn_rows": len(processed_wfn_df),
-                "waiver_rows": len(processed_waiver_df),
+                "waiver_rows": waiver_length,
             },
             "timing": {
                 "ta_process_time_ms": ta_process_time,

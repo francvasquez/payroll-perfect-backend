@@ -685,6 +685,9 @@ def add_col_from_another_df(
 
 
 def add_waiver_check(df, processed_waiver_df):
+    if processed_waiver_df is None or processed_waiver_df.empty:
+        df["Waiver on File?"] = False
+        return df
     add_col_from_another_df(
         home_new_col="Waiver on File?",
         home_df=df,

@@ -55,12 +55,7 @@ CLIENT_CONFIGS = {
                         "transform": "concat",
                         "delimiter": "0",
                     },
-                    "Location": {
-                        "source_column": "ID",
-                        "transform": "substring",
-                        "start": 0,
-                        "end": 3,
-                    },
+                    "Location": "Pay Group",  # Ensure this is after "ID" mapping since it uses "Pay Group" column which will get renamed to "Location" above
                 },
                 "drop_columns": [
                     "Totaled Amount",
@@ -75,7 +70,7 @@ CLIENT_CONFIGS = {
             },
         },
     },
-    "new_client": {  # add new client
+    "new_client": {  # reference for adding new client
         "systems": {
             "systemA": {
                 "detection": {

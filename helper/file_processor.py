@@ -20,11 +20,10 @@ def handle_file_upload(event, params):
     Frontend ensures all three files are provided
     """
 
-    ### 1. Verify all three files are provided (we already do in frontend, consider removing)
-    error_response = verify_files(params)
-    if error_response:
-        return error_response
-
+    ### 1. Verify TA and WFN are provided (if no Waiver, user has already provided consent in frontend)
+    print("DEBUG - Verifying files...")
+    waiver_key, wfn_key, ta_key = verify_files(params)
+    print("DEBUG - File verification passed.")
     ### 2. Extract client_id and client_params
     client_id = params["clientId"]
     client_params = params["client_config"]
@@ -59,14 +58,21 @@ def handle_file_upload(event, params):
         del_annot_msg = delete_annotations(client_id, pay_date)
 
     ### 6. Process WAIVER
-    waiver_df = read_excel_from_s3(params["waiver_key"])
-    waiver_start = time.time()
-    processed_waiver_df = process_waiver(waiver_df)
-    waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
-    print(f"Waiver processed: {len(processed_waiver_df)} rows")
+    if waiver_key:
+        waiver_start = time.time()
+        waiver_df = read_excel_from_s3(waiver_key)
+        processed_waiver_df = process_waiver(waiver_df)
+        waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
+        print(f"Waiver processed: {len(processed_waiver_df)} rows")
+    else:
+        # No waiver file provided
+        waiver_df = None
+        processed_waiver_df = None
+        waiver_process_time = 0
+        print("No waiver file provided, skipping waiver processing.")
 
     ### 7. Process WFN
-    wfn_df = read_excel_from_s3(params["wfn_key"], header=5)
+    wfn_df = read_excel_from_s3(wfn_key, header=5)
     wfn_start = time.time()
     processed_wfn_df = process_data_wfn(
         wfn_df, client_params, min_wage, state_min_wage, pay_periods_per_year
@@ -75,9 +81,7 @@ def handle_file_upload(event, params):
     print(f"WFN processed: {len(processed_wfn_df)} rows")
 
     ### 8. Process TA (using results from first two)
-    ta_df, system_name, system_config = read_ta_excel_from_s3(
-        params["ta_key"], client_id
-    )
+    ta_df, system_name, system_config = read_ta_excel_from_s3(ta_key, client_id)
     print(
         f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
     )
@@ -103,24 +107,7 @@ def handle_file_upload(event, params):
         save_csv_to_s3(wfn_df, "wfn", event)
     if waiver_df is not None:
         save_csv_to_s3(waiver_df, "waiver", event)
-    # Store json files for ready-to-serve front consumption
-    save_waiver_json_s3(waiver_df, "waiver", event)
-
-    # ================== DEBUG INTERCEPTOR ==================
-    print("\n--- PRE-FLIGHT CHECK FOR GENERATE_RESULTS ---")
-    print(f"1. Type of anomalies_df_new: {type(anomalies_df_new)}")
-
-    if isinstance(anomalies_df_new, str):
-        print(f"🚨 ALERT! It's a string! Value: '{anomalies_df_new}'")
-    else:
-        print(f"✓ It's a DataFrame. Shape: {anomalies_df_new.shape}")
-
-    # Let's also check the variable right before it, just in case!
-    print(f"2. Type of daily_df: {type(daily_df)}")
-    if isinstance(daily_df, str):
-        print(f"🚨 daily_df is a string! Value: '{daily_df}'")
-    print("---------------------------------------------------\n")
-    # =======================================================
+        save_waiver_json_s3(waiver_df, "waiver", event)
 
     ### 10. Generate result for React front-end
     result = generate_results(

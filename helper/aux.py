@@ -65,13 +65,24 @@ def parse_event_params(event):
 
 
 def verify_files(params):
-    # Verify all three files are provided (they should be from frontend)
+    # Extract keys
     waiver_key = params.get("waiver_key")
     wfn_key = params.get("wfn_key")
     ta_key = params.get("ta_key")
 
-    if not all([waiver_key, wfn_key, ta_key]):
-        raise ValidationError("All three files (waiver, wfn, ta) are required")
+    print(
+        f"DEBUG: Verifying files - waiver_key: {waiver_key}, wfn_key: {wfn_key}, ta_key: {ta_key}"
+    )
+
+    # Only WFN and TA are strictly required
+    if not all([wfn_key, ta_key]):
+        print(
+            "DEBUG: ERROR - Missing required files. WFN and TA files are strictly required."
+        )
+        raise ValidationError("The WFN and TA files are strictly required.")
+
+    print("DEBUG: All required files are present.")
+    return waiver_key, wfn_key, ta_key
 
 
 def convert_datetime_columns_to_iso(df: pd.DataFrame) -> pd.DataFrame:

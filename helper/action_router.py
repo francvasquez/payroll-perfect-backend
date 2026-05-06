@@ -50,6 +50,8 @@ def route_action(action, params, event):
         return delete_annotations(clientId, payDate)
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
+    elif action == "process-files":
+        return handle_file_upload(event, params)
     else:
         # This will pass return dictionary to lambda_handler which will convert it to API Gateway response
-        return handle_file_upload(event, params)
+        raise ValueError(f"Unknown action: {action}")
