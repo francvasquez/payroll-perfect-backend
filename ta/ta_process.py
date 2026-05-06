@@ -3,7 +3,7 @@ from helper.db_utils import (
     worker_save_daily,
     worker_save_ta,
 )
-from client_config import PP_REQUIRED_COLUMNS, CLIENT_CONFIGS
+from client_config import PP_TARGET_SCHEMA, CLIENT_CONFIGS
 import utility
 from . import ta_utility
 import logging
@@ -33,17 +33,17 @@ def process_data_ta(
     # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
     df = ta_utility.normalize_client_data(df, system_config)
 
-    # 2. Validation: Check if all neccesary columns are present, if not stop processing.
-    missing = [col for col in PP_REQUIRED_COLUMNS["ta"] if col not in df.columns]
+    # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
+    missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
     if missing:
-        logger.info(f"Columns actually received: {list(df.columns)}")
+        logger.info(f"Columns in ta dataframe post normalization: {list(df.columns)}")
         error_msg = f"CRITICAL: Missing required columns: {missing}"
         logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    other_cols = [col for col in df.columns if col not in PP_REQUIRED_COLUMNS["ta"]]
-    df = df[PP_REQUIRED_COLUMNS["ta"] + other_cols]
+    other_cols = [col for col in df.columns if col not in PP_TARGET_SCHEMA["ta"]]
+    df = df[PP_TARGET_SCHEMA["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
     df = ta_utility.drop_rows(df, system_config)
@@ -69,8 +69,8 @@ def process_data_ta(
 
     ######### DF PROCESSING #################
 
-    # Add Location. TODO Base on Client Settings for scalability
-    df["Location"] = df["ID"].str[:3]
+    # Add Location
+    # df["Location"] = df["ID"].str[:3] Moved to normalization step. See client_config.py for details.
 
     # Normalize and create new Date column
     df["Date"] = df["In Punch"].dt.normalize()

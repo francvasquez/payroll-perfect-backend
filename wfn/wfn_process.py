@@ -10,6 +10,7 @@ def process_data_wfn(df, client_params, min_wage, state_min_wage, pay_periods_pe
 
     # Add Index, converting first File# to string and set it a 6 characters
     df["FILE#"] = df["FILE#"].astype(int).astype(str).str.zfill(6)
+    # Used as a lookup key for joining with TA data
     df["IDX"] = df["CO."].astype(str) + "0" + df["FILE#"].astype(str)
 
     # Aux Cols

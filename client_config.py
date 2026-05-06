@@ -1,8 +1,22 @@
-PP_REQUIRED_COLUMNS = {
+# PP_REQUIRED_COLUMNS = {
+#     "ta": [
+#         "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
+#         "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
+#         "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
+#         "Out Punch",
+#         "Status",
+#         "Status Date",
+#     ]
+# }
+
+# This will be the columns required post normalization in process_data_ta step 1. This is also the gold standard to
+# pass along to new client when requesting files.
+PP_TARGET_SCHEMA = {
     "ta": [
-        "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
-        "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
-        "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
+        "ID",  # Standardized unique identifier
+        "Location",  # Explicitly required for downstream math
+        "Employee",
+        "In Punch",
         "Out Punch",
         "Status",
         "Status Date",
@@ -18,7 +32,16 @@ CLIENT_CONFIGS = {
                     "columns": ["Employee", "In Punch Comment"],
                     "header": 7,  # The file must contain "columns" in the correct "header"
                 },
-                "mappings": {"Employee": "Employee"},  # For reference
+                "mappings": {
+                    "Employee": "Employee",  # For reference
+                    # NEW: Extract first 3 characters from ID
+                    "Location": {
+                        "source_column": "ID",
+                        "transform": "substring",
+                        "start": 0,
+                        "end": 3,
+                    },
+                },
                 "drop_columns": [
                     "Org Path",
                     "Date/Time",
@@ -42,7 +65,13 @@ CLIENT_CONFIGS = {
                         "source_columns": ["Pay Group", "Payroll File Number"],
                         "transform": "concat",
                         "delimiter": "0",
-                    }
+                    },
+                    "Location": {
+                        "source_column": "ID",
+                        "transform": "substring",
+                        "start": 0,
+                        "end": 3,
+                    },
                 },
                 "drop_columns": [
                     "Totaled Amount",
@@ -64,7 +93,6 @@ CLIENT_CONFIGS = {
                     "columns": ["ColA", "ColB"],
                     "header": 0,
                 },
-                "mappings": {"Staff_No": "ID", "Clock_In": "In Punch"},  # Sample
                 "drop_columns": [
                     "Temp_Calculation_Field",
                     "Audit_Log_ID",
