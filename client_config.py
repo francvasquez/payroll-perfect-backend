@@ -1,20 +1,9 @@
-# PP_REQUIRED_COLUMNS = {
-#     "ta": [
-#         "ID",  # unique per employee. Important: First three chars are Location Code e.g. 22R0000143
-#         "Employee",  # employee name (full name) e.g. Abarca, Maria Del Carmen
-#         "In Punch",  # containing both date & time e.g. 46038.5180555556 Excel format
-#         "Out Punch",
-#         "Status",
-#         "Status Date",
-#     ]
-# }
+# This will be the columns required post normalization in process_data_ta step 1. Basically this is the data that we need to request to new clients. It doesn't matter if it doesn't come and be specific columns but somehow the data needs to be present. We can transform using CLIENT_CONFIGS and the method normalize_client_data.
 
-# This will be the columns required post normalization in process_data_ta step 1. This is also the gold standard to
-# pass along to new client when requesting files.
 PP_TARGET_SCHEMA = {
     "ta": [
-        "ID",  # Standardized unique identifier
-        "Location",  # Explicitly required for downstream math
+        "ID",  # Standardized unique identifier - must match WFN's IDX
+        "Location",
         "Employee",
         "In Punch",
         "Out Punch",
