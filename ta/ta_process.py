@@ -61,7 +61,7 @@ def process_data_ta(
     )
     if not is_valid:
         if error_type == "STRAGGLER_WARNING":
-            # Throw a 409 Conflict! This tells React "I can proceed if you force me to."
+            # Throw a 409 Conflict! This will open a dialog in React prompting the user if they really want to continue"
             raise AppError(msg, status_code=409)
         else:
             # Standard hard error
