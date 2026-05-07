@@ -317,12 +317,6 @@ def load_processed_results(client_id, pay_date):
         if error_code == "NoSuchKey":
             print(f"[DEBUG] NoSuchKey: No processed data at {key}")
 
-            #     # Optional: list objects under the prefix to see what exists
-            #     prefix = f"clients/{client_id}/processed/{pay_date}/"
-            #     list_response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
-            #     existing_keys = [obj["Key"] for obj in list_response.get("Contents", [])]
-            #     print(f"[DEBUG] Existing objects under prefix {prefix}: {existing_keys}")
-
             # Raise AppError! lambda_handler will format this as an HTTP 404.
             raise AppError("No processed data for this period", status_code=404)
 

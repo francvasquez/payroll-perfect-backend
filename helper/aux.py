@@ -70,18 +70,9 @@ def verify_files(params):
     wfn_key = params.get("wfn_key")
     ta_key = params.get("ta_key")
 
-    print(
-        f"DEBUG: Verifying files - waiver_key: {waiver_key}, wfn_key: {wfn_key}, ta_key: {ta_key}"
-    )
-
     # Only WFN and TA are strictly required
     if not all([wfn_key, ta_key]):
-        print(
-            "DEBUG: ERROR - Missing required files. WFN and TA files are strictly required."
-        )
         raise ValidationError("The WFN and TA files are strictly required.")
-
-    print("DEBUG: All required files are present.")
     return waiver_key, wfn_key, ta_key
 
 

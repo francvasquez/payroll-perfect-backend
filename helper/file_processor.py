@@ -21,9 +21,8 @@ def handle_file_upload(event, params):
     """
 
     ### 1. Verify TA and WFN are provided (if no Waiver, user has already provided consent in frontend)
-    print("DEBUG - Verifying files...")
     waiver_key, wfn_key, ta_key = verify_files(params)
-    print("DEBUG - File verification passed.")
+
     ### 2. Extract client_id and client_params
     client_id = params["clientId"]
     client_params = params["client_config"]
@@ -35,8 +34,6 @@ def handle_file_upload(event, params):
     except Exception:
         # Fallback just in case
         ignore_warnings = params.get("ignore_warnings", False)
-
-    print(f"DEBUG - Final ignore_warnings flag: {ignore_warnings}")
 
     ### 3 & 4. Extract global parameters with default fallback
     (
@@ -126,7 +123,7 @@ def handle_file_upload(event, params):
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 
-    ### 11. Add any details to the result dictionary so front-end can display it after processing
+    ### 11. Add any success details to the result dictionary so front-end can display it after processing
     result["details"] = {
         "del_annot_msg": del_annot_msg
         # You can easily add more here later!
