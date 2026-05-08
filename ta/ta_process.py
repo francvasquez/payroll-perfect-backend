@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 def process_data_ta(
     df,
     client_params,
-    system_config,
+    ta_system_config,
     min_wage,
     pay_date,
     clientId,
@@ -31,7 +31,7 @@ def process_data_ta(
     ######### DF CLEANUP AND PREP #################
 
     # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
-    df = ta_utility.normalize_client_data(df, system_config)
+    df = ta_utility.normalize_client_data(df, ta_system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
     missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
@@ -46,7 +46,7 @@ def process_data_ta(
     df = df[PP_TARGET_SCHEMA["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
-    df = ta_utility.drop_rows(df, system_config)
+    df = ta_utility.drop_rows(df, ta_system_config)
 
     # 5. Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")

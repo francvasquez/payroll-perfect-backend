@@ -1,7 +1,8 @@
 from helper.aux import verify_files, extract_global_config
 from helper.aws import (
-    read_excel_from_s3,
+    read_wfn_excel_from_s3,
     read_ta_excel_from_s3,
+    read_waiver_excel_from_s3,
     save_csv_to_s3,
     save_waiver_json_s3,
     put_result_to_s3,
@@ -57,7 +58,7 @@ def handle_file_upload(event, params):
     ### 6. Process WAIVER
     if waiver_key:
         waiver_start = time.time()
-        waiver_df = read_excel_from_s3(waiver_key)
+        waiver_df = read_waiver_excel_from_s3(waiver_key)
         processed_waiver_df = process_waiver(waiver_df)
         waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
         print(f"Waiver processed: {len(processed_waiver_df)} rows")
@@ -69,7 +70,7 @@ def handle_file_upload(event, params):
         print("No waiver file provided, skipping waiver processing.")
 
     ### 7. Process WFN
-    wfn_df = read_excel_from_s3(wfn_key, header=5)
+    wfn_df = read_wfn_excel_from_s3(wfn_key, header=5)
     wfn_start = time.time()
     processed_wfn_df = process_data_wfn(
         wfn_df, client_params, min_wage, state_min_wage, pay_periods_per_year
@@ -78,15 +79,15 @@ def handle_file_upload(event, params):
     print(f"WFN processed: {len(processed_wfn_df)} rows")
 
     ### 8. Process TA (using results from first two)
-    ta_df, system_name, system_config = read_ta_excel_from_s3(ta_key, client_id)
+    ta_df, ta_system_name, ta_system_config = read_ta_excel_from_s3(ta_key, client_id)
     print(
-        f"Will normalize for system: {system_name}, using {system_config} for client: {client_id}"
+        f"Will normalize for TA system: {ta_system_name}, using {ta_system_config} for client: {client_id}"
     )
     ta_start = time.time()
     processed_ta_df, daily_df, anomalies_df_new = process_data_ta(
         ta_df,
         client_params,
-        system_config,
+        ta_system_config,
         min_wage,
         pay_date,
         client_id,

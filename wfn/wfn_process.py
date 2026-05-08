@@ -4,6 +4,47 @@ import utility
 
 def process_data_wfn(df, client_params, min_wage, state_min_wage, pay_periods_per_year):
 
+    ######### DF CLEANUP AND PREP #################
+
+    # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
+    # df = ta_utility.normalize_client_data(df, system_config)
+
+    # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
+    # missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
+    # if missing:
+    #     logger.info(f"Columns in ta dataframe post normalization: {list(df.columns)}")
+    #     error_msg = f"CRITICAL: Missing required columns: {missing}"
+    #     logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
+    #     raise ValueError(error_msg)  # Raise stops execution in Lambda
+
+    # 3. Re-order 'Core' columns are always first (makes the DB readable)
+    # other_cols = [col for col in df.columns if col not in PP_TARGET_SCHEMA["ta"]]
+    # df = df[PP_TARGET_SCHEMA["ta"] + other_cols]
+
+    # 4. Drops rows that are not punches base on client configuration
+    # df = ta_utility.drop_rows(df, system_config)
+
+    # 5. Assure timestamps are in Panda's datetime format
+    # df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
+
+    # 6. Ensure inputed Pay Date matches the contents of the file
+    # is_valid, msg, error_type = ta_utility.validate_intake_pay_date(
+    #     df,
+    #     pay_date,
+    #     client_params,
+    #     CLIENT_CONFIGS[clientId]["anchor_pay_date"],
+    #     ignore_warnings,
+    # )
+    # if not is_valid:
+    #     if error_type == "STRAGGLER_WARNING":
+    #         # Throw a 409 Conflict! This will open a dialog in React prompting the user if they really want to continue"
+    #         raise AppError(msg, status_code=409)
+    #     else:
+    #         # Standard hard error
+    #         raise AppError(msg, status_code=400)
+
+    ######### DF PROCESSING #################
+
     # Variables - extract loc config
     MinE = 100
     locations_config = client_params.get("locations", {})  ## overrides

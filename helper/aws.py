@@ -328,7 +328,14 @@ def load_processed_results(client_id, pay_date):
             )
 
 
-def read_excel_from_s3(key, header=0, engine=None):
+def read_wfn_excel_from_s3(key, header=0, engine=None):
+    """Reads WFN or Waiver excel from S3"""
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    file_bytes = io.BytesIO(obj["Body"].read())
+    return pd.read_excel(file_bytes, header=header, engine=engine)
+
+
+def read_waiver_excel_from_s3(key, header=0, engine=None):
     """Reads WFN or Waiver excel from S3"""
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
@@ -357,11 +364,11 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
     systems = CLIENT_CONFIGS[clientId]["systems"]
 
     # Step 2: Loop through systems for detection
-    for system_name, config in systems.items():
+    for ta_system_name, ta_config in systems.items():
 
         # --- a. Detection inputs ---
-        header_row = config["detection"]["header"]
-        required_cols = config["detection"]["columns"]
+        header_row = ta_config["detection"]["header"]
+        required_cols = ta_config["detection"]["columns"]
         # ----------------------------
 
         # --- b. Peek at header row only ---
@@ -381,7 +388,7 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
 
             # --- e. Read full DataFrame once the system is matched ---
             file_bytes.seek(0)
-            force_type = config.get("force_type", {})  # from CLIENT_CONFIGS
+            force_type = ta_config.get("force_type", {})  # from CLIENT_CONFIGS
             df = pd.read_excel(
                 file_bytes,
                 header=header_row,
@@ -391,8 +398,8 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
             df.columns = df.columns.str.strip()  # normalize full DF too
             return (
                 df,
-                system_name,
-                config,
+                ta_system_name,
+                ta_config,
             )  # Return the matched system's config for downstream processing
 
     # Step 3: No system matched

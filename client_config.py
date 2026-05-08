@@ -15,7 +15,8 @@ PP_TARGET_SCHEMA = {
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "anchor_pay_date": "2026-01-16",  # This is the anchor pay date used to calculate to which fiscal pay dates each work day belongs to. Should be a known pay date in the client's payroll calendar. Format: YYYY-MM-DD
-        "systems": {
+        "wfn_systems": {},  # NEW
+        "ta_systems": {
             "Time and Attendance": {
                 "detection": {
                     "columns": ["Employee", "In Punch Comment"],
