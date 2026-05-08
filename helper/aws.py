@@ -328,11 +328,67 @@ def load_processed_results(client_id, pay_date):
             )
 
 
-def read_wfn_excel_from_s3(key, header=0, engine=None):
-    """Reads WFN or Waiver excel from S3"""
+def read_wfn_excel_from_s3(key, clientId, engine=None):
+    """
+    Reads WFN Excel file from S3, auto-detects system configuration,
+    and returns (df, system_name, config)
+    """
+    # Step 1: Download file into memory
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
-    return pd.read_excel(file_bytes, header=header, engine=engine)
+
+    # Get WFN configurations for this client
+    wfn_systems = CLIENT_CONFIGS.get(clientId, {}).get("wfn_systems", {})
+
+    if not wfn_systems:
+        raise ValueError(
+            f"No 'wfn_systems' configured in CLIENT_CONFIGS for client '{clientId}'."
+        )
+
+    # Step 2: Loop through WFN systems for detection
+    for wfn_system_name, wfn_config in wfn_systems.items():
+
+        # --- a. Detection inputs ---
+        header_row = wfn_config["detection"]["header"]
+        required_cols = wfn_config["detection"]["columns"]
+
+        # --- b. Peek at header row only ---
+        try:
+            file_bytes.seek(0)  # reset buffer before each read
+            df_header = pd.read_excel(
+                file_bytes, nrows=0, header=header_row, engine=engine
+            )
+        except Exception:
+            continue  # skip this system if read fails
+
+        # --- c. Normalize column names for robust matching ---
+        df_header.columns = df_header.columns.str.strip()
+
+        # --- d. Check required columns presence ---
+        if all(col in df_header.columns for col in required_cols):
+
+            # --- e. Read full DataFrame once the system is matched ---
+            file_bytes.seek(0)
+            force_type = wfn_config.get("force_type", {})  # from CLIENT_CONFIGS
+            df = pd.read_excel(
+                file_bytes,
+                header=header_row,
+                engine=engine,
+                dtype=force_type or None,
+            )
+            df.columns = df.columns.str.strip()  # normalize full DF too
+
+            # Return the dataframe and matched config details
+            return (
+                df,
+                wfn_system_name,
+                wfn_config,
+            )
+
+    # Step 3: No system matched
+    raise ValueError(
+        f"Could not determine WFN system type for client '{clientId}' and file '{key}'."
+    )
 
 
 def read_waiver_excel_from_s3(key, header=0, engine=None):

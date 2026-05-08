@@ -70,7 +70,12 @@ def handle_file_upload(event, params):
         print("No waiver file provided, skipping waiver processing.")
 
     ### 7. Process WFN
-    wfn_df = read_wfn_excel_from_s3(wfn_key, header=5)
+    wfn_df, wfn_system_name, wfn_system_config = read_wfn_excel_from_s3(
+        wfn_key, client_id
+    )
+    print(
+        f"Will normalize for WFN system: {wfn_system_name}, using {wfn_system_config} for client: {client_id}"
+    )
     wfn_start = time.time()
     processed_wfn_df = process_data_wfn(
         wfn_df, client_params, min_wage, state_min_wage, pay_periods_per_year
