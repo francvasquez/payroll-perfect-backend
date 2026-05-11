@@ -73,18 +73,5 @@ CLIENT_CONFIGS = {
             },
         },
     },
-    "new_client": {  # reference for adding new client
-        "systems": {
-            "systemA": {
-                "detection": {
-                    "columns": ["ColA", "ColB"],
-                    "header": 0,
-                },
-                "drop_columns": [
-                    "Temp_Calculation_Field",
-                    "Audit_Log_ID",
-                ],
-            },
-        },
-    },
+    "new_client": {},  # reference for adding new client
 }

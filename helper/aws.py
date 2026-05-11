@@ -417,7 +417,7 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
 
-    systems = CLIENT_CONFIGS[clientId]["systems"]
+    systems = CLIENT_CONFIGS[clientId]["ta_systems"]
 
     # Step 2: Loop through systems for detection
     for ta_system_name, ta_config in systems.items():
