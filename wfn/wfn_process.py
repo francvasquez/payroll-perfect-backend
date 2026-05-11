@@ -48,6 +48,7 @@ def process_data_wfn(
     ######### DF PROCESSING #################
 
     # 1. Normalization: Columns Rename, Transform & Drop
+    print("DEBUG - WFN PROCESS:", wfn_system_config)
     df = utility.normalize_client_data(df, wfn_system_config)
 
     # Variables - extract loc config
