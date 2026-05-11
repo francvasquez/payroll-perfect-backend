@@ -2,7 +2,9 @@ import numpy as np
 import utility
 
 
-def process_data_wfn(df, client_params, min_wage, state_min_wage, pay_periods_per_year):
+def process_data_wfn(
+    df, client_params, wfn_system_config, min_wage, state_min_wage, pay_periods_per_year
+):
 
     ######### DF CLEANUP AND PREP #################
 
@@ -44,6 +46,9 @@ def process_data_wfn(df, client_params, min_wage, state_min_wage, pay_periods_pe
     #         raise AppError(msg, status_code=400)
 
     ######### DF PROCESSING #################
+
+    # 1. Normalization: Columns Rename, Transform & Drop
+    df = utility.normalize_client_data(df, wfn_system_config)
 
     # Variables - extract loc config
     MinE = 100

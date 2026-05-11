@@ -31,7 +31,7 @@ def process_data_ta(
     ######### DF CLEANUP AND PREP #################
 
     # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
-    df = ta_utility.normalize_client_data(df, ta_system_config)
+    df = utility.normalize_client_data(df, ta_system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
     missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
