@@ -294,6 +294,15 @@ def generate_results(
                 cols=app_config.COLS_PRINT5,
                 rename_map={"Regular Rate Paid": "Straight Rate ($)"},
             ),
+            ##4. Short Shift Warning Check
+            "short_shift": filter_and_sort_df_to_dict(
+                df=processed_ta_df,
+                sort_col="Employee",
+                ascending=True,
+                base_filter=processed_ta_df["RTP_Warning"] == True,
+                max_rows=200,
+                cols=app_config.COLS_PRINT3b,
+            ),
         },
     }
     print("Ready to serve tables generated from generate_results")

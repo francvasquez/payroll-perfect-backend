@@ -10,6 +10,17 @@ import logging
 logger = logging.getLogger()
 
 
+def add_report_time_warning(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Adds a boolean column "RTP_Warning" to flag short shifts based on a client-defined threshold.
+    TODO: The threshold is fetched from client_params["global"]["short_shift_warning_threshold"].
+    """
+    short_shift_mask = ta_masks.short_shift_warning(df)
+    df["RTP_Warning"] = short_shift_mask
+
+    return df
+
+
 def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds explicit reporting columns for consecutive day violations,

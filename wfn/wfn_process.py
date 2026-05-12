@@ -48,8 +48,15 @@ def process_data_wfn(
     ######### DF PROCESSING #################
 
     # 1. Normalization: Columns Rename, Transform & Drop
-    print("DEBUG - WFN PROCESS:", wfn_system_config)
     df = utility.normalize_client_data(df, wfn_system_config)
+
+    # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
+
+    # 4. Drops rows that are not punches base on client configuration
+
+    # 5. Assure timestamps are in Panda's datetime format
+
+    # 6. Ensure inputed Pay Date matches the contents of the file
 
     # Variables - extract loc config
     MinE = 100

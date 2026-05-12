@@ -12,6 +12,40 @@ PP_TARGET_SCHEMA = {
     ]
 }
 
+WFN_TARGET_SCHEMA = [
+    # TODO: Need to add ID here and using CLIENT_CONFIGS transformation based on row 68 of wfn_process. Consider renaming all to ID instead of IDX.
+    # TODO: Standardize names, apply mappings.
+    # Identifiers
+    "CO.",  #
+    "FILE#",
+    # Status and Rates
+    "FLSA Code",
+    "Position Status",
+    "Regular Rate Paid",
+    # Standard Hours & Earnings
+    "REG",
+    "OT",
+    "DBLTIME HRS",
+    "Regular Earnings Total",
+    "Overtime Earnings Total",
+    # Additional Earnings (Non-Discretionary & Bonuses)
+    "A_MISC ADJUST_flsa earnings",
+    "B_Bonus_Additional Earnings",
+    "C_Ee Commission_Additional Earnings",
+    "E_Auto Gratuities_Additional Earnings",
+    "X_RESTR SVC CHG_Additional Earnings",
+    "Y_BELLMANSVCCHG_Additional Earnings",
+    "D_Double Time_Additional Earnings",
+    # Break, Rest, Sick, Vacation Hours & Earnings
+    "J_Break Credits_Additional Hours",
+    "J_Break Credits_Additional Earnings",
+    "RC - Rest Credit Hours",
+    "RC_Rest Credit_Earnings",
+    "S_Sick Pay_Hours",
+    "S_Sick Pay_Earnings",
+    "V_Vacation_Earnings",
+]
+
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "anchor_pay_date": "2026-01-16",  # This is the anchor pay date used to calculate to which fiscal pay dates each work day belongs to. Should be a known pay date in the client's payroll calendar. Format: YYYY-MM-DD
