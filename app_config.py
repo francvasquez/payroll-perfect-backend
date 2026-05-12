@@ -151,8 +151,9 @@ COLS_PRINT3b = [
     "Employee",
     "ID",
     "Prev Out Punch",
-    "In Punch",
     "Break Time (min)",
+    "In Punch",
+    "Out Punch",
     "Hours Worked Shift",
 ]
 
