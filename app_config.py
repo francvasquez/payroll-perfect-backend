@@ -218,7 +218,7 @@ EXCLUDE_FROM_PULLDOWN = {
     "Date/Time",
 }
 
-
+# Columns to keep for DB storage and QueryUI pulldown menu
 COLUMN_TO_KEEP_DB = {
     "Base": ["ID", "Employee", "In Punch", "Out Punch"],
     "Metadata": ["Last Updated", "Pay Date"],
@@ -234,6 +234,7 @@ COLUMN_TO_KEEP_DB = {
         "Did Not Break",
         "12hr Credit Due",
         "Split Shift Due ($)",
+        "RTP_Warning",
     ],
     "Shift Info": [
         "New Shift?",
