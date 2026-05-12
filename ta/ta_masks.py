@@ -71,7 +71,7 @@ def did_not_break_new(df):
 
 
 def short_shift_warning(df):
-    (df["Hours Worked Shift"] > 0) & (df["Hours Worked Shift"] < 4.0)
+    return (df["Hours Worked Shift"] > 0) & (df["Hours Worked Shift"] < 4.0)
 
 
 def did_not_break_new_all(df):
