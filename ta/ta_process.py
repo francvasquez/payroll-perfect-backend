@@ -121,7 +121,7 @@ def process_data_ta(
     # Split at Min Wage ($), Split Shift Due ($) cols.
     df = ta_utility.add_split_shift(df, processed_wfn_df, min_wage)
 
-    # Add Report Time Warning tag to df
+    # Add Report Time Warning tag to df (short shift)
     df = ta_utility.add_report_time_warning(df)
 
     # Create the Daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
