@@ -110,7 +110,7 @@ def process_data_ta(
     df = ta_utility.add_break_time(df)
 
     # Add Hours Worked Shift and Shift ID, 12 hour check
-    df = ta_utility.add_hours_worked_shift_and_shift_id(df)
+    df = ta_utility.add_hours_worked_shift_and_shift_id(df, client_params)
     df = ta_utility.add_twelve_hour_check(df)
 
     # Add Punch Length df by adding Punch Lenght (Raw) that have no break in between.
