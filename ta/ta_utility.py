@@ -79,12 +79,6 @@ def add_consec_day_reporting(daily_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-import pandas as pd
-
-
-import pandas as pd
-
-
 def validate_intake_pay_date(
     raw_df: pd.DataFrame,
     target_pay_date: str,
@@ -507,10 +501,33 @@ def add_next_break_time(df):
     return df
 
 
-# TODO
-def add_hours_worked_shift_and_shift_id(df):
-    # New shift starts if gap from prev punch >= 60 minutes or first punch for employee (boolean)
-    df["New Shift?"] = (df["Break Time (min)"] >= 60) | df["Break Time (min)"].isna()
+def add_hours_worked_shift_and_shift_id(df, client_params):
+    # 1. Get the global fallback threshold (defaulting to 60 if missing)
+    global_gap = float(
+        client_params.get("global", {}).get("time_gap_for_new_shift", 60.0)
+    )
+
+    # 2. Extract location specific overrides
+    location_params = client_params.get("locations", {})
+
+    # 3. Build a dictionary of just the locations that override this specific rule
+    loc_gap_mapping = {}
+    for loc, params in location_params.items():
+        if "time_gap_for_new_shift" in params:
+            loc_gap_mapping[loc] = float(params["time_gap_for_new_shift"])
+
+    # 4. Map the thresholds to the dataframe
+    # We look at the employee's Location. If it's in the mapping, use the override.
+    # If not (or if missing), fill it with the global_gap.
+    if "Location" in df.columns:
+        dynamic_thresholds = df["Location"].map(loc_gap_mapping).fillna(global_gap)
+    else:
+        dynamic_thresholds = global_gap
+
+    # 5. Evaluate the gap using the dynamic thresholds rather than a hardcoded 60
+    df["New Shift?"] = (df["Break Time (min)"] >= dynamic_thresholds) | df[
+        "Break Time (min)"
+    ].isna()
 
     # Create shift id per employee (1, 2, 3, ...)
     df["Shift Number"] = df.groupby("ID")["New Shift?"].cumsum()
@@ -519,6 +536,7 @@ def add_hours_worked_shift_and_shift_id(df):
     df["Hours Worked Shift"] = (
         df.groupby(["ID", "Shift Number"])["Punch Length (hrs) Raw"].transform("sum")
     ).round(4)
+
     return df
 
 
@@ -598,19 +616,6 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     # Split Shift Due ($) (applicable if Master boolean above)
     df["Split Shift Due ($)"] = df["Split at Min Wage ($)"] - df["Split Paid ($)"]
     return df
-
-
-# def add_col_from_another_df(
-#     home_df, lookup_df, home_ref, lookup_ref, lookup_tgt, home_new_col
-# ):
-#     home_df[home_new_col] = home_df[home_ref].map(
-#         lookup_df.set_index(lookup_ref)[lookup_tgt]
-#     )
-#     return home_df
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def add_col_from_another_df(

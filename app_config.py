@@ -10,6 +10,7 @@ CORS_HEADERS = {
     "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
 }
 
+# TODO: Cleanup. Not all are used.
 # These are fallbacks in case the front doesn't pass default (global) parameters
 # Consider different approach?
 DEFAULT_PAY_PERIOD_LENGTH = 14
@@ -23,6 +24,8 @@ DEFAULT_CBA_CONSEC_WORKWEEK = False
 DEFAULT_CONSEC_DAYS_BEFORE_OT = 6
 DEFAULT_STATE_MIN_WAGE = 16.50
 DEFAULT_PAY_PERIODS_PER_YEAR = 26
+DEFAULT_TIME_GAP_FOR_NEW_SHIFT = 60
+
 
 WEEKDAYS = [
     "Sunday",
