@@ -1,5 +1,10 @@
 import numpy as np
 import utility
+from client_config import WFN_TARGET_SCHEMA
+import logging
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def process_data_wfn(
@@ -12,7 +17,7 @@ def process_data_wfn(
     # df = ta_utility.normalize_client_data(df, system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
-    # missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
+    # missing = [col for col in TA_TARGET_SCHEMA["ta"] if col not in df.columns]
     # if missing:
     #     logger.info(f"Columns in ta dataframe post normalization: {list(df.columns)}")
     #     error_msg = f"CRITICAL: Missing required columns: {missing}"
@@ -20,8 +25,8 @@ def process_data_wfn(
     #     raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    # other_cols = [col for col in df.columns if col not in PP_TARGET_SCHEMA["ta"]]
-    # df = df[PP_TARGET_SCHEMA["ta"] + other_cols]
+    # other_cols = [col for col in df.columns if col not in TA_TARGET_SCHEMA["ta"]]
+    # df = df[TA_TARGET_SCHEMA["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
     # df = ta_utility.drop_rows(df, system_config)
@@ -45,12 +50,18 @@ def process_data_wfn(
     #         # Standard hard error
     #         raise AppError(msg, status_code=400)
 
-    ######### DF PROCESSING #################
+    ######### DF CLEANUP AND PREP #################
 
     # 1. Normalization: Columns Rename, Transform & Drop
     df = utility.normalize_client_data(df, wfn_system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
+    missing = [col for col in WFN_TARGET_SCHEMA["ta"] if col not in df.columns]
+    if missing:
+        logger.info(f"Columns in wfn dataframe post normalization: {list(df.columns)}")
+        error_msg = f"CRITICAL: Missing required columns: {missing}"
+        logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
+        raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 4. Drops rows that are not punches base on client configuration
 

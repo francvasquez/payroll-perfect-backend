@@ -3,7 +3,7 @@ from helper.db_utils import (
     worker_save_daily,
     worker_save_ta,
 )
-from client_config import PP_TARGET_SCHEMA, CLIENT_CONFIGS
+from client_config import TA_TARGET_SCHEMA, CLIENT_CONFIGS
 import utility
 from . import ta_utility
 import logging
@@ -34,7 +34,7 @@ def process_data_ta(
     df = utility.normalize_client_data(df, ta_system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
-    missing = [col for col in PP_TARGET_SCHEMA["ta"] if col not in df.columns]
+    missing = [col for col in TA_TARGET_SCHEMA["ta"] if col not in df.columns]
     if missing:
         logger.info(f"Columns in ta dataframe post normalization: {list(df.columns)}")
         error_msg = f"CRITICAL: Missing required columns: {missing}"
@@ -42,8 +42,8 @@ def process_data_ta(
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    other_cols = [col for col in df.columns if col not in PP_TARGET_SCHEMA["ta"]]
-    df = df[PP_TARGET_SCHEMA["ta"] + other_cols]
+    other_cols = [col for col in df.columns if col not in TA_TARGET_SCHEMA["ta"]]
+    df = df[TA_TARGET_SCHEMA["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
     df = ta_utility.drop_rows(df, ta_system_config)
