@@ -43,6 +43,10 @@ def process_data_wfn(
         logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
+    # 3. Re-order 'Core' columns are always first (makes the DB readable)
+    other_cols = [col for col in df.columns if col not in WFN_TARGET_SCHEMA["ta"]]
+    df = df[WFN_TARGET_SCHEMA["wfn"] + other_cols]
+
     # 4. Drops rows that are not punches base on client configuration
     df = utility.drop_rows(df, wfn_system_config)
 
