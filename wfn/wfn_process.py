@@ -36,7 +36,7 @@ def process_data_wfn(
     df = utility.normalize_client_data(df, wfn_system_config)
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
-    missing = [col for col in WFN_TARGET_SCHEMA["ta"] if col not in df.columns]
+    missing = [col for col in WFN_TARGET_SCHEMA if col not in df.columns]
     if missing:
         logger.info(f"Columns in wfn dataframe post normalization: {list(df.columns)}")
         error_msg = f"CRITICAL: Missing required columns: {missing}"
@@ -44,8 +44,8 @@ def process_data_wfn(
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
     # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    other_cols = [col for col in df.columns if col not in WFN_TARGET_SCHEMA["ta"]]
-    df = df[WFN_TARGET_SCHEMA["wfn"] + other_cols]
+    other_cols = [col for col in df.columns if col not in WFN_TARGET_SCHEMA]
+    df = df[WFN_TARGET_SCHEMA + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
     df = utility.drop_rows(df, wfn_system_config)

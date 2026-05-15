@@ -1,16 +1,14 @@
 # This will be the columns required post normalization in process_data_ta step 1. Basically this is the data that we need to request to new clients. It doesn't matter if it doesn't come and be specific columns but somehow the data needs to be present. We can transform using CLIENT_CONFIGS and the method normalize_client_data.
 
-TA_TARGET_SCHEMA = {
-    "ta": [
-        "ID",  # Standardized unique identifier - must match WFN's IDX
-        "Location",
-        "Employee",
-        "In Punch",
-        "Out Punch",
-        "Status",
-        "Status Date",
-    ]
-}
+TA_TARGET_SCHEMA = [
+    "ID",  # Standardized unique identifier - must match WFN's IDX
+    "Location",
+    "Employee",
+    "In Punch",
+    "Out Punch",
+    "Status",
+    "Status Date",
+]
 
 WFN_TARGET_SCHEMA = [
     # TODO: Need to add ID here and using CLIENT_CONFIGS transformation based on row 68 of wfn_process. Consider renaming all to ID instead of IDX.
