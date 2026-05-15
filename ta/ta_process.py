@@ -46,7 +46,7 @@ def process_data_ta(
     df = df[TA_TARGET_SCHEMA["ta"] + other_cols]
 
     # 4. Drops rows that are not punches base on client configuration
-    df = ta_utility.drop_rows(df, ta_system_config)
+    df = utility.drop_rows(df, ta_system_config)
 
     # 5. Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")

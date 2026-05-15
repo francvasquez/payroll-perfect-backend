@@ -62,6 +62,43 @@ def normalize_client_data(df, system_config):
     return df
 
 
+def drop_rows(df, system_config):
+    """
+    Drops rows based on the 'drop_rows' configuration.
+    Supports "Blank" (NaN/NaT/Empty), single strings, or lists of strings.
+    """
+    drop_rules = system_config.get("drop_rows", {})
+    if not drop_rules:
+        return df
+
+    initial_row_count = len(df)
+    combined_mask = pd.Series([False] * len(df), index=df.index)
+
+    for col, value in drop_rules.items():
+        if col not in df.columns:
+            logger.warning(
+                f"Column '{col}' defined in drop_rows not found in data."
+            )
+            continue
+
+        if value == "Blank":
+            combined_mask |= df[col].isna() | (df[col].astype(str).str.strip() == "")
+        elif isinstance(value, list):
+            combined_mask |= df[col].isin(value)
+        else:
+            combined_mask |= df[col] == value
+
+    df_cleaned = df[~combined_mask].copy()
+
+    dropped_count = initial_row_count - len(df_cleaned)
+    if dropped_count > 0:
+        logger.info(
+            f"Dropped {dropped_count} rows based on drop_rows keys: {list(drop_rules.keys())}"
+        )
+
+    return df_cleaned
+
+
 def apply_override_else_global(
     df, location_col, param_name, global_value, locations_config
 ):
