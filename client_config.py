@@ -14,6 +14,7 @@ WFN_TARGET_SCHEMA = [
     # Identifiers
     "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
     "Location",
+    "PAY DATE",
     # Status and Rates
     "FLSA Code",
     "Position Status",

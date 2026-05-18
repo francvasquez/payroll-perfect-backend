@@ -1,6 +1,7 @@
 import numpy as np
 import utility
 from client_config import WFN_TARGET_SCHEMA
+from exceptions import AppError
 import logging
 
 logger = logging.getLogger()
@@ -8,7 +9,13 @@ logger.setLevel(logging.INFO)
 
 
 def process_data_wfn(
-    df, client_params, wfn_system_config, min_wage, state_min_wage, pay_periods_per_year
+    df,
+    client_params,
+    wfn_system_config,
+    min_wage,
+    state_min_wage,
+    pay_periods_per_year,
+    pay_date,
 ):
 
     ######### DF CLEANUP AND PREP #################
@@ -32,10 +39,12 @@ def process_data_wfn(
     df = utility.drop_rows(df, wfn_system_config)
 
     # 5. Assure timestamps are in Panda's datetime format
-    # Skip - no timestamps in WFN files.
+    df = utility.to_pandas_datetime(df, "PAY DATE")
 
     # 6. Ensure inputed Pay Date matches the contents of the file
-    
+    is_valid, msg = utility.validate_wfn_pay_date(df, pay_date)
+    if not is_valid:
+        raise AppError(msg, status_code=422)
 
     # Variables - extract loc config
     MinE = 100

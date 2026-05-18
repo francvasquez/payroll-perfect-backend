@@ -84,6 +84,7 @@ def handle_file_upload(event, params):
         min_wage,
         state_min_wage,
         pay_periods_per_year,
+        pay_date,
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
     print(f"WFN processed: {len(processed_wfn_df)} rows")
