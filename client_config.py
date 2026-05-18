@@ -14,10 +14,14 @@ WFN_TARGET_SCHEMA = [
     # Identifiers
     "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
     "Location",
+    "Payroll Name",
     "PAY DATE",
     # Status and Rates
     "FLSA Code",
     "Position Status",
+    "HIREDATE",
+    "Job Title Description",
+    "Termination Date",
     "Regular Rate Paid",
     # Standard Hours & Earnings
     "REG",
@@ -40,6 +44,7 @@ WFN_TARGET_SCHEMA = [
     "RC_Rest Credit_Earnings",
     "S_Sick Pay_Hours",
     "S_Sick Pay_Earnings",
+    "V_Vacation_Hours",
     "V_Vacation_Earnings",
 ]
 
