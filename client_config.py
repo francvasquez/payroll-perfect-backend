@@ -13,6 +13,7 @@ TA_TARGET_SCHEMA = [
 WFN_TARGET_SCHEMA = [
     # Identifiers
     "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
+    "Location",
     # Status and Rates
     "FLSA Code",
     "Position Status",
@@ -57,6 +58,7 @@ CLIENT_CONFIGS = {
                             "FILE#": {"astype": "int", "zfill": 6},
                         },
                     },
+                    "Location": "CO.",
                 },
                 "drop_columns": ["FILE#"],
             },

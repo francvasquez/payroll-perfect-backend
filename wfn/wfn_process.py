@@ -11,25 +11,6 @@ def process_data_wfn(
     df, client_params, wfn_system_config, min_wage, state_min_wage, pay_periods_per_year
 ):
 
-    # 5. Assure timestamps are in Panda's datetime format
-    # df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
-
-    # 6. Ensure inputed Pay Date matches the contents of the file
-    # is_valid, msg, error_type = ta_utility.validate_intake_pay_date(
-    #     df,
-    #     pay_date,
-    #     client_params,
-    #     CLIENT_CONFIGS[clientId]["anchor_pay_date"],
-    #     ignore_warnings,
-    # )
-    # if not is_valid:
-    #     if error_type == "STRAGGLER_WARNING":
-    #         # Throw a 409 Conflict! This will open a dialog in React prompting the user if they really want to continue"
-    #         raise AppError(msg, status_code=409)
-    #     else:
-    #         # Standard hard error
-    #         raise AppError(msg, status_code=400)
-
     ######### DF CLEANUP AND PREP #################
 
     # 1. Normalization: Columns Rename, Transform & Drop
@@ -141,15 +122,15 @@ def process_data_wfn(
     ## OVERRIDE COLUMN CREATION ###
     # Is there a location based minimum wage? Else take global "min_wage"
     df["Min Wage"] = utility.apply_override_else_global(
-        df, "CO.", "min_wage", min_wage, locations_config
+        df, "Location", "min_wage", min_wage, locations_config
     )
     # Is there a location based california minimum wage? Else take global "state_min_wage"
     df["Cal Min Wage"] = utility.apply_override_else_global(
-        df, "CO.", "state_min_wage", state_min_wage, locations_config
+        df, "Location", "state_min_wage", state_min_wage, locations_config
     )
     # Is there a location based pay periods per year? Else take global "pay_periods_per_year"
     df["Pay Periods per Year"] = utility.apply_override_else_global(
-        df, "CO.", "pay_periods_per_year", pay_periods_per_year, locations_config
+        df, "Location", "pay_periods_per_year", pay_periods_per_year, locations_config
     )
     # Is there a location based minimum wage 40? Else take global "min_wage_40"
     df["Min Wage 40"] = (df["Cal Min Wage"] * 40 * 52 * 2) / df["Pay Periods per Year"]
