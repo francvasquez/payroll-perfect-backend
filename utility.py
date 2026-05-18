@@ -28,12 +28,25 @@ def normalize_client_data(df, system_config):
             if transform_type == "concat":
                 source_cols = rule.get("source_columns", [])
                 delimiter = rule.get("delimiter", "")
+                preprocess = rule.get("preprocess", {})
 
+                series_list = []
                 for col in source_cols:
                     if col not in df.columns:
                         df[col] = ""
+                    series = df[col].fillna("")
+                    fmt = preprocess.get(col, {})
+                    if fmt.get("astype") == "int":
+                        series = series.astype(int)
+                    if "zfill" in fmt:
+                        series = series.astype(str).str.zfill(fmt["zfill"])
+                    else:
+                        series = series.astype(str)
+                    series_list.append(series)
 
-                df[target_col] = df[source_cols].fillna("").agg(delimiter.join, axis=1)
+                df[target_col] = pd.concat(series_list, axis=1).agg(
+                    delimiter.join, axis=1
+                )
 
             # Transform type 2: Substring extraction from a source column
             elif transform_type == "substring":

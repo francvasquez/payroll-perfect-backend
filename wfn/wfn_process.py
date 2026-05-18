@@ -51,17 +51,14 @@ def process_data_wfn(
     df = utility.drop_rows(df, wfn_system_config)
 
     # 5. Assure timestamps are in Panda's datetime format
+    # Skip - no timestamps in WFN files.
 
     # 6. Ensure inputed Pay Date matches the contents of the file
+    
 
     # Variables - extract loc config
     MinE = 100
     locations_config = client_params.get("locations", {})  ## overrides
-
-    # Add Index, converting first File# to string and set it a 6 characters
-    df["FILE#"] = df["FILE#"].astype(int).astype(str).str.zfill(6)
-    # Used as a lookup key for joining with TA data
-    df["IDX"] = df["CO."].astype(str) + "0" + df["FILE#"].astype(str)
 
     # Aux Cols
     df["Base Rate"] = (df["Regular Earnings Total"] / df["REG"]).round(4)

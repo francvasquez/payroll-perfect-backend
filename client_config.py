@@ -11,11 +11,8 @@ TA_TARGET_SCHEMA = [
 ]
 
 WFN_TARGET_SCHEMA = [
-    # TODO: Need to add ID here and using CLIENT_CONFIGS transformation based on row 68 of wfn_process. Consider renaming all to ID instead of IDX.
-    # TODO: Standardize names, apply mappings.
     # Identifiers
-    "CO.",  #
-    "FILE#",
+    "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
     # Status and Rates
     "FLSA Code",
     "Position Status",
@@ -48,7 +45,21 @@ CLIENT_CONFIGS = {
     "demo_client": {  # BH
         "anchor_pay_date": "2026-01-16",  # This is the anchor pay date used to calculate to which fiscal pay dates each work day belongs to. Should be a known pay date in the client's payroll calendar. Format: YYYY-MM-DD
         "wfn_systems": {
-            "ADP": {"detection": {"columns": ["CO.", "PAY DATE"], "header": 5}}
+            "ADP": {
+                "detection": {"columns": ["CO.", "PAY DATE"], "header": 5},
+                "mappings": {
+                    "IDX": {
+                        "source_columns": ["CO.", "FILE#"],
+                        "transform": "concat",
+                        "delimiter": "0",
+                        "preprocess": {
+                            "CO.": {"astype": "str"},
+                            "FILE#": {"astype": "int", "zfill": 6},
+                        },
+                    },
+                },
+                "drop_columns": ["FILE#"],
+            },
         },
         "ta_systems": {
             "Time and Attendance": {
