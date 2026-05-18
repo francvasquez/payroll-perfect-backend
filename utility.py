@@ -7,9 +7,9 @@ logger = logging.getLogger()
 def normalize_client_data(df, system_config):
     """
     Normalizes client data based on system-specific config:
-    1. Force column types (optional)
-    2. Apply mappings (simple renames or transformations)
-    3. Drop system-specific unwanted columns
+    1. Apply mappings (simple renames or transformations)
+
+    Column pruning to target schema happens later in process_data_* (after drop_rows).
     """
 
     # --- 1. Apply mappings (if provided) ---
@@ -65,14 +65,21 @@ def normalize_client_data(df, system_config):
             # elif transform_type == "upper": ...
             # etc.
 
-    # --- 2. Drop columns specified in config ---
-    drop_cols = system_config.get("drop_columns", [])
-    if drop_cols:
-        df = df.drop(columns=drop_cols, errors="ignore")
-        logger.info(
-            f"Dropped {len(drop_cols)} columns based on system config: {drop_cols}"
-        )
     return df
+
+
+def keep_target_schema_columns(df, target_schema):
+    """
+    Keeps only columns in target_schema, ordered as defined in the schema
+    (core columns first — makes the DB readable). Drops all other intake columns.
+    Run after drop_rows so non-schema columns used for row filters are still available.
+    """
+    extra_cols = [col for col in df.columns if col not in target_schema]
+    if extra_cols:
+        logger.info(
+            f"Dropped {len(extra_cols)} columns outside target schema: {extra_cols}"
+        )
+    return df[target_schema].copy()
 
 
 def drop_rows(df, system_config):

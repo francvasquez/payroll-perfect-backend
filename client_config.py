@@ -61,7 +61,6 @@ CLIENT_CONFIGS = {
                     },
                     "Location": "CO.",
                 },
-                "drop_columns": ["FILE#"],
             },
         },
         "ta_systems": {
@@ -80,11 +79,6 @@ CLIENT_CONFIGS = {
                         "end": 3,
                     },
                 },
-                "drop_columns": [
-                    "Org Path",
-                    "Date/Time",
-                    "Totaled Amount",
-                ],  # Cols which we know are not needed
                 "drop_rows": {
                     "In Punch": "Blank",
                     "Out Punch": "Blank",
@@ -106,9 +100,6 @@ CLIENT_CONFIGS = {
                     },
                     "Location": "Pay Group",  # Ensure this is after "ID" mapping since it uses "Pay Group" column which will get renamed to "Location" above
                 },
-                "drop_columns": [
-                    "Totaled Amount",
-                ],
                 "drop_rows": {  ## This is on an OR basis
                     "In Punch": "Blank",
                     "Out Punch": "Blank",

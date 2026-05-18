@@ -41,12 +41,12 @@ def process_data_ta(
         logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
-    # 3. Re-order 'Core' columns are always first (makes the DB readable)
-    other_cols = [col for col in df.columns if col not in TA_TARGET_SCHEMA]
-    df = df[TA_TARGET_SCHEMA + other_cols]
-
-    # 4. Drops rows that are not punches base on client configuration
+    # 3. Drops rows that are not punches base on client configuration
     df = utility.drop_rows(df, ta_system_config)
+
+    # 4. Re-order 'Core' columns are always first (makes the DB readable);
+    #    drop any intake columns outside the target schema
+    df = utility.keep_target_schema_columns(df, TA_TARGET_SCHEMA)
 
     # 5. Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")
