@@ -82,6 +82,23 @@ def keep_target_schema_columns(df, target_schema):
     return df[target_schema].copy()
 
 
+def keep_available_schema_columns(df, target_schema):
+    """
+    Keeps target_schema columns that exist in df (in schema order).
+    Omits columns the client did not provide instead of failing.
+    """
+    present = [col for col in target_schema if col in df.columns]
+    extra_cols = [col for col in df.columns if col not in target_schema]
+    if extra_cols:
+        logger.info(
+            f"Dropped {len(extra_cols)} columns outside target schema: {extra_cols}"
+        )
+    missing = [col for col in target_schema if col not in df.columns]
+    if missing:
+        logger.info(f"WFN intake missing optional schema columns: {missing}")
+    return df[present].copy()
+
+
 def drop_rows(df, system_config):
     """
     Drops rows based on the 'drop_rows' configuration.

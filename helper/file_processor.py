@@ -77,7 +77,7 @@ def handle_file_upload(event, params):
         f"Will normalize for WFN system: {wfn_system_name}, using {wfn_system_config} for client: {client_id}"
     )
     wfn_start = time.time()
-    processed_wfn_df = process_data_wfn(
+    processed_wfn_df, wfn_exceptions = process_data_wfn(
         wfn_df,
         client_params,
         wfn_system_config,
@@ -88,6 +88,8 @@ def handle_file_upload(event, params):
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
     print(f"WFN processed: {len(processed_wfn_df)} rows")
+    if wfn_exceptions:
+        print(f"WFN restricted output blocks: {list(wfn_exceptions.keys())}")
 
     ### 8. Process TA (using results from first two)
     ta_df, ta_system_name, ta_system_config = read_ta_excel_from_s3(ta_key, client_id)
@@ -132,6 +134,7 @@ def handle_file_upload(event, params):
         last_date,
         pay_date,
         client_id,
+        wfn_exceptions=wfn_exceptions,
     )
     put_result_to_s3(result, event)  # save JSON for ready-to-serve front consumption
 

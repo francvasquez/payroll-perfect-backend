@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from ta import ta_masks
 from wfn import wfn_masks
+from wfn.wfn_capabilities import WFN_BLOCK_ORDER
 import app_config
 from helper.aux import convert_datetime_columns_to_iso
 from datetime import datetime
@@ -55,6 +56,148 @@ def filter_and_sort_df_to_dict(
     return safe_df_check.to_dict("records")
 
 
+def _wfn_block_rows(block_key, wfn_exceptions, build_rows):
+    """Returns [] when the block was restricted due to missing intake columns."""
+    if wfn_exceptions and block_key in wfn_exceptions:
+        return []
+    return build_rows()
+
+
+def _build_wfn_results(processed_wfn_df, wfn_exceptions):
+    """Always returns all WFN block keys; restricted blocks are []."""
+    blocks = {
+        "overtime_checks_variances": lambda: _wfn_block_rows(
+            "overtime_checks_variances",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance"),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW,
+                rename_map={
+                    "Variance": "Variance ($)",
+                    "1.5 OT Earnings Due": "1.5 OT Earnings Due ($)",
+                    "Actual Pay Check": "Actual Pay Check ($)",
+                },
+            ),
+        ),
+        "doubletime_checks_variances": lambda: _wfn_block_rows(
+            "doubletime_checks_variances",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Dble"),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_DBLE,
+                rename_map={
+                    "Double Time Due": "Double Time Due ($)",
+                    "Actual Pay Check Double": "Actual Pay Check Double ($)",
+                    "Variance Dble": "Variance Dble ($)",
+                },
+            ),
+        ),
+        "break_credit_variances": lambda: _wfn_block_rows(
+            "break_credit_variances",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance BrkCrd"),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_BRKCRD,
+                rename_map={
+                    "Actual Pay BrkCrd": "Actual Paid Break Credit",
+                    "Variance BrkCrd": "Variance Break Credit",
+                },
+            ),
+        ),
+        "rest_credit_variances": lambda: _wfn_block_rows(
+            "rest_credit_variances",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance RestCrd"),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_REST,
+                rename_map={
+                    "Actual Pay RestCrd": "Actual Paid Rest Credit ($)",
+                    "Variance RestCrd": "Variance Rest Credit ($)",
+                },
+            ),
+        ),
+        "sick_credit_variances": lambda: _wfn_block_rows(
+            "sick_credit_variances",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Sick"),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_SICK,
+                rename_map={
+                    "Sick Credit Due": "Sick Credit Due ($)",
+                    "Sick Paid": "Actual Paid Sick Credit ($)",
+                    "Variance Sick": "Variance Sick Credit ($)",
+                    "Regular Rate Paid": "Regular Rate Paid ($)",
+                },
+            ),
+        ),
+        "flsa_check": lambda: _wfn_block_rows(
+            "flsa_check",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.flsa(processed_wfn_df),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_FLSA,
+            ),
+        ),
+        "min_wage_check": lambda: _wfn_block_rows(
+            "min_wage_check",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.min_wage_check(processed_wfn_df),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_MINWAGE,
+            ),
+        ),
+        "non_active_check": lambda: _wfn_block_rows(
+            "non_active_check",
+            wfn_exceptions,
+            lambda: filter_and_sort_df_to_dict(
+                df=processed_wfn_df,
+                sort_col="Payroll Name",
+                ascending=True,
+                base_filter=wfn_masks.non_active_check(processed_wfn_df),
+                max_rows=200,
+                cols=app_config.COLUMNS_TO_SHOW_NONACTIVE,
+                rename_map={
+                    "V_Vacation_Hours": "Vacation Hours",
+                    "Job Title Description": "Job Description",
+                    "HIREDATE": "Hire Date",
+                    "REG": "Straight Hours Worked",
+                    "Variance Sick": "Variance Sick Credit ($)",
+                    "Regular Rate Paid": "Regular Rate Paid ($)",
+                },
+            ),
+        ),
+    }
+    return {key: blocks[key]() for key in WFN_BLOCK_ORDER}
+
+
 def generate_results(
     processed_ta_df,
     daily_df,
@@ -68,7 +211,11 @@ def generate_results(
     last_date,
     pay_date,
     client_id,
+    wfn_exceptions=None,
 ):
+
+    if wfn_exceptions is None:
+        wfn_exceptions = {}
 
     waiver_length = len(processed_waiver_df) if processed_waiver_df is not None else 0
 
@@ -95,114 +242,10 @@ def generate_results(
                 "wfn_process_time_ms": wfn_process_time,
                 "waiver_process_time_ms": waiver_process_time,
             },
+            "wfn_exceptions": wfn_exceptions,
         },
         "db_cols": app_config.COLUMN_TO_KEEP_DB,
-        "wfn": {
-            ##Overtime Checks Variances
-            "overtime_checks_variances": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance"),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW,
-                rename_map={
-                    "Variance": "Variance ($)",
-                    "1.5 OT Earnings Due": "1.5 OT Earnings Due ($)",
-                    "Actual Pay Check": "Actual Pay Check ($)",
-                },
-            ),
-            ##Double Time Checks Variances
-            "doubletime_checks_variances": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Dble"),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_DBLE,
-                rename_map={
-                    "Double Time Due": "Double Time Due ($)",
-                    "Actual Pay Check Double": "Actual Pay Check Double ($)",
-                    "Variance Dble": "Variance Dble ($)",
-                },
-            ),
-            ##Break Credit Variances
-            "break_credit_variances": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance BrkCrd"),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_BRKCRD,
-                rename_map={
-                    "Actual Pay BrkCrd": "Actual Paid Break Credit",
-                    "Variance BrkCrd": "Variance Break Credit",
-                },
-            ),
-            ##Rest Credit Variances
-            "rest_credit_variances": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance RestCrd"),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_REST,
-                rename_map={
-                    "Actual Pay RestCrd": "Actual Paid Rest Credit ($)",
-                    "Variance RestCrd": "Variance Rest Credit ($)",
-                },
-            ),
-            ##Sick Credit Variances
-            "sick_credit_variances": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.var_below(processed_wfn_df, "Variance Sick"),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_SICK,
-                rename_map={
-                    "Sick Credit Due": "Sick Credit Due ($)",
-                    "Sick Paid": "Actual Paid Sick Credit ($)",
-                    "Variance Sick": "Variance Sick Credit ($)",
-                    "Regular Rate Paid": "Regular Rate Paid ($)",
-                },
-            ),
-            ##FLSA Check
-            "flsa_check": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.flsa(processed_wfn_df),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_FLSA,
-            ),
-            ##Minimum Wage Check
-            "min_wage_check": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.min_wage_check(processed_wfn_df),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_MINWAGE,
-            ),
-            ##Non-Active Check
-            "non_active_check": filter_and_sort_df_to_dict(
-                df=processed_wfn_df,
-                sort_col="Payroll Name",
-                ascending=True,
-                base_filter=wfn_masks.non_active_check(processed_wfn_df),
-                max_rows=200,
-                cols=app_config.COLUMNS_TO_SHOW_NONACTIVE,
-                rename_map={
-                    "V_Vacation_Hours": "Vacation Hours",
-                    "Job Title Description": "Job Description",
-                    "HIREDATE": "Hire Date",
-                    "REG": "Straight Hours Worked",
-                    "Variance Sick": "Variance Sick Credit ($)",
-                    "Regular Rate Paid": "Regular Rate Paid ($)",
-                },
-            ),
-        },
+        "wfn": _build_wfn_results(processed_wfn_df, wfn_exceptions),
         "ta": {
             ## "1. Break Credit Summary"
             "break_credit_summary": filter_and_sort_df_to_dict(

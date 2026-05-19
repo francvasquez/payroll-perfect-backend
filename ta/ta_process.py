@@ -84,7 +84,7 @@ def process_data_ta(
     df = ta_utility.add_time_helper_cols(df)
 
     # Add Break Credit from WFN File.
-    df = ta_utility.add_col_from_another_df(
+    df = ta_utility.add_col_from_another_df_if_present(
         home_df=df,
         lookup_df=processed_wfn_df,
         home_ref="ID",
@@ -94,7 +94,7 @@ def process_data_ta(
     )
 
     # Add Hire Date from WFN File.
-    df = ta_utility.add_col_from_another_df(
+    df = ta_utility.add_col_from_another_df_if_present(
         home_df=df,
         lookup_df=processed_wfn_df,
         home_ref="ID",

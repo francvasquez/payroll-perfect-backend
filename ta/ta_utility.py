@@ -219,7 +219,7 @@ def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
     # TODO: Need to incorporate pay date otherwise some of the variances won't make sense
     # Perform check of time cards vs payroll OT
     "Columns created in this step are: OT_Hours_Paid, DT_Hours_Paid, OT_Variance_(hrs), DT_Variance_(hrs)"  # For reference
-    daily_df = add_col_from_another_df(
+    daily_df = add_col_from_another_df_if_present(
         home_df=daily_df,
         lookup_df=processed_wfn_df,
         home_ref="ID",
@@ -229,7 +229,7 @@ def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
     )
 
     # Perform check of time cards vs payroll DT
-    daily_df = add_col_from_another_df(
+    daily_df = add_col_from_another_df_if_present(
         home_df=daily_df,
         lookup_df=processed_wfn_df,
         home_ref="ID",
@@ -555,9 +555,15 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     # TODO Prev Punch Length is coming from Raw. Verify implications.
     # Create df with Straight Rate ($) Lookup. Note that Regular Rate on the WFN is a misnomer,
     # it's actually Straight Rate ($)
-    df["Regular Rate Paid"] = df["ID"].map(
-        processed_wfn_df.set_index("IDX")["Regular Rate Paid"]
-    )
+    if (
+        processed_wfn_df is not None
+        and "Regular Rate Paid" in processed_wfn_df.columns
+    ):
+        df["Regular Rate Paid"] = df["ID"].map(
+            processed_wfn_df.set_index("IDX")["Regular Rate Paid"]
+        )
+    else:
+        df["Regular Rate Paid"] = np.nan
     # Auxiliary: Current plus previous totaled hours x straight rate paid
     df["Split Paid ($)"] = df["Regular Rate Paid"] * (
         df["Punch Length (hrs) Raw"] + df["Prev Punch Length (hrs)"]
@@ -569,6 +575,18 @@ def add_split_shift(df, processed_wfn_df, min_wage):
     # Split Shift Due ($) (applicable if Master boolean above)
     df["Split Shift Due ($)"] = df["Split at Min Wage ($)"] - df["Split Paid ($)"]
     return df
+
+
+def add_col_from_another_df_if_present(
+    home_df, lookup_df, home_ref, lookup_ref, lookup_tgt, home_new_col
+):
+    """Maps lookup column when present; otherwise fills with NaN (partial WFN intake)."""
+    if lookup_df is None or lookup_tgt not in lookup_df.columns:
+        home_df[home_new_col] = np.nan
+        return home_df
+    return add_col_from_another_df(
+        home_df, lookup_df, home_ref, lookup_ref, lookup_tgt, home_new_col
+    )
 
 
 def add_col_from_another_df(
