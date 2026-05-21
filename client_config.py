@@ -10,7 +10,7 @@ TA_TARGET_SCHEMA = [
     "Status Date",
 ]
 
-WFN_TARGET_SCHEMA = [
+WFN_TARGET_SCHEMA = [  # See WFN_CORE_SCHEMA for minimum requirements
     # Identifiers
     "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
     "Location",

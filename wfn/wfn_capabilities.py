@@ -64,14 +64,14 @@ WFN_RROP_COLUMNS = [
 # should be appended in the position you want them to appear in documentation.
 # ---------------------------------------------------------------------------
 WFN_BLOCK_ORDER = [
-    "overtime_checks_variances",
-    "doubletime_checks_variances",
-    "break_credit_variances",
-    "rest_credit_variances",
-    "sick_credit_variances",
-    "flsa_check",
-    "min_wage_check",
-    "non_active_check",
+    "overtime_checks_variances",  # Overtime RROP vs Actual Paid
+    "doubletime_checks_variances",  # Doubletime RROP vs Actual Paid
+    "break_credit_variances",  # Break Credit RROP vs Actual Paid
+    "rest_credit_variances",  # Rest Credit RROP vs Actual Paid
+    "sick_credit_variances",  # Sick RROP vs Actual Paid
+    "flsa_check",  # FLSA Check
+    "min_wage_check",  # Minimum Wage Check
+    "non_active_check",  # Non-Active Check
 ]
 
 # ---------------------------------------------------------------------------

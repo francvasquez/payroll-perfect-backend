@@ -38,14 +38,14 @@ def process_data_wfn(
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    # 3. Drop rows per client config (e.g. blank punches, test employees)
+    # 3. Drop rows per client config (if any - e.g. blank punches, test employees)
     df = utility.drop_rows(df, wfn_system_config)
 
     # 4. Keep only target-schema columns that the client actually provided
     #    (optional columns may be absent — those output blocks will be skipped)
     df = utility.keep_available_schema_columns(df, WFN_TARGET_SCHEMA)
 
-    # 5. Assure timestamps are in Panda's datetime format
+    # 5. Assure timestamps are in Panda's datetime format (using PAY DATE col)
     df = utility.to_pandas_datetime(df, "PAY DATE")
 
     # 6. Ensure inputted Pay Date matches the contents of the file
@@ -117,9 +117,7 @@ def process_data_wfn(
             + df["OT for Non Discretionary Income"]
         )
         df["1.5 OT Worked"] = df["OT"]
-        df["1.5 OT Earnings Due"] = (
-            df["1.5x OT Rate"] * df["1.5 OT Worked"]
-        ).round(2)
+        df["1.5 OT Earnings Due"] = (df["1.5x OT Rate"] * df["1.5 OT Worked"]).round(2)
         df["Actual Pay Check"] = df["Overtime Earnings Total"]
         df["Variance"] = (df["Actual Pay Check"] - df["1.5 OT Earnings Due"]).round(2)
 
@@ -211,9 +209,9 @@ def process_data_wfn(
             locations_config,
         )
         # Minimum wage threshold for exempt (40-hr equivalent per pay period)
-        df["Min Wage 40"] = (
-            df["Cal Min Wage"] * 40 * 52 * 2
-        ) / df["Pay Periods per Year"]
+        df["Min Wage 40"] = (df["Cal Min Wage"] * 40 * 52 * 2) / df[
+            "Pay Periods per Year"
+        ]
 
     ######### FLSA CHECK (results.wfn.flsa_check) #################
 
@@ -231,8 +229,7 @@ def process_data_wfn(
             (df["Position Status"] == "Leave"),
             "",
             np.where(
-                (df["FLSA Code"] == "N")
-                & (df["Base Rate"].round(2) >= df["Min Wage"]),
+                (df["FLSA Code"] == "N") & (df["Base Rate"].round(2) >= df["Min Wage"]),
                 "",
                 np.where(
                     (df["FLSA Code"] == "E")
