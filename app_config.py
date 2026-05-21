@@ -89,29 +89,29 @@ COLUMNS_TO_SHOW_FLSA = [
     "IDX",
     "Payroll Name",
     "Position Status",
-    "FLSA Code",
+    "FLSA Status",
     "Regular Rate Paid",
 ]
 COLUMNS_TO_SHOW_MINWAGE = [
     "IDX",
     "Payroll Name",
     "Position Status",
-    "FLSA Code",
-    "REG",
+    "FLSA Status",
+    "Regular Hours",
     "Base Rate",
     "Regular Rate Paid",
-    "S_Sick Pay_Earnings",
-    "V_Vacation_Earnings",
+    "Sick Pay Earnings",
+    "Vacation Earnings",
 ]
 COLUMNS_TO_SHOW_NONACTIVE = [
     "IDX",
     "Payroll Name",
     "Position Status",
-    "Job Title Description",
-    "HIREDATE",
-    "V_Vacation_Hours",
+    "Job Description",
+    "Hire Date",
+    "Vacation Hours",
     "Termination Date",
-    "REG",
+    "Regular Hours",
 ]
 # COLS for printing TA
 COLS_ANOMALIES = [

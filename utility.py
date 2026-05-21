@@ -157,7 +157,7 @@ def to_pandas_datetime(df, *columns):
 
 def validate_wfn_pay_date(df, target_pay_date) -> tuple[bool, str]:
     """
-    Validates user-selected pay date against the WFN file's PAY DATE column.
+    Validates user-selected pay date against the WFN file's Pay Date column.
     Returns (is_valid, message).
     """
     try:
@@ -168,13 +168,13 @@ def validate_wfn_pay_date(df, target_pay_date) -> tuple[bool, str]:
             f"Intake Error: '{target_pay_date}' is not a valid date format.",
         )
 
-    if "PAY DATE" not in df.columns:
-        return False, "Validation Error: 'PAY DATE' column missing from the payroll file."
+    if "Pay Date" not in df.columns:
+        return False, "Validation Error: 'Pay Date' column missing from the payroll file."
 
     if "IDX" not in df.columns:
         return False, "Validation Error: 'IDX' column missing from the payroll file."
 
-    file_dates = pd.to_datetime(df["PAY DATE"], errors="coerce").dt.normalize()
+    file_dates = pd.to_datetime(df["Pay Date"], errors="coerce").dt.normalize()
     mismatch_mask = file_dates.isna() | (file_dates != target)
     mismatch_df = df.loc[mismatch_mask]
 
@@ -188,15 +188,15 @@ def validate_wfn_pay_date(df, target_pay_date) -> tuple[bool, str]:
     msg = (
         f"Pay Date Mismatch!\n"
         f"You selected {target.date()}, but this payroll file contains "
-        f"{total_mismatch} employee(s) with a different PAY DATE.\n\n"
+        f"{total_mismatch} employee(s) with a different Pay Date.\n\n"
         f"Sample mismatches:\n"
     )
 
     for idx in sample_idx:
         row = mismatch_df.loc[mismatch_df["IDX"] == idx].iloc[0]
-        file_date = pd.to_datetime(row["PAY DATE"], errors="coerce")
+        file_date = pd.to_datetime(row["Pay Date"], errors="coerce")
         date_str = file_date.date() if pd.notna(file_date) else "missing/invalid"
-        msg += f"• {idx}: PAY DATE {date_str}\n"
+        msg += f"• {idx}: Pay Date {date_str}\n"
 
     if total_mismatch > 5:
         msg += f"\n...and {total_mismatch - 5} more."

@@ -15,38 +15,75 @@ WFN_TARGET_SCHEMA = [  # See WFN_CORE_SCHEMA for minimum requirements
     "IDX",  # Built from CO. + FILE# during normalization; must match TA's ID
     "Location",
     "Payroll Name",
-    "PAY DATE",
+    "Pay Date",
     # Status and Rates
-    "FLSA Code",
+    "FLSA Status",
     "Position Status",
-    "HIREDATE",
-    "Job Title Description",
+    "Hire Date",
+    "Job Description",
     "Termination Date",
     "Regular Rate Paid",
     # Standard Hours & Earnings
-    "REG",
-    "OT",
-    "DBLTIME HRS",
+    "Regular Hours",
+    "Overtime Hours",
+    "Double Time Hours",
     "Regular Earnings Total",
-    "Overtime Earnings Total",
+    "Overtime Earnings",
     # Additional Earnings (Non-Discretionary & Bonuses)
-    "A_MISC ADJUST_flsa earnings",
-    "B_Bonus_Additional Earnings",
-    "C_Ee Commission_Additional Earnings",
-    "E_Auto Gratuities_Additional Earnings",
-    "X_RESTR SVC CHG_Additional Earnings",
-    "Y_BELLMANSVCCHG_Additional Earnings",
-    "D_Double Time_Additional Earnings",
+    "Misc FLSA Earnings",
+    "Bonus Earnings",
+    "Commission Earnings",
+    "Auto Gratuity Earnings",
+    "Restricted Service Charge Earnings",
+    "Bellman Service Charge Earnings",
+    "Double Time Earnings",
     # Break, Rest, Sick, Vacation Hours & Earnings
-    "J_Break Credits_Additional Hours",
-    "J_Break Credits_Additional Earnings",
-    "RC - Rest Credit Hours",
-    "RC_Rest Credit_Earnings",
-    "S_Sick Pay_Hours",
-    "S_Sick Pay_Earnings",
-    "V_Vacation_Hours",
-    "V_Vacation_Earnings",
+    "Break Credit Hours",
+    "Break Credit Earnings",
+    "Rest Credit Hours",
+    "Rest Credit Earnings",
+    "Sick Pay Hours",
+    "Sick Pay Earnings",
+    "Vacation Hours",
+    "Vacation Earnings",
 ]
+
+# ADP export headers → standard names (Title Case). Detection still uses raw CO., PAY DATE.
+ADP_WFN_COLUMN_MAPPINGS = {
+    "IDX": {
+        "source_columns": ["CO.", "FILE#"],
+        "transform": "concat",
+        "delimiter": "0",
+        "preprocess": {
+            "CO.": {"astype": "str"},
+            "FILE#": {"astype": "int", "zfill": 6},
+        },
+    },
+    "Location": "CO.",
+    "Pay Date": "PAY DATE",
+    "FLSA Status": "FLSA Code",
+    "Hire Date": "HIREDATE",
+    "Job Description": "Job Title Description",
+    "Regular Hours": "REG",
+    "Overtime Hours": "OT",
+    "Double Time Hours": "DBLTIME HRS",
+    "Overtime Earnings": "Overtime Earnings Total",
+    "Misc FLSA Earnings": "A_MISC ADJUST_flsa earnings",
+    "Bonus Earnings": "B_Bonus_Additional Earnings",
+    "Commission Earnings": "C_Ee Commission_Additional Earnings",
+    "Auto Gratuity Earnings": "E_Auto Gratuities_Additional Earnings",
+    "Restricted Service Charge Earnings": "X_RESTR SVC CHG_Additional Earnings",
+    "Bellman Service Charge Earnings": "Y_BELLMANSVCCHG_Additional Earnings",
+    "Double Time Earnings": "D_Double Time_Additional Earnings",
+    "Break Credit Hours": "J_Break Credits_Additional Hours",
+    "Break Credit Earnings": "J_Break Credits_Additional Earnings",
+    "Rest Credit Hours": "RC - Rest Credit Hours",
+    "Rest Credit Earnings": "RC_Rest Credit_Earnings",
+    "Sick Pay Hours": "S_Sick Pay_Hours",
+    "Sick Pay Earnings": "S_Sick Pay_Earnings",
+    "Vacation Hours": "V_Vacation_Hours",
+    "Vacation Earnings": "V_Vacation_Earnings",
+}
 
 CLIENT_CONFIGS = {
     "demo_client": {  # BH
@@ -54,18 +91,7 @@ CLIENT_CONFIGS = {
         "wfn_systems": {
             "ADP": {
                 "detection": {"columns": ["CO.", "PAY DATE"], "header": 5},
-                "mappings": {
-                    "IDX": {
-                        "source_columns": ["CO.", "FILE#"],
-                        "transform": "concat",
-                        "delimiter": "0",
-                        "preprocess": {
-                            "CO.": {"astype": "str"},
-                            "FILE#": {"astype": "int", "zfill": 6},
-                        },
-                    },
-                    "Location": "CO.",
-                },
+                "mappings": ADP_WFN_COLUMN_MAPPINGS,
             },
         },
         "ta_systems": {

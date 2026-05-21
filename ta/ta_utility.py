@@ -224,7 +224,7 @@ def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
-        lookup_tgt="OT",
+        lookup_tgt="Overtime Hours",
         home_new_col="OT_Hours_Paid",
     )
 
@@ -234,7 +234,7 @@ def apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df):
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
-        lookup_tgt="DBLTIME HRS",
+        lookup_tgt="Double Time Hours",
         home_new_col="DT_Hours_Paid",
     )
 

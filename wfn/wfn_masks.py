@@ -7,7 +7,7 @@ def flsa(df):
 
 
 def min_wage_check(df):
-    return (df["Minimum Wage"] == "CHECK") & (df["REG"] > 0)
+    return (df["Minimum Wage"] == "CHECK") & (df["Regular Hours"] > 0)
 
 
 def non_active_check(df):

@@ -89,7 +89,7 @@ def process_data_ta(
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
-        lookup_tgt="J_Break Credits_Additional Hours",
+        lookup_tgt="Break Credit Hours",
         home_new_col="Paid Break Credit (hrs)",
     )
 
@@ -99,7 +99,7 @@ def process_data_ta(
         lookup_df=processed_wfn_df,
         home_ref="ID",
         lookup_ref="IDX",
-        lookup_tgt="HIREDATE",
+        lookup_tgt="Hire Date",
         home_new_col="Hire Date",
     )
 

@@ -185,11 +185,7 @@ def _build_wfn_results(processed_wfn_df, wfn_exceptions):
                 max_rows=200,
                 cols=app_config.COLUMNS_TO_SHOW_NONACTIVE,
                 rename_map={
-                    "V_Vacation_Hours": "Vacation Hours",
-                    "Job Title Description": "Job Description",
-                    "HIREDATE": "Hire Date",
-                    "REG": "Straight Hours Worked",
-                    "Variance Sick": "Variance Sick Credit ($)",
+                    "Regular Hours": "Straight Hours Worked",
                     "Regular Rate Paid": "Regular Rate Paid ($)",
                 },
             ),
