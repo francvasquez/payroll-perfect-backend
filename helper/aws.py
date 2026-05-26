@@ -10,7 +10,13 @@ from helper.db_utils import (
     delete_daily_df_from_db,
     get_db_connection,
 )
-from exceptions import AppError
+from exceptions import (
+    AppError,
+    TA_SYSTEM_UNRECOGNIZED,
+    TA_SYSTEM_UNRECOGNIZED_MESSAGE,
+    WFN_SYSTEM_UNRECOGNIZED,
+    WFN_SYSTEM_UNRECOGNIZED_MESSAGE,
+)
 from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
@@ -386,8 +392,13 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
             )
 
     # Step 3: No system matched
-    raise ValueError(
-        f"Could not determine WFN system type for client '{clientId}' and file '{key}'."
+    print(
+        f"WFN system detection failed for client '{clientId}' and file '{key}'."
+    )
+    raise AppError(
+        WFN_SYSTEM_UNRECOGNIZED_MESSAGE,
+        status_code=400,
+        error_code=WFN_SYSTEM_UNRECOGNIZED,
     )
 
 
@@ -459,8 +470,13 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
             )  # Return the matched system's config for downstream processing
 
     # Step 3: No system matched
-    raise ValueError(
-        f"Could not determine system type for client '{clientId}' and file '{key}'."
+    print(
+        f"TA system detection failed for client '{clientId}' and file '{key}'."
+    )
+    raise AppError(
+        TA_SYSTEM_UNRECOGNIZED_MESSAGE,
+        status_code=400,
+        error_code=TA_SYSTEM_UNRECOGNIZED,
     )
 
 

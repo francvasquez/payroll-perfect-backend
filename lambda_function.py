@@ -5,11 +5,16 @@ from helper.action_router import route_action
 from exceptions import AppError
 
 
-def _make_error_response(status_code: int, message: str) -> dict:
+def _make_error_response(
+    status_code: int, message: str, error_code: str | None = None
+) -> dict:
+    body = {"error": message}
+    if error_code:
+        body["code"] = error_code
     return {
         "statusCode": status_code,
         "headers": CORS_HEADERS,
-        "body": json.dumps({"error": message}),
+        "body": json.dumps(body),
     }
 
 
@@ -40,7 +45,7 @@ def lambda_handler(event, _):
     except AppError as e:
         # Known, safe-to-expose errors (400, 404, etc.)
         print(f"App error [{e.status_code}]: {e.message}")
-        return _make_error_response(e.status_code, e.message)
+        return _make_error_response(e.status_code, e.message, e.error_code)
 
     except Exception as e:
         # Unexpected errors — never leak internals to the client
