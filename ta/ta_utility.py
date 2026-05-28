@@ -501,10 +501,11 @@ def add_twelve_hour_check(df):
     # OR
     # Condition 2: 1) Hours Worked Shift is equal or longer than 12 hours
     #              2) There are two punches or more with Break Time (min) > 0,
-    #                 however the second break started after 10 hours
+    #                 however the second break started after 10 hours of work time
+    #                 from the start of the shift (break gaps are excluded)
     ##################
 
-    # Shift start time
+    # Shift start time (kept for display)
     df["Shift Start"] = df.groupby(["ID", "Shift Number"])["In Punch"].transform("min")
 
     # Identify first punch of shift
@@ -523,18 +524,24 @@ def add_twelve_hour_check(df):
         .rank(method="first")
     )
 
-    # Filter to get only the rows where conditions are met
-    second_break = df[(df["Break Count"] == 2) & (df["Break Order"] == 1)][
-        ["ID", "Shift Number", "Out Punch"]
-    ].rename(columns={"Out Punch": "2nd Break Start"})
+    # Cumulative work hours within shift (excludes break gaps between punches)
+    df["Cumulative Work Hrs"] = df.groupby(["ID", "Shift Number"])[
+        "Punch Length (hrs) Raw"
+    ].cumsum()
 
-    # Merge back to the original dataframe to create the column
-    df = df.merge(second_break, on=["ID", "Shift Number"], how="left")
-
-    # Hours from shift start to 2nd break
-    df["Hours to 2nd Break"] = (
-        (df["2nd Break Start"] - df["Shift Start"]).dt.total_seconds().div(3600)
+    # Out punch of the work segment ending when the 2nd meal break begins
+    second_break = df[(df["Break Count"] >= 2) & (df["Break Order"] == 1)][
+        ["ID", "Shift Number", "Out Punch", "Cumulative Work Hrs"]
+    ].rename(
+        columns={
+            "Out Punch": "2nd Break Start",
+            "Cumulative Work Hrs": "Hours to 2nd Break",
+        }
     )
+
+    # Merge back to the original dataframe to create the columns
+    df = df.merge(second_break, on=["ID", "Shift Number"], how="left")
+    df = df.drop(columns=["Cumulative Work Hrs"])
 
     # Condition 1: ≥ 12 hours and fewer than 2 breaks
     cond1 = (df["Hours Worked Shift"] >= 12) & (df["Break Count"] < 2)
