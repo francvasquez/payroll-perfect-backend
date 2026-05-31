@@ -137,7 +137,7 @@ def handle_file_upload(event, params):
         min_wage,
         state_min_wage,
         pay_periods_per_year,
-        pay_date_str,
+        pay_date_ts,
         skip_intake_prep=is_multi_intake,
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
@@ -149,7 +149,7 @@ def handle_file_upload(event, params):
         period_config,
         ta_system_config,
         min_wage,
-        pay_date_str,
+        pay_date_ts,
         client_id,
         processed_waiver_df,
         processed_wfn_df,
@@ -180,7 +180,7 @@ def handle_file_upload(event, params):
         waiver_process_time,
         first_date,
         last_date,
-        pay_date_str,
+        pay_date_ts,
         client_id,
         wfn_exceptions=wfn_exceptions,
     )

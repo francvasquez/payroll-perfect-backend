@@ -232,9 +232,11 @@ def save_daily_df_to_db(
 
 def save_ta_to_db(df, clientId, pay_date, conn):
 
+    pay_date_ts = pd.to_datetime(pay_date)
+
     # Add Metadata
     df["Last Updated"] = pd.Timestamp.now(tz="America/Los_Angeles")
-    df["Pay Date"] = pay_date
+    df["Pay Date"] = pay_date_ts
 
     # Identify which rows have duplicate keys - if there are, the write will crash
     # as the logic will not know what to do.
@@ -311,10 +313,10 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                 )
 
                 # 3c. THE WIPE: Clear existing records for this pay period to prevent ghost records
-                print(f"Wiping existing records for pay date: {pay_date}")
+                print(f"Wiping existing records for pay date: {pay_date_ts}")
                 cur.execute(
                     f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s;',
-                    (pay_date,),
+                    (pay_date_ts,),
                 )
 
                 # 4. Temp table for upsert

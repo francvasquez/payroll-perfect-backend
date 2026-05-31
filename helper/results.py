@@ -8,6 +8,13 @@ from helper.aux import convert_datetime_columns_to_iso
 from datetime import datetime
 
 
+def _format_metadata_date(value) -> str:
+    """Format pay/first/last dates for results metadata (accepts str or datetime)."""
+    if isinstance(value, str):
+        return value[:10]
+    return pd.to_datetime(value).strftime("%Y-%m-%d")
+
+
 def filter_and_sort_df_to_dict(
     df,
     base_filter=None,
@@ -218,11 +225,9 @@ def generate_results(
     result = {
         "success": True,
         "metadata": {
-            "first_date": first_date.strftime("%Y-%m-%d"),
-            "last_date": last_date.strftime("%Y-%m-%d"),
-            "pay_date": pay_date.strftime(
-                "%Y-%m-%d"
-            ),  ## for reference only, front-end already has this from user input.
+            "first_date": _format_metadata_date(first_date),
+            "last_date": _format_metadata_date(last_date),
+            "pay_date": _format_metadata_date(pay_date),
             "processed_at": datetime.now().isoformat(),
             "client_id": client_id,
         },
