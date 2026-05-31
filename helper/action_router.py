@@ -11,6 +11,7 @@ from helper.aws import (
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
+from helper.discover_handler import handle_discover_pay_periods
 
 
 def route_action(action, params, event):
@@ -50,6 +51,8 @@ def route_action(action, params, event):
         return delete_annotations(clientId, payDate)
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
+    elif action == "discover-pay-periods":
+        return handle_discover_pay_periods(params)
     elif action == "process-files":
         return handle_file_upload(event, params)
     else:

@@ -60,6 +60,7 @@ def parse_event_params(event):
         "waiver_key": body.get("waiver_key"),
         "wfn_key": body.get("wfn_key"),
         "ta_key": body.get("ta_key"),
+        "intake_id": body.get("intake_id"),
     }
     return params
 

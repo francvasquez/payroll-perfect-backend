@@ -26,6 +26,9 @@ DEFAULT_STATE_MIN_WAGE = 16.50
 DEFAULT_PAY_PERIODS_PER_YEAR = 26
 DEFAULT_TIME_GAP_FOR_NEW_SHIFT = 60
 
+# Multi-pay period intake: Minimum distinct TA workdays required to process a pay period in multi-period intake
+MIN_PAY_PERIOD_WORKDAYS = 7
+
 
 WEEKDAYS = [
     "Sunday",
