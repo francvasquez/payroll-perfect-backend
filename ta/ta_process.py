@@ -26,12 +26,22 @@ def process_data_ta(
     processed_waiver_df=None,
     processed_wfn_df=None,
     ignore_warnings=False,
+    skip_intake_prep=False,
 ):
 
     ######### DF CLEANUP AND PREP #################
 
-    # 1. Normalization: Columns Rename, Transform & Drop. Doesn't crash if cols missing.
-    df = utility.normalize_client_data(df, ta_system_config)
+    # 1. Normalization: column rename, transform, and row drops.
+    # Normalization always runs exactly once per file:
+    #   - Standard upload: raw Excel → normalize here.
+    #   - Multi-period intake: file_processor already normalized and filtered
+    #     to this pay period (_prepare_ta_for_discovery in discover_handler.py).
+    #     skip_intake_prep=True skips a second pass, which would duplicate columns
+    #     (e.g. ADP CO. → Location mapped twice) and break downstream logic.
+    if not skip_intake_prep:
+        df = utility.normalize_client_data(df, ta_system_config)
+    else:
+        df = df.copy()  # already normalized on the intake pass; avoid mutating the slice
 
     # 2. Validation: Check if all neccesary columns post-mapping are present, if not stop processing.
     missing = [col for col in TA_TARGET_SCHEMA if col not in df.columns]
@@ -41,8 +51,9 @@ def process_data_ta(
         logger.error(error_msg)  # CloudWatch Logs trigger alerts if set up
         raise ValueError(error_msg)  # Raise stops execution in Lambda
 
-    # 3. Drops rows that are not punches base on client configuration
-    df = utility.drop_rows(df, ta_system_config)
+    # 3. Drops rows that are not punches based on client configuration (same first-pass rule as above).
+    if not skip_intake_prep:
+        df = utility.drop_rows(df, ta_system_config)
 
     # 4. Re-order 'Core' columns are always first (makes the DB readable);
     #    drop any intake columns outside the target schema

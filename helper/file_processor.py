@@ -138,6 +138,7 @@ def handle_file_upload(event, params):
         state_min_wage,
         pay_periods_per_year,
         pay_date_str,
+        skip_intake_prep=is_multi_intake,
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
     print(f"WFN processed: {len(processed_wfn_df)} rows")
@@ -153,6 +154,7 @@ def handle_file_upload(event, params):
         processed_waiver_df,
         processed_wfn_df,
         ignore_warnings,
+        skip_intake_prep=is_multi_intake,
     )
     ta_process_time = round((time.time() - ta_start) * 1000, 2)
     print("TA processed")

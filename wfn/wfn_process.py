@@ -23,10 +23,20 @@ def process_data_wfn(
     state_min_wage,
     pay_periods_per_year,
     pay_date,
+    skip_intake_prep=False,
 ):
     ######### DF CLEANUP AND PREP #################
 
-    df = utility.normalize_client_data(df, wfn_system_config)
+    # Normalization always runs exactly once per file:
+    #   - Standard upload: raw Excel → normalize here.
+    #   - Multi-period intake: file_processor already normalized and filtered
+    #     to this pay period (_prepare_wfn_for_discovery in discover_handler.py).
+    #     skip_intake_prep=True skips a second pass, which would duplicate columns
+    #     (e.g. ADP CO. → Location mapped twice) and break downstream logic.
+    if not skip_intake_prep:
+        df = utility.normalize_client_data(df, wfn_system_config)
+    else:
+        df = df.copy()  # already normalized on the intake pass; avoid mutating the slice
 
     missing_core = [col for col in WFN_CORE_SCHEMA if col not in df.columns]
     if missing_core:
@@ -35,7 +45,9 @@ def process_data_wfn(
         logger.error(error_msg)
         raise ValueError(error_msg)
 
-    df = utility.drop_rows(df, wfn_system_config)
+    # Row drops follow the same first-pass rule as normalization (see above).
+    if not skip_intake_prep:
+        df = utility.drop_rows(df, wfn_system_config)
     df = utility.keep_available_schema_columns(df, WFN_TARGET_SCHEMA)
     df = utility.to_pandas_datetime(df, "Pay Date")
 
