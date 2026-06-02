@@ -284,24 +284,39 @@ def delete_annotations(client_id, pay_date):
 
 
 def list_pay_periods(client_id):
-    """List available pay periods in processed folder"""
+    """List processed pay periods with metadata from each results.json."""
     prefix = f"clients/{client_id}/processed/"
 
     response = s3_client.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix, Delimiter="/")
 
-    # Extract dates from folder names
     periods = []
     for obj in response.get("CommonPrefixes", []):
-        # Safely grab the Prefix
         folder_path = obj.get("Prefix")
+        if not folder_path:
+            continue
 
-        # Prove to Pylance that the path exists before running string methods
-        if folder_path:
-            # Extract date from path like 'clients/demo_client/processed/2025-01-16/'
-            date = folder_path.split("/")[-2]
-            periods.append(date)
-            # print("AVAILABLE PERIODS: ", periods)
+        pay_date = folder_path.split("/")[-2]
+        entry = {"pay_date": pay_date}
 
+        key = f"clients/{client_id}/processed/{pay_date}/results.json"
+        try:
+            obj_response = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+            results = json.loads(obj_response["Body"].read())
+            meta = results.get("metadata", {})
+            if meta.get("first_date"):
+                entry["first_date"] = meta["first_date"]
+            if meta.get("last_date"):
+                entry["last_date"] = meta["last_date"]
+            if meta.get("processed_at"):
+                entry["processed_at"] = meta["processed_at"]
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code != "NoSuchKey":
+                print(f"[WARN] Could not load metadata for {pay_date}: {e}")
+
+        periods.append(entry)
+
+    periods.sort(key=lambda p: p["pay_date"], reverse=True)
     return {"periods": periods}
 
 
