@@ -3,8 +3,14 @@ from client_config import CLIENT_CONFIGS
 from helper.aws import (
     read_wfn_excel_from_s3,
     read_ta_excel_from_s3,
+    save_parcel_csv_to_s3,
 )
-from helper.pay_period_discovery import discover_pay_periods
+from helper.pay_period_discovery import (
+    discover_pay_periods,
+    filter_ta_to_pay_period_window,
+    filter_wfn_to_pay_date,
+    merge_period_config,
+)
 from exceptions import ValidationError
 
 
@@ -24,9 +30,37 @@ def _prepare_ta_for_discovery(ta_df, ta_system_config):
     return df
 
 
+def _parcel_processable_periods(periods, prepared_wfn, prepared_ta, client_config, client_id):
+    """
+    Write one WFN/TA CSV per processable pay period so each process-files
+    invocation reads a single-period slice instead of the full bulk intake.
+    """
+    for period in periods:
+        if not period.get("processable"):
+            continue
+
+        pay_date = period["pay_date"]
+        period_config = merge_period_config(client_config, pay_date)
+        sliced_wfn = filter_wfn_to_pay_date(prepared_wfn, pay_date)
+        sliced_ta = filter_ta_to_pay_period_window(prepared_ta, pay_date, period_config)
+
+        if sliced_wfn is None or sliced_wfn.empty:
+            period["processable"] = False
+            period["skip_reason"] = "No matching WFN rows for this pay date."
+            continue
+        if sliced_ta is None or sliced_ta.empty:
+            period["processable"] = False
+            period["skip_reason"] = "No TA punches found for this pay date."
+            continue
+
+        period["wfn_key"] = save_parcel_csv_to_s3(sliced_wfn, client_id, pay_date, "wfn")
+        period["ta_key"] = save_parcel_csv_to_s3(sliced_ta, client_id, pay_date, "ta")
+
+
 def handle_discover_pay_periods(params):
     """
     Discover fiscal pay periods from multi-period intake files already uploaded to S3.
+    Also parcels each processable period to raw/{payDate}/ for fast per-period processing.
     """
     client_id = params.get("clientId")
     wfn_key = params.get("wfn_key")
@@ -63,6 +97,10 @@ def handle_discover_pay_periods(params):
         prepared_wfn,
         client_config,
         anchor_pay_date,
+    )
+
+    _parcel_processable_periods(
+        periods, prepared_wfn, prepared_ta, client_config, client_id
     )
 
     processable_count = sum(1 for p in periods if p["processable"])

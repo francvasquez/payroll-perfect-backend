@@ -7,6 +7,7 @@ from helper.aws import (
     save_waiver_json_s3,
     put_result_to_s3,
     delete_annotations,
+    is_parceled_raw_key,
 )
 from helper.discover_handler import (
     _prepare_ta_for_discovery,
@@ -45,9 +46,10 @@ def handle_file_upload(event, params):
     """
     Processes Waiver → WFN → TA for a single pay period.
 
-    Supports two intake modes:
-    - Legacy single-period: WFN/TA already scoped to one pay date folder
-    - Multi-period intake: bulk files in intake folder; pay_date selects the slice
+    Supports three intake modes:
+    - Legacy single-period: WFN/TA in raw/{payDate}/ (Excel, full normalize)
+    - Multi-period parceled: CSV slices written at discover time (fast path)
+    - Multi-period bulk fallback: raw/intake/ bulk files filtered per request (slow)
     """
     waiver_key, wfn_key, ta_key = verify_files(params)
 
@@ -55,11 +57,13 @@ def handle_file_upload(event, params):
     base_client_config = params["client_config"]
     pay_date = params["payDate"]
     intake_id = params.get("intake_id")
-    is_multi_intake = bool(intake_id)
+    is_multi_period = bool(intake_id)
+    is_bulk_intake = is_multi_period and wfn_key and "/raw/intake/" in wfn_key
+    is_parceled = is_parceled_raw_key(wfn_key) and is_parceled_raw_key(ta_key)
 
     period_config = (
         merge_period_config(base_client_config, pay_date)
-        if is_multi_intake
+        if is_multi_period
         else base_client_config
     )
     params_for_config = {**params, "client_config": period_config}
@@ -79,7 +83,8 @@ def handle_file_upload(event, params):
 
     print(
         f"file_processor.py - Processing pay_date={pay_date_str}, "
-        f"multi_intake={is_multi_intake}, intake_id={intake_id}"
+        f"multi_period={is_multi_period}, parceled={is_parceled}, "
+        f"bulk_intake={is_bulk_intake}, intake_id={intake_id}"
     )
 
     del_annot_msg = None
@@ -104,7 +109,7 @@ def handle_file_upload(event, params):
     )
     ta_df, ta_system_name, ta_system_config = read_ta_excel_from_s3(ta_key, client_id)
 
-    if is_multi_intake:
+    if is_bulk_intake:
         prepared_wfn = _prepare_wfn_for_discovery(wfn_df, wfn_system_config)
         prepared_ta = _prepare_ta_for_discovery(ta_df, ta_system_config)
         wfn_df = filter_wfn_to_pay_date(prepared_wfn, pay_date_str)
@@ -125,6 +130,8 @@ def handle_file_upload(event, params):
                 status_code=400,
             )
 
+    skip_intake_prep = is_bulk_intake or is_parceled
+
     print(
         f"Will normalize WFN system: {wfn_system_name}; TA system: {ta_system_name}"
     )
@@ -138,7 +145,7 @@ def handle_file_upload(event, params):
         state_min_wage,
         pay_periods_per_year,
         pay_date_ts,
-        skip_intake_prep=is_multi_intake,
+        skip_intake_prep=skip_intake_prep,
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
     print(f"WFN processed: {len(processed_wfn_df)} rows")
@@ -154,7 +161,7 @@ def handle_file_upload(event, params):
         processed_waiver_df,
         processed_wfn_df,
         ignore_warnings,
-        skip_intake_prep=is_multi_intake,
+        skip_intake_prep=skip_intake_prep,
     )
     ta_process_time = round((time.time() - ta_start) * 1000, 2)
     print("TA processed")
@@ -187,7 +194,7 @@ def handle_file_upload(event, params):
     put_result_to_s3(result, event_with_pay_date)
 
     result["details"] = {"del_annot_msg": del_annot_msg}
-    if is_multi_intake:
+    if is_multi_period:
         result["details"]["intake_id"] = intake_id
 
     return result

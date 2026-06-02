@@ -244,9 +244,12 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     duplicates = df[duplicate_mask].sort_values(by=["ID", "In Punch"])
 
     if not duplicates.empty:
-        print(f"⚠️ Found {len(duplicates)} rows with duplicate 'ID' + 'In Punch' keys!")
-        # Print the first few duplicates to the logs for inspection
-        print(duplicates[["ID", "In Punch", "Employee", "Location"]].head(10))
+        sample = duplicates.iloc[0]
+        print(
+            f"⚠️ Found {len(duplicates)} rows with duplicate 'ID' + 'In Punch' keys. "
+            f"Sample: ID={sample['ID']}, In Punch={sample['In Punch']}, "
+            f"Employee={sample.get('Employee', '')}, Location={sample.get('Location', '')}"
+        )
 
     # Filter DF to COLUMN_TO_KEEP_DB
     try:

@@ -1,4 +1,5 @@
 import json, boto3, io, json, traceback
+import re
 from datetime import datetime, timezone
 import pandas as pd
 from app_config import S3_BUCKET
@@ -21,6 +22,49 @@ from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
 ses = boto3.client("ses", region_name="us-west-1")
+
+PARCELED_RAW_KEY_PATTERN = re.compile(
+    r"clients/[^/]+/raw/\d{4}-\d{2}-\d{2}/(?:wfn|ta)\.csv$"
+)
+
+
+def is_parceled_raw_key(key: str) -> bool:
+    """True for per-pay-period CSV slices saved during discover-pay-periods."""
+    if not key or "/raw/intake/" in key:
+        return False
+    return bool(PARCELED_RAW_KEY_PATTERN.search(key))
+
+
+def save_parcel_csv_to_s3(df, client_id: str, pay_date: str, file_type: str) -> str:
+    """Save a single pay-period slice for later processing without re-reading bulk intake."""
+    s3_key = f"clients/{client_id}/raw/{pay_date}/{file_type}.csv"
+    csv_buffer = StringIO()
+    df.to_csv(csv_buffer, index=False)
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=s3_key,
+        Body=csv_buffer.getvalue(),
+        ContentType="text/csv",
+    )
+    print(f"Saved pay-period parcel to s3://{S3_BUCKET}/{s3_key} ({len(df)} rows)")
+    return s3_key
+
+
+def _read_parceled_csv_from_s3(key, client_id, system_kind: str):
+    """Read a prepared CSV slice and return default system config for the client."""
+    obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    df = pd.read_csv(io.BytesIO(obj["Body"].read()))
+
+    if system_kind == "wfn":
+        systems = CLIENT_CONFIGS.get(client_id, {}).get("wfn_systems", {})
+    else:
+        systems = CLIENT_CONFIGS.get(client_id, {}).get("ta_systems", {})
+
+    if not systems:
+        raise ValueError(f"No '{system_kind}_systems' configured for client '{client_id}'.")
+
+    system_name = next(iter(systems))
+    return df, system_name, systems[system_name]
 
 
 def debug_to_s3(df, debug_id, debug_cols, bucket_name):
@@ -339,6 +383,9 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
     Reads WFN Excel file from S3, auto-detects system configuration,
     and returns (df, system_name, config)
     """
+    if is_parceled_raw_key(key):
+        return _read_parceled_csv_from_s3(key, clientId, "wfn")
+
     # Step 1: Download file into memory
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
     file_bytes = io.BytesIO(obj["Body"].read())
@@ -423,6 +470,9 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
         e. If matched, read the full Excel file using this system's header.
     3. If no system matches, raise an error.
     """
+
+    if is_parceled_raw_key(key):
+        return _read_parceled_csv_from_s3(key, clientId, "ta")
 
     # Step 1: Download file into memory
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
