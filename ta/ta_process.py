@@ -183,7 +183,11 @@ def process_data_ta(
                 future_daily.result()
 
         except Exception as e:
-            logger.error(f"Failed to save to database concurrently: {e}")
+            logger.exception("Failed to save to database concurrently: %s", e)
+            raise AppError(
+                f"Failed to save processing results to database: {e}",
+                status_code=500,
+            ) from e
     else:
         # DB is paused fallback
         logger.warning(

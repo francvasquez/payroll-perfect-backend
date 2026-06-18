@@ -238,18 +238,25 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     df["Last Updated"] = pd.Timestamp.now(tz="America/Los_Angeles")
     df["Pay Date"] = pay_date_ts
 
-    # Identify which rows have duplicate keys - if there are, the write will crash
-    # as the logic will not know what to do.
+    # Duplicate (ID, In Punch) rows in one INSERT batch cause PostgreSQL to reject
+    # ON CONFLICT upserts ("cannot affect row a second time"). Dedupe before write.
     duplicate_mask = df.duplicated(subset=["ID", "In Punch"], keep=False)
     duplicates = df[duplicate_mask].sort_values(by=["ID", "In Punch"])
 
     if not duplicates.empty:
+        unique_dupe_keys = duplicates.drop_duplicates(subset=["ID", "In Punch"]).shape[0]
         sample = duplicates.iloc[0]
-        print(
-            f"⚠️ Found {len(duplicates)} rows with duplicate 'ID' + 'In Punch' keys. "
-            f"Sample: ID={sample['ID']}, In Punch={sample['In Punch']}, "
-            f"Employee={sample.get('Employee', '')}, Location={sample.get('Location', '')}"
+        logger.warning(
+            "Found %s rows sharing %s duplicate 'ID' + 'In Punch' keys; keeping last per key. "
+            "Sample: ID=%s, In Punch=%s, Employee=%s, Location=%s",
+            len(duplicates),
+            unique_dupe_keys,
+            sample["ID"],
+            sample["In Punch"],
+            sample.get("Employee", ""),
+            sample.get("Location", ""),
         )
+        df = df.drop_duplicates(subset=["ID", "In Punch"], keep="last")
 
     # Filter DF to COLUMN_TO_KEEP_DB
     try:
@@ -264,7 +271,11 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     # Create tables if it doesn't exist
     full_table_name = f"{clientId}_ta"
     temp_table = f"temp_upsert_{uuid.uuid4().hex[:8]}"
-    print(f"Connected to DB - preparing to upsert to {full_table_name}")
+    logger.info(
+        "Connected to DB - preparing to upsert %s rows to %s",
+        len(df),
+        full_table_name,
+    )
 
     try:
         # 'with conn' handles the COMMIT at the end automatically
@@ -290,7 +301,7 @@ def save_ta_to_db(df, clientId, pay_date, conn):
 
                 for col in new_cols:
                     pg_type = get_pg_type(df[col].dtype)
-                    print(f"Adding new column: {col}")
+                    logger.info("Adding new column to %s: %s", full_table_name, col)
                     cur.execute(
                         f'ALTER TABLE "{full_table_name}" ADD COLUMN "{col}" {pg_type};'
                     )
@@ -310,16 +321,27 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                 # 3b. Add Index on "Pay Date" for fast deletions if not created already
                 # We use the clientId in the name to keep it unique across the DB
                 index_name = f"idx_{clientId}_pd"
-                print(f"Ensuring index {index_name} exists on {full_table_name}")
+                logger.info(
+                    "Ensuring index %s exists on %s", index_name, full_table_name
+                )
                 cur.execute(
                     f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{full_table_name}" ("Pay Date");'
                 )
 
                 # 3c. THE WIPE: Clear existing records for this pay period to prevent ghost records
-                print(f"Wiping existing records for pay date: {pay_date_ts}")
+                logger.info(
+                    "Wiping existing records for pay date %s from %s",
+                    pay_date_ts,
+                    full_table_name,
+                )
                 cur.execute(
                     f'DELETE FROM "{full_table_name}" WHERE "Pay Date" = %s;',
                     (pay_date_ts,),
+                )
+                logger.info(
+                    "Deleted %s existing rows for pay date %s",
+                    cur.rowcount,
+                    pay_date_ts,
                 )
 
                 # 4. Temp table for upsert
@@ -346,15 +368,16 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                 """
                 cur.execute(upsert_query)
 
-        print(f"✓ Successfully upserted {len(df)} rows to {full_table_name}")
+        logger.info(
+            "Successfully upserted %s rows to %s for pay date %s",
+            len(df),
+            full_table_name,
+            pay_date_ts,
+        )
 
     except Exception as e:
-        # Re-raise the error so lambda_handler knows it failed
-        print(f"Error during DB transaction: {e}")
-        raise e
-    finally:
-        # Do NOT put a return statement here
-        print("Closing database cursor logic.")
+        logger.exception("Error during TA DB transaction for %s: %s", full_table_name, e)
+        raise
 
 
 def get_db_connection():
