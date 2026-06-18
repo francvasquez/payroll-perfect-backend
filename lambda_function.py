@@ -20,7 +20,7 @@ def _make_error_response(
 
 def lambda_handler(event, _):
 
-    ### 0. CORS Preflight check - clean up once determined
+    ### 0. CORS Preflight check - clean up once determined. 6.18.26
     method = event.get("requestContext", {}).get("http", {}).get("method")
     if method == "OPTIONS":
         print("OPTIONS preflight detected")
