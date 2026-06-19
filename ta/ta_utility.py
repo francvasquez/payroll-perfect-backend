@@ -186,9 +186,14 @@ def validate_intake_pay_date(
             f"Sample punches:\n"
         )
 
-        sample_outliers = outliers_df[["ID", "Employee", "In Punch"]].head(4)
+        sample_outliers = outliers_df[["ID", "Employee", "In Punch", "Out Punch"]].head(4)
         for _, row in sample_outliers.iterrows():
-            warning_msg += f"• {row['Employee']} ({row['ID']}): {row['In Punch']}\n"
+            in_punch = row["In Punch"]
+            out_punch = row["Out Punch"]
+            out_str = out_punch if pd.notna(out_punch) else "missing"
+            warning_msg += (
+                f"• {row['Employee']} ({row['ID']}): In {in_punch}, Out {out_str}\n"
+            )
 
         if len(outliers_df) > 4:
             warning_msg += f"...and {len(outliers_df) - 4} more."
