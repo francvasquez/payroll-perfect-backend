@@ -181,8 +181,8 @@ def validate_intake_pay_date(
             dates_str += ", ..."
 
         warning_msg = (
-            f"Data Warning! Expected punches between {expected_start.date()} and {expected_end.date()}.\n\n"
-            f"Found {len(outliers_df)} punches for these dates: {dates_str}.\n"
+            f"Data Warning! Expected punches between {expected_start.date()} and {expected_end.date()}.\n"
+            f"Found {len(outliers_df)} punches for these dates: {dates_str}.\n\n"
             f"Sample punches:\n"
         )
 
