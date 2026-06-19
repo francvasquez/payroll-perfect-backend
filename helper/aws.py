@@ -657,6 +657,10 @@ def handle_get_client_config(client_id):
         response = s3_client.get_object(Bucket=S3_BUCKET, Key=config_key)
         config_data = json.loads(response["Body"].read().decode("utf-8"))
 
+        anchor_pay_date = CLIENT_CONFIGS.get(client_id, {}).get("anchor_pay_date")
+        if anchor_pay_date:
+            config_data["anchor_pay_date"] = anchor_pay_date
+
         print(f"Successfully loaded config for client: {client_id}")
 
         # 2. RETURN PURE DATA! (No statusCode, no headers, no json.dumps)
