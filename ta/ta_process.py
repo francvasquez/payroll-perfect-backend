@@ -1,5 +1,6 @@
 from helper.db_utils import (
     get_db_connection,
+    get_last_db_connection_error,
     worker_save_daily,
     worker_save_ta,
 )
@@ -14,6 +15,74 @@ from exceptions import AppError
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def _save_to_database(df, daily_df, clientId, pay_date):
+    """
+    Attempts to persist punch and daily totals to PostgreSQL.
+    Returns a status dict suitable for the frontend — never raises.
+    """
+    ta_rows = len(df)
+    daily_rows = len(daily_df)
+    pay_date_str = pd.Timestamp(pay_date).strftime("%Y-%m-%d")
+
+    ping_conn = get_db_connection()
+    if not ping_conn:
+        reason = (
+            get_last_db_connection_error()
+            or "Database is paused or unavailable."
+        )
+        return {
+            "status": "skipped",
+            "message": (
+                f"{reason} "
+                f"Processed {ta_rows} punches in memory, but nothing was saved to the database. "
+                "Re-run intake once the database is available."
+            ),
+            "ta_rows_attempted": ta_rows,
+            "daily_rows_attempted": daily_rows,
+        }
+
+    ping_conn.close()
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_ta = executor.submit(worker_save_ta, df, clientId, pay_date_str)
+            future_daily = executor.submit(
+                worker_save_daily, daily_df, clientId, pay_date_str
+            )
+            future_ta.result()
+            future_daily.result()
+
+        if daily_rows == 0:
+            message = (
+                f"Saved {ta_rows} punches to the database. "
+                "No daily totals were saved because the daily dataframe was empty."
+            )
+        else:
+            message = (
+                f"Saved {ta_rows} punches and {daily_rows} daily totals to the database."
+            )
+
+        return {
+            "status": "completed",
+            "message": message,
+            "ta_rows_written": ta_rows,
+            "daily_rows_written": daily_rows,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to save to database concurrently: {e}")
+        return {
+            "status": "failed",
+            "message": (
+                f"Failed to save punches to the database: {e}. "
+                "Audit results were generated, but the database may be missing or "
+                "partially updated for this pay period. Re-run intake after resolving the issue."
+            ),
+            "ta_rows_attempted": ta_rows,
+            "daily_rows_attempted": daily_rows,
+        }
 
 
 def process_data_ta(
@@ -148,39 +217,12 @@ def process_data_ta(
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
-    # Write to DB TODO Improve error handling
-    # 1. Quick ping to see if the DB is awake before spinning up threads
-    ping_conn = get_db_connection()
-
-    if ping_conn:
-        # Close the ping connection immediately! The threads will get their own.
-        ping_conn.close()
-
-        try:
-            # 2. Spin up the ThreadPool
-            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-
-                # Submit both jobs to run simultaneously
-                future_ta = executor.submit(worker_save_ta, df, clientId, pay_date)
-                future_daily = executor.submit(
-                    worker_save_daily, daily_df, clientId, pay_date
-                )
-
-                # 3. Wait for them to finish.
-                # .result() will raise any exceptions that happened inside the threads.
-                future_ta.result()
-                future_daily.result()
-
-        except Exception as e:
-            logger.error(f"Failed to save to database concurrently: {e}")
-    else:
-        # DB is paused fallback
-        logger.warning(
-            "DB is paused. Skipping the save step, but continuing with the response."
-        )
+    # Write to DB and capture status for the frontend
+    db_write = _save_to_database(df, daily_df, clientId, pay_date)
 
     return (
         df,
         daily_df,
         anomalies_df_new,
+        db_write,
     )

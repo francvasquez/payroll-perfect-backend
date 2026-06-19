@@ -97,7 +97,7 @@ def handle_file_upload(event, params):
         f"Will normalize for TA system: {ta_system_name}, using {ta_system_config} for client: {client_id}"
     )
     ta_start = time.time()
-    processed_ta_df, daily_df, anomalies_df_new = process_data_ta(
+    processed_ta_df, daily_df, anomalies_df_new, db_write = process_data_ta(
         ta_df,
         client_params,
         ta_system_config,
@@ -140,11 +140,10 @@ def handle_file_upload(event, params):
 
     ### 11. Add any success details to the result dictionary so front-end can display it after processing
     result["details"] = {
-        "del_annot_msg": del_annot_msg
-        # You can easily add more here later!
-        # "s3_backup": "Success",
-        # "email_sent": True
+        "del_annot_msg": del_annot_msg,
+        "db_write": db_write,
     }
+    result["summary"]["db_write"] = db_write
 
     # Return the flat dictionary so React finds exactly what it expects
     return result

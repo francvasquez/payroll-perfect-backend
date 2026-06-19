@@ -19,6 +19,13 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+_last_db_connection_error: str | None = None
+
+
+def get_last_db_connection_error() -> str | None:
+    """Returns the reason for the most recent failed get_db_connection() call."""
+    return _last_db_connection_error
+
 
 def get_carryover_streaks(client_id, pay_date, client_params):
     """
@@ -242,9 +249,15 @@ def save_ta_to_db(df, clientId, pay_date, conn):
     duplicates = df[duplicate_mask].sort_values(by=["ID", "In Punch"])
 
     if not duplicates.empty:
-        print(f"⚠️ Found {len(duplicates)} rows with duplicate 'ID' + 'In Punch' keys!")
-        # Print the first few duplicates to the logs for inspection
-        print(duplicates[["ID", "In Punch", "Employee", "Location"]].head(10))
+        sample = duplicates[["ID", "In Punch", "Employee", "Location"]].head(5)
+        sample_lines = "\n".join(
+            f"  • {row['Employee']} ({row['ID']}): In {row['In Punch']}"
+            for _, row in sample.iterrows()
+        )
+        raise ValueError(
+            f"Cannot save punches: {len(duplicates)} rows share the same 'ID' + 'In Punch' key. "
+            f"The database requires each punch to be unique.\nSample duplicates:\n{sample_lines}"
+        )
 
     # Filter DF to COLUMN_TO_KEEP_DB
     try:
@@ -357,6 +370,9 @@ def get_db_connection():
     Attempts to connect to the DB, graceful exit continues code if unreachable.
     Returns the connection object if successful, or None if the DB is unreachable.
     """
+    global _last_db_connection_error
+    _last_db_connection_error = None
+
     try:
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST"),
@@ -369,12 +385,17 @@ def get_db_connection():
         return conn
     except psycopg2.OperationalError as e:
         # This catches "Connection Refused" (Instance paused)
+        _last_db_connection_error = (
+            f"Database is unreachable or paused ({e}). "
+            "If you use a serverless database, wake it up and re-run intake."
+        )
         logger.warning(
             f"NOTICE: Database is currently unreachable or paused. Skipping DB operations. Details: {e}"
         )
         return None
     except Exception as e:
         # Catches other issues like wrong passwords
+        _last_db_connection_error = f"Database connection failed: {e}"
         logger.error(f"ERROR: Unexpected connection error: {e}")
         return None
 
