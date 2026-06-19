@@ -239,6 +239,8 @@ def save_daily_df_to_db(
 
 def save_ta_to_db(df, clientId, pay_date, conn):
 
+    pay_date = pd.Timestamp(pay_date)
+
     # Add Metadata
     df["Last Updated"] = pd.Timestamp.now(tz="America/Los_Angeles")
     df["Pay Date"] = pay_date
@@ -330,9 +332,10 @@ def save_ta_to_db(df, clientId, pay_date, conn):
                     (pay_date,),
                 )
 
-                # 4. Temp table for upsert
+                # 4. Temp table for upsert — match live table types to avoid cast errors
+                temp_cols_sql = _build_temp_cols_sql(cur, full_table_name, df)
                 cur.execute(
-                    f'CREATE TEMP TABLE "{temp_table}" ({cols_sql}) ON COMMIT DROP;'
+                    f'CREATE TEMP TABLE "{temp_table}" ({temp_cols_sql}) ON COMMIT DROP;'
                 )
 
                 # 5. Bulk insert
@@ -411,6 +414,39 @@ def get_pg_type(dtype):
     if pd.api.types.is_bool_dtype(dtype):
         return "BOOLEAN"
     return "TEXT"
+
+
+def _fetch_pg_column_types(cur, table_name: str) -> dict[str, str]:
+    """Returns {column_name: postgres_type} for an existing table."""
+    cur.execute(
+        """
+        SELECT a.attname, pg_catalog.format_type(a.atttypid, a.atttypmod)
+        FROM pg_catalog.pg_attribute a
+        JOIN pg_catalog.pg_class c ON a.attrelid = c.oid
+        JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+        WHERE c.relname = %s
+          AND n.nspname = 'public'
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+        """,
+        (table_name,),
+    )
+    return {row[0]: row[1] for row in cur.fetchall()}
+
+
+def _build_temp_cols_sql(cur, table_name: str, df: pd.DataFrame) -> str:
+    """
+    Build column definitions for a temp staging table.
+    Prefer types from the live table so INSERT...SELECT never hits text/timestamp mismatches.
+    """
+    existing_types = _fetch_pg_column_types(cur, table_name)
+    parts = []
+    for col in df.columns:
+        if col in existing_types:
+            parts.append(f'"{col}" {existing_types[col]}')
+        else:
+            parts.append(f'"{col}" {get_pg_type(df[col].dtype)}')
+    return ", ".join(parts)
 
 
 def delete_ta_from_db(conn, clientId, pay_date):

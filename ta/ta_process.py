@@ -24,7 +24,7 @@ def _save_to_database(df, daily_df, clientId, pay_date):
     """
     ta_rows = len(df)
     daily_rows = len(daily_df)
-    pay_date_str = pd.Timestamp(pay_date).strftime("%Y-%m-%d")
+    pay_date_ts = pd.Timestamp(pay_date)
 
     ping_conn = get_db_connection()
     if not ping_conn:
@@ -47,9 +47,9 @@ def _save_to_database(df, daily_df, clientId, pay_date):
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-            future_ta = executor.submit(worker_save_ta, df, clientId, pay_date_str)
+            future_ta = executor.submit(worker_save_ta, df, clientId, pay_date_ts)
             future_daily = executor.submit(
-                worker_save_daily, daily_df, clientId, pay_date_str
+                worker_save_daily, daily_df, clientId, pay_date_ts
             )
             future_ta.result()
             future_daily.result()
