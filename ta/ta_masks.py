@@ -10,6 +10,14 @@ def break_less_than_30(df):
     )  # df["Is Break?"] ignores midnight punches and first punches of shift
 
 
+def first_meal_break(df):
+    return (
+        (df["Hours Worked Shift"] > 6)
+        & df["New Shift?"]
+        & (df["Punch Length (hrs)"] > 5)
+    )
+
+
 def waiver_on_file(df):
     # Explicitly check for both the string "Yes" and the boolean True. As we are migrating that column to boolean.
     mask = (df["Waiver on File?"] == "Yes") | (df["Waiver on File?"] == True)
