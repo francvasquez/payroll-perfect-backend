@@ -122,6 +122,7 @@ COLS_ANOMALIES = [
     "Variance",
     "Short Break",
     "Did Not Break",
+    "First Meal Break",
     "Over Twelve",
 ]
 

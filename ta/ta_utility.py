@@ -754,6 +754,7 @@ def create_anomalies_new(df):
     # Step 1: Define anomaly columns as either 1 or 0
     df["Short Break"] = (ta_masks.break_less_than_30(df)).astype(int)
     df["Did Not Break"] = (ta_masks.did_not_break_new_all(df)).astype(int)
+    df["First Meal Break"] = (ta_masks.first_meal_break(df)).astype(int)
     df["Over Twelve"] = (ta_masks.over_twelve(df)).astype(int)
 
     # Step 2: Aggregate anomalies by Employee and ID
@@ -763,6 +764,7 @@ def create_anomalies_new(df):
             "Paid Break Credit (hrs)": "first",  # keeps this column
             "Short Break": "sum",  # consolidate
             "Did Not Break": "sum",  # consolidate
+            "First Meal Break": "sum",  # consolidate
             "Over Twelve": "sum",  # consolidate
         }
     )
@@ -771,6 +773,7 @@ def create_anomalies_new(df):
     anomalies_df = anomalies_df[
         (anomalies_df["Short Break"] != 0)
         | (anomalies_df["Did Not Break"] != 0)
+        | (anomalies_df["First Meal Break"] != 0)
         | (anomalies_df["Over Twelve"] != 0)
         | (anomalies_df["Paid Break Credit (hrs)"] != 0)
     ]
@@ -779,6 +782,7 @@ def create_anomalies_new(df):
     anomalies_df["Due Break Credit (hrs)"] = (
         anomalies_df["Short Break"]
         + anomalies_df["Did Not Break"]
+        + anomalies_df["First Meal Break"]
         + anomalies_df["Over Twelve"]
     )
     anomalies_df["Variance"] = (

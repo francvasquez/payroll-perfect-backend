@@ -273,24 +273,6 @@ def generate_results(
                 max_rows=200,
                 cols=app_config.COLS_PRINT2_B,
             ),
-            ##1d. First Meal Break
-            "first_meal_break": filter_and_sort_df_to_dict(
-                df=processed_ta_df,
-                sort_col="Employee",
-                ascending=True,
-                base_filter=ta_masks.first_meal_break(processed_ta_df),
-                max_rows=200,
-                cols=app_config.COLS_PRINT2_B,
-            ),
-            ##1e. Second Meal Break Check
-            "over_12_hours": filter_and_sort_df_to_dict(
-                df=processed_ta_df,
-                sort_col="Employee",
-                ascending=True,
-                base_filter=ta_masks.over_twelve(processed_ta_df),
-                max_rows=200,
-                cols=app_config.COLS_PRINT7,
-            ),
             ## NEW ##
             ##2. Employees with Seven Consecutive Days
             "seven_consecutive": filter_and_sort_df_to_dict(
