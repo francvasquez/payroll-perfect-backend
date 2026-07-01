@@ -1,16 +1,5 @@
-import datetime
-
-
 def same_date_as_prev(df):
     return df["Date"] == df["Prev Date"]
-
-
-def same_date_as_next(df):
-    return df["Date"] == df["Next Date"]
-
-
-def first_shift(df):
-    return df["Next Break Time (min)"] < 60
 
 
 def break_less_than_30(df):
@@ -19,14 +8,6 @@ def break_less_than_30(df):
         & (df["Hours Worked Shift"] >= 5)
         & df["Is Break?"]
     )  # df["Is Break?"] ignores midnight punches and first punches of shift
-
-
-def is_first_punch_of_shift(df):
-    one_am = datetime.time(1, 0)  # 01:00:00
-    return (df["Break Time (min)"] >= 60) | (  # Must be first punch of shift
-        (df["Break Time (min)"].isna()) & (df["In Punch"].dt.time >= one_am)
-    )  # We don't have break time but the punch is greater than 1 am
-    # which tells me it must be the first punch of the shift as well.
 
 
 def waiver_on_file(df):
@@ -128,7 +109,3 @@ def OT_var_mask(df):
 def DT_var_mask(df):
     mask = df["DT_Variance_(hrs)"].abs() >= 0.01
     return mask
-
-
-def first_day_matches_first_workweek_day(df, start_of_week):
-    return df["First day of Streak"].dt.day_name() == start_of_week
