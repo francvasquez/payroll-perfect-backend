@@ -339,17 +339,21 @@ def create_daily_df(df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
     df["limit_ot_day"] = df["Location"].map(ot_day_map).fillna(g_ot_day)
     df["limit_dt_day"] = df["Location"].map(dt_day_map).fillna(g_dt_day)
 
-    # 4. Create a boolean mask to identify shifts that cross midnight
+    # 4. Identify shifts that enter the next workday (strictly after midnight).
+    # Exact 12:00:00 a.m. ends the prior workday and does NOT count as work on
+    # the next day (CA default workday boundary). Any time after midnight does.
     df["In_Date"] = df["In Punch"].dt.date
     df["Out_Date"] = df["Out Punch"].dt.date
-    mask_same_day = df["In_Date"] == df["Out_Date"]
+    out_midnight = df["Out Punch"].dt.normalize()
+    has_post_midnight_work = df["Out Punch"] > out_midnight
+    mask_same_day = (df["In_Date"] == df["Out_Date"]) | ~has_post_midnight_work
 
-    # --- Group A: Same-Day Shifts ---
+    # --- Group A: Same-Day Shifts (incl. outs at exact midnight) ---
     df_same = df[mask_same_day].copy()
     df_same["Attributed_Workday"] = df_same["In_Date"]
     df_same["Hours_Worked"] = df_same["Punch Length (hrs) Raw"]
 
-    # --- Group B: Cross-Midnight Shifts ---
+    # --- Group B: Cross-Midnight Shifts (Out Punch strictly after midnight) ---
     df_cross = df[~mask_same_day].copy()
 
     if not df_cross.empty:
@@ -366,6 +370,8 @@ def create_daily_df(df: pd.DataFrame, client_params: dict) -> pd.DataFrame:
         df_cross_2["Hours_Worked"] = (
             df_cross_2["Out Punch"] - midnight_series
         ).dt.total_seconds() / 3600.0
+        # Safety net: never attribute a zero-hour next day (e.g. exact midnight)
+        df_cross_2 = df_cross_2[df_cross_2["Hours_Worked"] > 0]
 
         df_splits = pd.concat([df_cross_1, df_cross_2], ignore_index=True)
     else:
