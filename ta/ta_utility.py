@@ -10,13 +10,36 @@ import logging
 logger = logging.getLogger()
 
 
+def stamp_volunteered_short_shift(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Capture Workforce Manager Out Exc / Comments Text onto a processing flag
+    before those intake columns are pruned from the target schema.
+    No-op when the WFM columns are absent (Time and Attendance files).
+    """
+    if (
+        ta_masks.OUT_EXC_COL in df.columns
+        and ta_masks.COMMENTS_TEXT_COL in df.columns
+    ):
+        df[ta_masks.VOLUNTEERED_SHORT_SHIFT_COL] = (
+            ta_masks.volunteered_short_shift_punch(df)
+        )
+    return df
+
+
 def add_report_time_warning(df: pd.DataFrame) -> pd.DataFrame:
     """
     Adds a boolean column "RTP_Warning" to flag short shifts based on a client-defined threshold.
     TODO: The threshold is fetched from client_params["global"]["short_shift_warning_threshold"].
+    Excludes shifts with a Workforce Manager volunteered-short-shift exception.
     """
     short_shift_mask = ta_masks.short_shift_warning(df)
-    df["RTP_Warning"] = short_shift_mask
+    volunteered_mask = ta_masks.volunteered_short_shift(df)
+    suppressed = short_shift_mask & volunteered_mask
+    if suppressed.any():
+        logger.info(
+            f"Suppressed {int(suppressed.sum())} RTP warning row(s) for volunteered short shifts"
+        )
+    df["RTP_Warning"] = short_shift_mask & ~volunteered_mask
 
     return df
 

@@ -68,18 +68,24 @@ def normalize_client_data(df, system_config):
     return df
 
 
-def keep_target_schema_columns(df, target_schema):
+def keep_target_schema_columns(df, target_schema, extra_keep=None):
     """
     Keeps only columns in target_schema, ordered as defined in the schema
     (core columns first — makes the DB readable). Drops all other intake columns.
     Run after drop_rows so non-schema columns used for row filters are still available.
+
+    extra_keep: optional processing flags to retain if present (e.g. volunteered
+    short-shift), without making them required on TA_TARGET_SCHEMA.
     """
-    extra_cols = [col for col in df.columns if col not in target_schema]
+    keep = list(target_schema)
+    if extra_keep:
+        keep.extend(c for c in extra_keep if c in df.columns and c not in keep)
+    extra_cols = [col for col in df.columns if col not in keep]
     if extra_cols:
         logger.info(
             f"Dropped {len(extra_cols)} columns outside target schema: {extra_cols}"
         )
-    return df[target_schema].copy()
+    return df[keep].copy()
 
 
 def keep_available_schema_columns(df, target_schema):

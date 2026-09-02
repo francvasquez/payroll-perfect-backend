@@ -6,6 +6,7 @@ from helper.db_utils import (
 )
 from client_config import TA_TARGET_SCHEMA, CLIENT_CONFIGS
 import utility
+from . import ta_masks
 from . import ta_utility
 import logging
 import pandas as pd
@@ -113,9 +114,16 @@ def process_data_ta(
     # 3. Drops rows that are not punches base on client configuration
     df = utility.drop_rows(df, ta_system_config)
 
+    # 3b. Stamp WFM volunteered-short-shift flag while Out Exc / Comments Text still exist
+    df = ta_utility.stamp_volunteered_short_shift(df)
+
     # 4. Re-order 'Core' columns are always first (makes the DB readable);
     #    drop any intake columns outside the target schema
-    df = utility.keep_target_schema_columns(df, TA_TARGET_SCHEMA)
+    df = utility.keep_target_schema_columns(
+        df,
+        TA_TARGET_SCHEMA,
+        extra_keep=[ta_masks.VOLUNTEERED_SHORT_SHIFT_COL],
+    )
 
     # 5. Assure timestamps are in Panda's datetime format
     df = utility.to_pandas_datetime(df, "In Punch", "Out Punch", "Status Date")

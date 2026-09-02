@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 def same_date_as_prev(df):
     return df["Date"] == df["Prev Date"]
 
@@ -61,6 +64,48 @@ def did_not_break_new(df):
 
 def short_shift_warning(df):
     return (df["Hours Worked Shift"] > 0) & (df["Hours Worked Shift"] < 4.0)
+
+
+# Workforce Manager intake columns used only for RTP suppression.
+# Captured onto VOLUNTEERED_SHORT_SHIFT_COL before schema prune.
+OUT_EXC_COL = "Out Exc"
+COMMENTS_TEXT_COL = "Comments Text"
+VOLUNTEERED_SHORT_SHIFT_COL = "Volunteered Short Shift"
+_OUT_EXC_SHORT_SHIFT = "short shift"
+_COMMENTS_VOLUNTEERED = "volunteered"
+
+
+def volunteered_short_shift_punch(df):
+    """Punch-level WFM exception: Out Exc is Short Shift and Comments Text is Volunteered.
+
+    Prefers the stamped processing flag (raw Excel columns are dropped after intake).
+    Missing columns → no suppression (Time and Attendance files, older WFM exports).
+    """
+    if VOLUNTEERED_SHORT_SHIFT_COL in df.columns:
+        return df[VOLUNTEERED_SHORT_SHIFT_COL].fillna(False).astype(bool)
+
+    if OUT_EXC_COL not in df.columns or COMMENTS_TEXT_COL not in df.columns:
+        return pd.Series(False, index=df.index)
+
+    out_exc = df[OUT_EXC_COL].astype(str).str.strip().str.casefold()
+    comments = df[COMMENTS_TEXT_COL].astype(str).str.strip().str.casefold()
+    return (out_exc == _OUT_EXC_SHORT_SHIFT) & (comments == _COMMENTS_VOLUNTEERED)
+
+
+def volunteered_short_shift(df):
+    """True for every punch in a shift that has a volunteered short-shift exception.
+
+    RTP is shift-level (Hours Worked Shift); Out Exc lives on the clock-out punch,
+    so the exception is expanded to the whole shift.
+    """
+    punch_flag = volunteered_short_shift_punch(df)
+    if df.empty or "Shift Number" not in df.columns or "ID" not in df.columns:
+        return punch_flag
+    return (
+        punch_flag.groupby([df["ID"], df["Shift Number"]], dropna=False)
+        .transform("any")
+        .astype(bool)
+    )
 
 
 def did_not_break_new_all(df):

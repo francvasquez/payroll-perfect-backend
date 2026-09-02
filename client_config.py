@@ -138,6 +138,10 @@ CLIENT_CONFIGS = {
                     "ID": ["TESTEE"],
                     "Employee": ["testee"],
                 },
+                # Optional columns (not in TA_TARGET_SCHEMA). If Out Exc is
+                # "Short Shift" and Comments Text is "Volunteered", the punch's
+                # shift is excluded from Reporting Time Pay Warning only.
+                # See ta_masks.volunteered_short_shift.
             },
         },
     },

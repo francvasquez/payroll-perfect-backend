@@ -329,7 +329,10 @@ def generate_results(
                 df=processed_ta_df,
                 sort_col="Employee",
                 ascending=True,
-                base_filter=processed_ta_df["RTP_Warning"] == True,
+                base_filter=(
+                    ta_masks.short_shift_warning(processed_ta_df)
+                    & ~ta_masks.volunteered_short_shift(processed_ta_df)
+                ),
                 max_rows=200,
                 cols=app_config.COLS_PRINT3b,
             ),
