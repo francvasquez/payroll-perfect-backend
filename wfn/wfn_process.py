@@ -23,6 +23,7 @@ def process_data_wfn(
     state_min_wage,
     pay_periods_per_year,
     pay_date,
+    disregard_pay_date_mismatches=False,
 ):
     ######### DF CLEANUP AND PREP #################
 
@@ -41,7 +42,28 @@ def process_data_wfn(
 
     is_valid, msg = utility.validate_wfn_pay_date(df, pay_date)
     if not is_valid:
-        raise AppError(msg, status_code=422)
+        if not disregard_pay_date_mismatches:
+            raise AppError(msg, status_code=422)
+
+        try:
+            df, employees_removed = utility.filter_wfn_matching_pay_date(df, pay_date)
+        except ValueError as exc:
+            raise AppError(str(exc), status_code=422) from exc
+
+        if df.empty:
+            raise AppError(
+                "Pay Date Mismatch!\n"
+                "All employees in this payroll file have a different Pay Date "
+                f"than the selected date ({pay_date}). Nothing left to process.",
+                status_code=422,
+            )
+
+        logger.info(
+            "Disregarded %s employee(s) with mismatched Pay Date; "
+            "continuing with %s matching row(s).",
+            employees_removed,
+            len(df),
+        )
 
     enabled_blocks, wfn_exceptions = assess_wfn_blocks(df.columns)
     logger.info(f"WFN enabled blocks: {sorted(enabled_blocks)}")

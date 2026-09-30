@@ -161,27 +161,43 @@ def to_pandas_datetime(df, *columns):
     return df
 
 
+def _wfn_pay_date_mismatch_mask(df, target_pay_date):
+    """
+    Returns (target_normalized, mismatch_mask) for WFN Pay Date validation.
+    Raises ValueError for invalid target date or missing columns.
+    """
+    try:
+        target = pd.to_datetime(target_pay_date).normalize()
+    except Exception as exc:
+        raise ValueError(
+            f"Intake Error: '{target_pay_date}' is not a valid date format."
+        ) from exc
+
+    if "Pay Date" not in df.columns:
+        raise ValueError(
+            "Validation Error: 'Pay Date' column missing from the payroll file."
+        )
+
+    if "IDX" not in df.columns:
+        raise ValueError(
+            "Validation Error: 'IDX' column missing from the payroll file."
+        )
+
+    file_dates = pd.to_datetime(df["Pay Date"], errors="coerce").dt.normalize()
+    mismatch_mask = file_dates.isna() | (file_dates != target)
+    return target, mismatch_mask
+
+
 def validate_wfn_pay_date(df, target_pay_date) -> tuple[bool, str]:
     """
     Validates user-selected pay date against the WFN file's Pay Date column.
     Returns (is_valid, message).
     """
     try:
-        target = pd.to_datetime(target_pay_date).normalize()
-    except Exception:
-        return (
-            False,
-            f"Intake Error: '{target_pay_date}' is not a valid date format.",
-        )
+        target, mismatch_mask = _wfn_pay_date_mismatch_mask(df, target_pay_date)
+    except ValueError as exc:
+        return False, str(exc)
 
-    if "Pay Date" not in df.columns:
-        return False, "Validation Error: 'Pay Date' column missing from the payroll file."
-
-    if "IDX" not in df.columns:
-        return False, "Validation Error: 'IDX' column missing from the payroll file."
-
-    file_dates = pd.to_datetime(df["Pay Date"], errors="coerce").dt.normalize()
-    mismatch_mask = file_dates.isna() | (file_dates != target)
     mismatch_df = df.loc[mismatch_mask]
 
     if mismatch_df.empty:
@@ -208,3 +224,22 @@ def validate_wfn_pay_date(df, target_pay_date) -> tuple[bool, str]:
         msg += f"\n...and {total_mismatch - 5} more."
 
     return False, msg
+
+
+def filter_wfn_matching_pay_date(df, target_pay_date) -> tuple:
+    """
+    Drops employees (by IDX) who have any row with a Pay Date that does not
+    match the selected pay date. Returns (filtered_df, employees_removed_count).
+    """
+    try:
+        _, mismatch_mask = _wfn_pay_date_mismatch_mask(df, target_pay_date)
+    except ValueError as exc:
+        raise ValueError(str(exc)) from exc
+
+    mismatched_idxs = df.loc[mismatch_mask, "IDX"].drop_duplicates()
+    employees_removed = int(len(mismatched_idxs))
+    if employees_removed == 0:
+        return df.copy(), 0
+
+    filtered_df = df.loc[~df["IDX"].isin(mismatched_idxs)].copy()
+    return filtered_df, employees_removed

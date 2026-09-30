@@ -28,13 +28,19 @@ def handle_file_upload(event, params):
     client_id = params["clientId"]
     client_params = params["client_config"]
 
-    ### 3. Extract user bypass
+    ### 3. Extract user bypass flags
     try:
         raw_body = json.loads(event.get("body", "{}"))
         ignore_warnings = raw_body.get("ignore_warnings", False)
+        disregard_pay_date_mismatches = raw_body.get(
+            "disregard_pay_date_mismatches", False
+        )
     except Exception:
         # Fallback just in case
         ignore_warnings = params.get("ignore_warnings", False)
+        disregard_pay_date_mismatches = params.get(
+            "disregard_pay_date_mismatches", False
+        )
 
     ### 3 & 4. Extract global parameters with default fallback
     (
@@ -85,6 +91,7 @@ def handle_file_upload(event, params):
         state_min_wage,
         pay_periods_per_year,
         pay_date,
+        disregard_pay_date_mismatches,
     )
     wfn_process_time = round((time.time() - wfn_start) * 1000, 2)
     print(f"WFN processed: {len(processed_wfn_df)} rows")
