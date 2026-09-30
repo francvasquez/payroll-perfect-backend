@@ -38,7 +38,7 @@ WEEKDAYS = [
 ]
 
 # COLS for printing waiver
-WAIVER_PRINT_COLS = ["Name", "Check_Pure"]
+WAIVER_PRINT_COLS = ["Name", "ID", "Prior_ID_1"]
 
 # COLS for printing WFN
 COLUMNS_TO_SHOW = [

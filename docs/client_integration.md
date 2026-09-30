@@ -120,7 +120,7 @@ Break, rest, sick, vacation: **Break Credit Hours**, **Break Credit Earnings**, 
 
 ### 1f. Meal waiver (optional)
 
-If used, the file needs an employee **ID** (matching TA) and a **Check** column. A value of `x` (any case) means a valid meal-period waiver is on file. If they skip the waiver file, every punch is treated as having **no** waiver.
+If used, the file needs an employee **ID** (matching TA). Optional **Prior_ID_1** holds a previous ID (e.g. after a hotel/`CO.` move) so either ID still counts as waived. **Any employee listed is treated as having a meal-period waiver on file** — no `Check` / `X` column is required. If they skip the waiver file, every punch is treated as having **no** waiver.
 
 ### 1g. Business rules for `config.json`
 

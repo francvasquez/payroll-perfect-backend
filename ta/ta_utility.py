@@ -655,6 +655,11 @@ def add_col_from_another_df(
 
 
 def add_waiver_check(df, processed_waiver_df):
+    """
+    Flag punches whose employee ID appears on the waiver file.
+    processed_waiver_df is expected to include both current and prior IDs
+    (see process_waiver), each with Has_Waiver_Bool=True.
+    """
     if processed_waiver_df is None or processed_waiver_df.empty:
         df["Waiver on File?"] = False
         return df
@@ -667,7 +672,7 @@ def add_waiver_check(df, processed_waiver_df):
         lookup_tgt="Has_Waiver_Bool",
     )
     # Fill the NaN values with False
-    df["Waiver on File?"] = df["Waiver on File?"].fillna(False)
+    df["Waiver on File?"] = df["Waiver on File?"].fillna(False).astype(bool)
     return df
 
 

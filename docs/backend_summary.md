@@ -120,7 +120,7 @@ Also written: parsed CSVs under `csv/{pay_date}/` (and waiver CSV/JSON under `wa
 
 ### Waiver
 
-Dedupes on `ID`. Column `Check` with `x` → waiver on file. If omitted, every punch is treated as no waiver.
+Dedupes on `ID` and optional `Prior_ID_1` (both map to waived). Presence on the file → waiver on file. If omitted, every punch is treated as no waiver.
 
 ### WFN (`wfn/wfn_process.py`)
 
@@ -196,7 +196,7 @@ helper/
 
 ta/                     # punch pipeline, masks, weekly/consecutive rules
 wfn/                    # payroll pipeline, masks, which tables can run
-waiver/                 # small ID + Check transform
+waiver/                 # ID (+ optional Prior_ID_1) → waived if present
 utility.py              # normalize_client_data, drop_rows, schema column helpers
 ```
 
