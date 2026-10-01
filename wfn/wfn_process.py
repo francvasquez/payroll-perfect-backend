@@ -27,6 +27,9 @@ def process_data_wfn(
 ):
     ######### DF CLEANUP AND PREP #################
 
+    # Trailing blank Excel rows become "" and crash IDX int/zfill preprocess.
+    df = df.dropna(how="all").copy()
+
     df = utility.normalize_client_data(df, wfn_system_config)
 
     missing_core = [col for col in WFN_CORE_SCHEMA if col not in df.columns]

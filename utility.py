@@ -34,14 +34,29 @@ def normalize_client_data(df, system_config):
                 for col in source_cols:
                     if col not in df.columns:
                         df[col] = ""
-                    series = df[col].fillna("")
+                    series = df[col]
                     fmt = preprocess.get(col, {})
-                    if fmt.get("astype") == "int":
-                        series = series.astype(int)
-                    if "zfill" in fmt:
-                        series = series.astype(str).str.zfill(fmt["zfill"])
+
+                    # Int + optional zero-pad (e.g. ADP FILE# → 000143).
+                    # Blank/NaN cells must not crash — leave them as "".
+                    if fmt.get("astype") == "int" or "zfill" in fmt:
+                        numeric = pd.to_numeric(series, errors="coerce")
+                        width = fmt.get("zfill")
+                        if width:
+                            series = numeric.map(
+                                lambda x: (
+                                    ""
+                                    if pd.isna(x)
+                                    else f"{int(x):0{int(width)}d}"
+                                )
+                            )
+                        else:
+                            series = numeric.map(
+                                lambda x: "" if pd.isna(x) else str(int(x))
+                            )
                     else:
-                        series = series.astype(str)
+                        series = series.fillna("").astype(str)
+
                     series_list.append(series)
 
                 df[target_col] = pd.concat(series_list, axis=1).agg(
