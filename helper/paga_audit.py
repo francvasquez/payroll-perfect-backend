@@ -284,10 +284,93 @@ def _extract_raw_master(raw_wfn: pd.DataFrame) -> pd.DataFrame:
         )
 
     out["employee_id"] = _build_employee_id(raw_wfn["CO."], raw_wfn["FILE#"])
+    out["co"] = out["co"].astype("string").str.strip()
 
     flsa = out["flsa_code"].astype("string").str.strip().str.upper()
     out = out.loc[flsa == "N"].copy()
     return out.reset_index(drop=True)
+
+
+def _normalize_co_set(co_codes) -> set[str] | None:
+    """None = no filter (include all). Empty set is invalid at call site."""
+    if co_codes is None:
+        return None
+    return {str(c).strip() for c in co_codes if str(c).strip()}
+
+
+def _filter_master_by_co(
+    master: pd.DataFrame, include_co: set[str] | None
+) -> pd.DataFrame:
+    if include_co is None:
+        return master
+    if master.empty or "co" not in master.columns:
+        return master
+    co = master["co"].astype("string").str.strip()
+    return master.loc[co.isin(include_co)].copy().reset_index(drop=True)
+
+
+def list_paga_co_codes(client_id: str, pay_dates: list):
+    """
+    Distinct CO. values among FLSA=N employees in the selected processed periods.
+    Used by the PAGA Audit UI for include/exclude checkboxes.
+    """
+    if not client_id:
+        raise AppError("clientId is required.", status_code=400)
+    if not pay_dates:
+        raise AppError("Select at least one pay period.", status_code=400)
+
+    ordered = sorted({str(d) for d in pay_dates})
+    # co -> {employee_ids}, co -> {pay_dates present}
+    employees_by_co: dict[str, set[str]] = {}
+    periods_by_co: dict[str, set[str]] = {}
+    errors: list[str] = []
+
+    for pay_date in ordered:
+        results_key = f"clients/{client_id}/processed/{pay_date}/results.json"
+        try:
+            s3_client.head_object(Bucket=S3_BUCKET, Key=results_key)
+        except ClientError:
+            errors.append(f"{pay_date}: not processed")
+            continue
+
+        wfn_key = f"clients/{client_id}/csv/{pay_date}/wfn.csv"
+        try:
+            raw_wfn = _load_csv_from_s3(wfn_key)
+            master = _extract_raw_master(raw_wfn)
+        except AppError as e:
+            errors.append(f"{pay_date}: {e.message}")
+            continue
+        except Exception as e:
+            errors.append(f"{pay_date}: {e}")
+            continue
+
+        if master.empty:
+            continue
+
+        slim = master[["co", "employee_id"]].dropna(subset=["co"]).copy()
+        slim["co"] = slim["co"].astype("string").str.strip()
+        slim = slim[slim["co"] != ""]
+        for co, group in slim.groupby("co", sort=False):
+            co_key = str(co)
+            employees_by_co.setdefault(co_key, set()).update(
+                group["employee_id"].dropna().astype(str).str.strip().tolist()
+            )
+            periods_by_co.setdefault(co_key, set()).add(pay_date)
+
+    co_codes = [
+        {
+            "co": co,
+            "uniqueEmployeeIds": len(employees_by_co[co]),
+            "periodsPresent": len(periods_by_co[co]),
+        }
+        for co in sorted(employees_by_co.keys())
+    ]
+
+    return {
+        "coCodes": co_codes,
+        "periodCount": len(ordered),
+        "warnings": errors,
+    }
 
 
 def _over_under_cols(series: pd.Series):
@@ -446,6 +529,7 @@ def _process_one_period(
     pay_date: str,
     client_params: dict,
     processed_waiver_df: pd.DataFrame | None,
+    include_co: set[str] | None = None,
 ) -> tuple[pd.DataFrame, list[dict], dict]:
     notes: list[dict] = []
     empty_check = {
@@ -461,6 +545,7 @@ def _process_one_period(
     raw_ta = _load_csv_from_s3(ta_key)
 
     master = _extract_raw_master(raw_wfn)
+    master = _filter_master_by_co(master, include_co)
     wfn_unique = (
         int(master["employee_id"].nunique())
         if not master.empty and "employee_id" in master.columns
@@ -474,7 +559,10 @@ def _process_one_period(
                 "pay_date": pay_date,
                 "employee_id": "",
                 "payroll_name": "",
-                "issue": "No FLSA Code = N employees in WFN for this period.",
+                "issue": (
+                    "No FLSA Code = N employees in WFN for this period"
+                    + (" after CO. filter." if include_co is not None else ".")
+                ),
             }
         )
         return master, notes, empty_check
@@ -656,6 +744,7 @@ def generate_paga_audit(
     pay_dates: list,
     client_params: dict | None,
     sheet_layout: str = "stacked",
+    include_co_codes=None,
 ):
     if not client_id:
         raise AppError("clientId is required.", status_code=400)
@@ -670,6 +759,10 @@ def generate_paga_audit(
             "sheetLayout must be 'stacked' or 'split'.",
             status_code=400,
         )
+
+    include_co = _normalize_co_set(include_co_codes)
+    if include_co_codes is not None and not include_co:
+        raise AppError("Select at least one CO. code to include.", status_code=400)
 
     # Dedupe + sort ascending for stacked readability
     ordered = sorted({str(d) for d in pay_dates})
@@ -700,7 +793,11 @@ def generate_paga_audit(
 
         try:
             frame, notes, id_check = _process_one_period(
-                client_id, pay_date, client_params, processed_waiver
+                client_id,
+                pay_date,
+                client_params,
+                processed_waiver,
+                include_co=include_co,
             )
             all_notes.extend(notes)
             employee_id_checks.append(id_check)
@@ -731,6 +828,12 @@ def generate_paga_audit(
     if not all_rows and errors:
         raise AppError(
             "PAGA audit could not build any rows. " + " | ".join(errors),
+            status_code=400,
+        )
+
+    if not all_rows and include_co is not None:
+        raise AppError(
+            "No employees matched the selected CO. codes for the chosen periods.",
             status_code=400,
         )
 
@@ -767,6 +870,7 @@ def generate_paga_audit(
         "periodCount": len(ordered),
         "notesCount": len(all_notes),
         "sheetLayout": layout,
+        "includedCoCodes": sorted(include_co) if include_co is not None else None,
         "employeeIdChecks": employee_id_checks,
         "employeeIdMatch": employee_id_match,
         "warnings": errors,

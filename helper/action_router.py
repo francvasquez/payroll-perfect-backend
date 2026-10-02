@@ -11,7 +11,7 @@ from helper.aws import (
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
-from helper.paga_audit import generate_paga_audit
+from helper.paga_audit import generate_paga_audit, list_paga_co_codes
 
 
 def route_action(action, params, event):
@@ -24,6 +24,7 @@ def route_action(action, params, event):
     payDate = params.get("payDate")
     payDates = params.get("payDates") or []
     sheetLayout = params.get("sheetLayout") or "stacked"
+    includeCoCodes = params.get("includeCoCodes")
     annotations = params.get("annotations")
     config = params.get("config")
     client_config = params.get("client_config")
@@ -54,8 +55,12 @@ def route_action(action, params, event):
         return delete_annotations(clientId, payDate)
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
+    elif action == "list-paga-co-codes":
+        return list_paga_co_codes(clientId, payDates)
     elif action == "generate-paga-audit":
-        return generate_paga_audit(clientId, payDates, client_config, sheetLayout)
+        return generate_paga_audit(
+            clientId, payDates, client_config, sheetLayout, includeCoCodes
+        )
     elif action == "process-files":
         return handle_file_upload(event, params)
     else:
