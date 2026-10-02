@@ -11,6 +11,7 @@ from helper.aws import (
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
+from helper.paga_audit import generate_paga_audit
 
 
 def route_action(action, params, event):
@@ -21,8 +22,10 @@ def route_action(action, params, event):
     endDate = params.get("endDate")
     selectedCols = params.get("selectedCols", [])
     payDate = params.get("payDate")
+    payDates = params.get("payDates") or []
     annotations = params.get("annotations")
     config = params.get("config")
+    client_config = params.get("client_config")
 
     # Use ELIF to prevent the "Default Fallthrough" to file upload
     if action == "query-ta-records":
@@ -50,6 +53,8 @@ def route_action(action, params, event):
         return delete_annotations(clientId, payDate)
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
+    elif action == "generate-paga-audit":
+        return generate_paga_audit(clientId, payDates, client_config)
     elif action == "process-files":
         return handle_file_upload(event, params)
     else:

@@ -96,6 +96,8 @@ def process_data_ta(
     processed_waiver_df=None,
     processed_wfn_df=None,
     ignore_warnings=False,
+    persist_to_db=True,
+    compute_daily=True,
 ):
 
     ######### DF CLEANUP AND PREP #################
@@ -201,32 +203,41 @@ def process_data_ta(
     # Add Report Time Warning tag to df (short shift)
     df = ta_utility.add_report_time_warning(df)
 
-    # Create the Daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
-    daily_df = ta_utility.create_daily_df(df, client_params)
-
-    # Add to daily_df 40 hours and consecutive days calcs. This will make a db call to check for previous periods punches if the employee worked the last day of the previous period and has the cba_consec_anyweek boolean set to true.
-    daily_df = ta_weekly_rules.apply_weekly_rules(
-        daily_df, client_params, clientId, pay_date
-    )
-
-    # Add pay period totals
-    daily_df = ta_utility.apply_pay_period_totals(
-        daily_df, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
-    )
-    # Add OT and DT actually paid from WFN for variance analysis
-    daily_df = ta_utility.apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df)
-
-    # Drop workdays that don't belong to the pay period
-    daily_df = ta_utility.filter_target_pay_period(daily_df, pay_date)
-
-    # Add reporting columns for consecutive day calcs
-    daily_df = ta_utility.add_consec_day_reporting(daily_df)
-
     # Create anomalies DF - i.e. Break Credit Summary table
     anomalies_df_new = ta_utility.create_anomalies_new(df)
 
-    # Write to DB and capture status for the frontend
-    db_write = _save_to_database(df, daily_df, clientId, pay_date)
+    daily_df = pd.DataFrame()
+    if compute_daily:
+        # Create the Daily dataframe with OT and DT calculations (exclusing 40 hours and consecutive days OT)
+        daily_df = ta_utility.create_daily_df(df, client_params)
+
+        # Add to daily_df 40 hours and consecutive days calcs. This will make a db call to check for previous periods punches if the employee worked the last day of the previous period and has the cba_consec_anyweek boolean set to true.
+        daily_df = ta_weekly_rules.apply_weekly_rules(
+            daily_df, client_params, clientId, pay_date
+        )
+
+        # Add pay period totals
+        daily_df = ta_utility.apply_pay_period_totals(
+            daily_df, client_params, CLIENT_CONFIGS[clientId]["anchor_pay_date"]
+        )
+        # Add OT and DT actually paid from WFN for variance analysis
+        daily_df = ta_utility.apply_ot_and_dt_paid_from_wfn(daily_df, processed_wfn_df)
+
+        # Drop workdays that don't belong to the pay period
+        daily_df = ta_utility.filter_target_pay_period(daily_df, pay_date)
+
+        # Add reporting columns for consecutive day calcs
+        daily_df = ta_utility.add_consec_day_reporting(daily_df)
+
+    if persist_to_db:
+        db_write = _save_to_database(df, daily_df, clientId, pay_date)
+    else:
+        db_write = {
+            "status": "skipped",
+            "message": "Database save skipped (audit-only run).",
+            "ta_rows_attempted": len(df),
+            "daily_rows_attempted": len(daily_df),
+        }
 
     return (
         df,
