@@ -51,6 +51,7 @@ def parse_event_params(event):
         "clientId": body.get("clientId") or body.get("client_id"),
         "payDate": body.get("payDate") or body.get("pay_date"),
         "payDates": body.get("payDates") or body.get("pay_dates") or [],
+        "sheetLayout": body.get("sheetLayout") or body.get("sheet_layout") or "stacked",
         "employeeId": body.get("employeeId"),
         "startDate": body.get("startDate"),
         "endDate": body.get("endDate"),

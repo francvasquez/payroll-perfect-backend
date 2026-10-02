@@ -23,6 +23,7 @@ def route_action(action, params, event):
     selectedCols = params.get("selectedCols", [])
     payDate = params.get("payDate")
     payDates = params.get("payDates") or []
+    sheetLayout = params.get("sheetLayout") or "stacked"
     annotations = params.get("annotations")
     config = params.get("config")
     client_config = params.get("client_config")
@@ -54,7 +55,7 @@ def route_action(action, params, event):
     elif action == "delete-pay-period":
         return delete_pay_period(clientId, payDate)
     elif action == "generate-paga-audit":
-        return generate_paga_audit(clientId, payDates, client_config)
+        return generate_paga_audit(clientId, payDates, client_config, sheetLayout)
     elif action == "process-files":
         return handle_file_upload(event, params)
     else:

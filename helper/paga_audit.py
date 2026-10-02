@@ -446,8 +446,14 @@ def _process_one_period(
     pay_date: str,
     client_params: dict,
     processed_waiver_df: pd.DataFrame | None,
-) -> tuple[pd.DataFrame, list[dict]]:
+) -> tuple[pd.DataFrame, list[dict], dict]:
     notes: list[dict] = []
+    empty_check = {
+        "payDate": pay_date,
+        "wfnUniqueEmployeeIds": 0,
+        "auditUniqueEmployeeIds": 0,
+        "match": True,
+    }
     wfn_key = f"clients/{client_id}/csv/{pay_date}/wfn.csv"
     ta_key = f"clients/{client_id}/csv/{pay_date}/ta.csv"
 
@@ -455,6 +461,13 @@ def _process_one_period(
     raw_ta = _load_csv_from_s3(ta_key)
 
     master = _extract_raw_master(raw_wfn)
+    wfn_unique = (
+        int(master["employee_id"].nunique())
+        if not master.empty and "employee_id" in master.columns
+        else 0
+    )
+    empty_check["wfnUniqueEmployeeIds"] = wfn_unique
+
     if master.empty:
         notes.append(
             {
@@ -464,7 +477,7 @@ def _process_one_period(
                 "issue": "No FLSA Code = N employees in WFN for this period.",
             }
         )
-        return master, notes
+        return master, notes, empty_check
 
     # Force pay date column for the report (from folder / processing context)
     master["pay_date"] = pay_date
@@ -521,23 +534,60 @@ def _process_one_period(
     if "reporting_time_pay" in master.columns:
         master["reporting_time_pay"] = master["reporting_time_pay"].replace(0, pd.NA)
 
-    return master, notes
+    audit_unique = (
+        int(master["employee_id"].nunique())
+        if not master.empty and "employee_id" in master.columns
+        else 0
+    )
+    id_check = {
+        "payDate": pay_date,
+        "wfnUniqueEmployeeIds": wfn_unique,
+        "auditUniqueEmployeeIds": audit_unique,
+        "match": wfn_unique == audit_unique,
+    }
+    if not id_check["match"]:
+        notes.append(
+            {
+                "pay_date": pay_date,
+                "employee_id": "",
+                "payroll_name": "",
+                "issue": (
+                    f"Employee ID count mismatch vs WFN (FLSA=N): "
+                    f"WFN={wfn_unique}, audit={audit_unique}."
+                ),
+            }
+        )
+
+    return master, notes, id_check
 
 
-def _rows_to_workbook(rows: list[dict], notes: list[dict]) -> bytes:
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "PAGA Audit"
+def _sheet_title_for_pay_date(pay_date: str, used: set[str]) -> str:
+    """Excel sheet names max 31 chars; cannot contain \\ / ? * [ ]."""
+    base = str(pay_date).strip() or "Period"
+    for ch in ("\\", "/", "?", "*", "[", "]"):
+        base = base.replace(ch, "-")
+    base = base[:31] or "Period"
+    title = base
+    n = 2
+    while title in used:
+        suffix = f"_{n}"
+        title = f"{base[: 31 - len(suffix)]}{suffix}"
+        n += 1
+    used.add(title)
+    return title
 
+
+def _write_data_sheet(ws, rows: list[dict]) -> None:
     headers = [h for _, h in OUTPUT_SPEC]
     keys = [k for k, _ in OUTPUT_SPEC]
     ws.append(headers)
     for cell in ws[1]:
         cell.font = Font(bold=True)
-
     for row in rows:
         ws.append([_blank_if_na(row.get(k)) for k in keys])
 
+
+def _write_notes_sheet(wb, notes: list[dict]) -> None:
     notes_ws = wb.create_sheet("Notes")
     notes_ws.append(["Pay Date", "Employee ID", "Payroll Name", "Issue"])
     for cell in notes_ws[1]:
@@ -555,18 +605,71 @@ def _rows_to_workbook(rows: list[dict], notes: list[dict]) -> bytes:
     else:
         notes_ws.append(["", "", "", "No notes. Kept first row on any duplicates."])
 
+
+def _rows_to_workbook(
+    rows: list[dict],
+    notes: list[dict],
+    sheet_layout: str = "stacked",
+    ordered_pay_dates: list[str] | None = None,
+) -> bytes:
+    wb = openpyxl.Workbook()
+    # Remove default sheet; rebuild based on layout
+    default = wb.active
+    wb.remove(default)
+
+    layout = (sheet_layout or "stacked").strip().lower()
+    if layout not in ("stacked", "split"):
+        layout = "stacked"
+
+    if layout == "split":
+        by_date: dict[str, list[dict]] = {}
+        for row in rows:
+            pd_key = str(row.get("pay_date") or "").strip() or "Unknown"
+            by_date.setdefault(pd_key, []).append(row)
+
+        order = ordered_pay_dates or sorted(by_date.keys())
+        used_titles: set[str] = set()
+        for pay_date in order:
+            period_rows = by_date.get(pay_date)
+            if not period_rows:
+                continue
+            ws = wb.create_sheet(_sheet_title_for_pay_date(pay_date, used_titles))
+            _write_data_sheet(ws, period_rows)
+
+        # If every period failed (no data sheets), still produce an empty shell
+        if not wb.worksheets:
+            ws = wb.create_sheet("PAGA Audit")
+            _write_data_sheet(ws, [])
+    else:
+        ws = wb.create_sheet("PAGA Audit")
+        _write_data_sheet(ws, rows)
+
+    _write_notes_sheet(wb, notes)
+
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
 
 
-def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | None):
+def generate_paga_audit(
+    client_id: str,
+    pay_dates: list,
+    client_params: dict | None,
+    sheet_layout: str = "stacked",
+):
     if not client_id:
         raise AppError("clientId is required.", status_code=400)
     if not pay_dates:
         raise AppError("Select at least one pay period.", status_code=400)
     if not client_params:
         raise AppError("client_config is required.", status_code=400)
+
+    layout = (sheet_layout or "stacked").strip().lower()
+    if layout not in ("stacked", "split"):
+        raise AppError(
+            "sheetLayout must be 'stacked' or 'split'.",
+            status_code=400,
+        )
 
     # Dedupe + sort ascending for stacked readability
     ordered = sorted({str(d) for d in pay_dates})
@@ -576,6 +679,7 @@ def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | N
     all_rows: list[dict] = []
     all_notes: list[dict] = []
     errors: list[str] = []
+    employee_id_checks: list[dict] = []
 
     for pay_date in ordered:
         # Confirm period was processed
@@ -595,10 +699,11 @@ def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | N
             continue
 
         try:
-            frame, notes = _process_one_period(
+            frame, notes, id_check = _process_one_period(
                 client_id, pay_date, client_params, processed_waiver
             )
             all_notes.extend(notes)
+            employee_id_checks.append(id_check)
             if not frame.empty:
                 all_rows.extend(frame.to_dict(orient="records"))
         except AppError as e:
@@ -629,7 +734,9 @@ def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | N
             status_code=400,
         )
 
-    xlsx_bytes = _rows_to_workbook(all_rows, all_notes)
+    xlsx_bytes = _rows_to_workbook(
+        all_rows, all_notes, sheet_layout=layout, ordered_pay_dates=ordered
+    )
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     filename = f"paga_audit_{client_id}_{stamp}.xlsx"
@@ -648,6 +755,10 @@ def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | N
         ExpiresIn=600,
     )
 
+    employee_id_match = bool(employee_id_checks) and all(
+        c.get("match") for c in employee_id_checks
+    )
+
     return {
         "downloadUrl": download_url,
         "s3Key": s3_key,
@@ -655,5 +766,8 @@ def generate_paga_audit(client_id: str, pay_dates: list, client_params: dict | N
         "rowCount": len(all_rows),
         "periodCount": len(ordered),
         "notesCount": len(all_notes),
+        "sheetLayout": layout,
+        "employeeIdChecks": employee_id_checks,
+        "employeeIdMatch": employee_id_match,
         "warnings": errors,
     }
