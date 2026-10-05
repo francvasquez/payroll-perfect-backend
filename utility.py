@@ -165,6 +165,42 @@ def apply_override_else_global(
     )
 
 
+def _series_to_datetime(series: pd.Series) -> pd.Series:
+    """
+    Convert a Series to datetime64, including Excel serial day numbers.
+
+    Some ADP/Kronos exports store a subset of punch cells as Excel serials
+    (e.g. 45878.27) mixed with real datetime objects. Plain pd.to_datetime
+    treats those numbers as ns since the Unix epoch → 1970-01-01.
+
+    Already-datetime64 columns are returned unchanged so previously good
+    uploads keep the same path.
+    """
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+
+    converted = pd.to_datetime(series, errors="coerce")
+
+    # Only rewrite raw numeric cells in the Excel-serial band. Timestamps,
+    # date strings, and Unix seconds/ms fall outside this path.
+    numeric = pd.to_numeric(series, errors="coerce")
+    if not isinstance(numeric, pd.Series):
+        return converted
+
+    excel_mask = numeric.between(20000, 100000)
+    if not excel_mask.any():
+        return converted
+
+    excel_dates = pd.to_datetime(
+        numeric.loc[excel_mask],
+        unit="D",
+        origin="1899-12-30",
+    ).dt.round("s")
+    converted = converted.copy()
+    converted.loc[excel_mask] = excel_dates
+    return converted
+
+
 def to_pandas_datetime(df, *columns):
     """
     Convert multiple DataFrame columns to pandas datetime.
@@ -172,7 +208,9 @@ def to_pandas_datetime(df, *columns):
     *means the function accepts any number of column names without having to pass them as a list.
     """
     for col in columns:
-        df[col] = pd.to_datetime(df[col])
+        if col not in df.columns:
+            continue
+        df[col] = _series_to_datetime(df[col])
     return df
 
 
