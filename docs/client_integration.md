@@ -161,7 +161,7 @@ CLIENT_CONFIGS = {
 
 For each payroll or time-system format, define:
 
-1. **Detection** — header row index and a few columns that uniquely identify that export (so the app can auto-detect which mapping to use).
+1. **Detection** — header row index (preferred) and a few columns that uniquely identify that export (so the app can auto-detect which mapping to use). For **WFN**, the reader also scans Excel rows 1–10 if the preferred header does not match.
 2. **Mappings** — rename or transform source columns to the standard names in Step 1. Supported transforms today: simple rename, **concat** (several columns + delimiter), and **substring**.
 3. **drop_rows** (optional) — drop blank punches, test employees, or pay codes that are not time punches.
 4. **force_type** (optional) — force a column to string so IDs are not read as numbers.

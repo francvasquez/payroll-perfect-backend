@@ -90,6 +90,7 @@ CLIENT_CONFIGS = {
         "anchor_pay_date": "2026-01-16",  # This is the anchor pay date used to calculate to which fiscal pay dates each work day belongs to. Should be a known pay date in the client's payroll calendar. Format: YYYY-MM-DD
         "wfn_systems": {
             "ADP": {
+                # header = preferred row (0-based); reader also scans Excel rows 1-10
                 "detection": {"columns": ["CO.", "PAY DATE"], "header": 5},
                 "mappings": ADP_WFN_COLUMN_MAPPINGS,
             },

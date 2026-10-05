@@ -349,10 +349,20 @@ def load_processed_results(client_id, pay_date):
             )
 
 
+# ADP WFN exports sometimes place column headers on row 6, sometimes earlier
+# (e.g. row 2) depending on whether the report title banner is included.
+# Scan Excel rows 1-10 (pandas header indices 0-9) for fingerprint columns.
+WFN_HEADER_SCAN_ROWS = range(10)
+
+
 def read_wfn_excel_from_s3(key, clientId, engine=None):
     """
     Reads WFN Excel file from S3, auto-detects system configuration,
-    and returns (df, system_name, config)
+    and returns (df, system_name, config).
+
+    For each configured WFN system, peeks at candidate header rows (Excel
+    rows 1-10), preferring detection.header first, and matches when all
+    fingerprint columns are present.
     """
     # Step 1: Download file into memory
     obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
@@ -370,23 +380,29 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
     for wfn_system_name, wfn_config in wfn_systems.items():
 
         # --- a. Detection inputs ---
-        header_row = wfn_config["detection"]["header"]
+        preferred_header = wfn_config["detection"].get("header", 5)
         required_cols = wfn_config["detection"]["columns"]
+        # Prefer configured row, then remaining rows 1-10
+        header_candidates = [preferred_header] + [
+            i for i in WFN_HEADER_SCAN_ROWS if i != preferred_header
+        ]
 
-        # --- b. Peek at header row only ---
-        try:
-            file_bytes.seek(0)  # reset buffer before each read
-            df_header = pd.read_excel(
-                file_bytes, nrows=0, header=header_row, engine=engine
-            )
-        except Exception:
-            continue  # skip this system if read fails
+        for header_row in header_candidates:
+            # --- b. Peek at header row only ---
+            try:
+                file_bytes.seek(0)  # reset buffer before each read
+                df_header = pd.read_excel(
+                    file_bytes, nrows=0, header=header_row, engine=engine
+                )
+            except Exception:
+                continue  # try next header row / system
 
-        # --- c. Normalize column names for robust matching ---
-        df_header.columns = df_header.columns.str.strip()
+            # --- c. Normalize column names for robust matching ---
+            df_header.columns = df_header.columns.str.strip()
 
-        # --- d. Check required columns presence ---
-        if all(col in df_header.columns for col in required_cols):
+            # --- d. Check required columns presence ---
+            if not all(col in df_header.columns for col in required_cols):
+                continue
 
             # --- e. Read full DataFrame once the system is matched ---
             file_bytes.seek(0)
@@ -399,7 +415,11 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
             )
             df.columns = df.columns.str.strip()  # normalize full DF too
 
-            # Return the dataframe and matched config details
+            print(
+                f"WFN system '{wfn_system_name}' matched for client "
+                f"'{clientId}' using header row index {header_row} "
+                f"(Excel row {header_row + 1})."
+            )
             return (
                 df,
                 wfn_system_name,

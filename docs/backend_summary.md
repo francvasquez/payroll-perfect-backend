@@ -95,7 +95,7 @@ Do not confuse these.
 
 `get-client-config` reads S3 and **injects** `anchor_pay_date` from `CLIENT_CONFIGS`. Anchor is not stored in the JSON file.
 
-Excel detection: for each system under `wfn_systems` / `ta_systems`, peek at the configured header row. If the fingerprint columns exist, that mapping is used. If none match → `WFN_SYSTEM_UNRECOGNIZED` or `TA_SYSTEM_UNRECOGNIZED` (400).
+Excel detection: for each system under `wfn_systems` / `ta_systems`, peek at header row(s) for fingerprint columns. **WFN** prefers `detection.header`, then scans Excel rows 1–10. **TA** uses the configured header only. If none match → `WFN_SYSTEM_UNRECOGNIZED` or `TA_SYSTEM_UNRECOGNIZED` (400).
 
 After mapping, columns should match the **standard names** in `TA_TARGET_SCHEMA` / `WFN_TARGET_SCHEMA`. TA **ID** must equal WFN **IDX** for the same person.
 
