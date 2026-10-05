@@ -349,10 +349,9 @@ def load_processed_results(client_id, pay_date):
             )
 
 
-# ADP WFN exports sometimes place column headers on row 6, sometimes earlier
-# (e.g. row 2) depending on whether the report title banner is included.
-# Scan Excel rows 1-10 (pandas header indices 0-9) for fingerprint columns.
-WFN_HEADER_SCAN_ROWS = range(10)
+# Excel report title banners shift column headers; scan rows 1-10
+# (pandas header indices 0-9) for fingerprint columns.
+EXCEL_HEADER_SCAN_ROWS = range(10)
 
 
 def read_wfn_excel_from_s3(key, clientId, engine=None):
@@ -384,7 +383,7 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
         required_cols = wfn_config["detection"]["columns"]
         # Prefer configured row, then remaining rows 1-10
         header_candidates = [preferred_header] + [
-            i for i in WFN_HEADER_SCAN_ROWS if i != preferred_header
+            i for i in EXCEL_HEADER_SCAN_ROWS if i != preferred_header
         ]
 
         for header_row in header_candidates:
@@ -452,17 +451,12 @@ def read_waiver_excel_from_s3(key, header=0, engine=None):
 
 def read_ta_excel_from_s3(key, clientId, engine=None):
     """
-    Reads Excel file from S3, auto-detects system, and returns (system_name, df, config)
+    Reads Excel file from S3, auto-detects system, and returns (df, system_name, config).
 
-    Steps:
-    1. Download the file from S3 into memory.
-    2. Loop through each system defined for the client.
-        a. For each system, get its detection header row and required columns.
-        b. Read only the header row (or nrows=0) to peek at columns.
-        c. Normalize column names (strip whitespace) for robust matching.
-        d. Check if all required columns are present.
-        e. If matched, read the full Excel file using this system's header.
-    3. If no system matches, raise an error.
+    For each configured TA system, peeks at candidate header rows (Excel
+    rows 1-10), preferring detection.header first, and matches when all
+    fingerprint columns are present. Systems stay distinct via those
+    fingerprint columns (e.g. In Punch Comment vs Home Labor Category).
     """
 
     # Step 1: Download file into memory
@@ -475,40 +469,54 @@ def read_ta_excel_from_s3(key, clientId, engine=None):
     for ta_system_name, ta_config in systems.items():
 
         # --- a. Detection inputs ---
-        header_row = ta_config["detection"]["header"]
+        preferred_header = ta_config["detection"].get("header", 7)
         required_cols = ta_config["detection"]["columns"]
-        # ----------------------------
+        header_candidates = [preferred_header] + [
+            i for i in EXCEL_HEADER_SCAN_ROWS if i != preferred_header
+        ]
 
-        # --- b. Peek at header row only ---
-        try:
-            file_bytes.seek(0)  # reset buffer before each read
-            df_header = pd.read_excel(
-                file_bytes, nrows=0, header=header_row, engine=engine
-            )
-        except Exception:
-            continue  # skip this system if read fails
+        for header_row in header_candidates:
+            try:
+                # --- b. Peek at header row only ---
+                file_bytes.seek(0)  # reset buffer before each read
+                df_header = pd.read_excel(
+                    file_bytes, nrows=0, header=header_row, engine=engine
+                )
 
-        # --- c. Normalize column names for robust matching ---
-        df_header.columns = df_header.columns.str.strip()
+                # --- c. Normalize column names for robust matching ---
+                df_header.columns = df_header.columns.astype(str).str.strip()
 
-        # --- d. Check required columns presence ---
-        if all(col in df_header.columns for col in required_cols):
+                # --- d. Check required columns presence ---
+                if not all(col in df_header.columns for col in required_cols):
+                    continue
 
-            # --- e. Read full DataFrame once the system is matched ---
-            file_bytes.seek(0)
-            force_type = ta_config.get("force_type", {})  # from CLIENT_CONFIGS
-            df = pd.read_excel(
-                file_bytes,
-                header=header_row,
-                engine=engine,
-                dtype=force_type or None,
-            )
-            df.columns = df.columns.str.strip()  # normalize full DF too
-            return (
-                df,
-                ta_system_name,
-                ta_config,
-            )  # Return the matched system's config for downstream processing
+                # --- e. Read full DataFrame once the system is matched ---
+                file_bytes.seek(0)
+                force_type = ta_config.get("force_type", {})  # from CLIENT_CONFIGS
+                df = pd.read_excel(
+                    file_bytes,
+                    header=header_row,
+                    engine=engine,
+                    dtype=force_type or None,
+                )
+                df.columns = df.columns.astype(str).str.strip()
+
+                print(
+                    f"TA system '{ta_system_name}' matched for client "
+                    f"'{clientId}' using header row index {header_row} "
+                    f"(Excel row {header_row + 1})."
+                )
+                return (
+                    df,
+                    ta_system_name,
+                    ta_config,
+                )
+            except Exception as e:
+                print(
+                    f"TA header scan skip row index {header_row} for "
+                    f"'{ta_system_name}': {type(e).__name__}: {e}"
+                )
+                continue  # try next header row / system
 
     # Step 3: No system matched
     print(

@@ -99,7 +99,8 @@ CLIENT_CONFIGS = {
             "Time and Attendance": {
                 "detection": {
                     "columns": ["Employee", "In Punch Comment"],
-                    "header": 7,  # The file must contain "columns" in the correct "header"
+                    # preferred row (0-based Excel row 8); reader also scans rows 1-10
+                    "header": 7,
                 },
                 "mappings": {
                     "Employee": "Employee",  # For reference
