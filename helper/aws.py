@@ -388,43 +388,49 @@ def read_wfn_excel_from_s3(key, clientId, engine=None):
         ]
 
         for header_row in header_candidates:
-            # --- b. Peek at header row only ---
             try:
+                # --- b. Peek at header row only ---
                 file_bytes.seek(0)  # reset buffer before each read
                 df_header = pd.read_excel(
                     file_bytes, nrows=0, header=header_row, engine=engine
                 )
-            except Exception:
+
+                # --- c. Normalize column names for robust matching ---
+                # Wrong candidate rows often yield numeric/NaN "headers";
+                # coerce to str so .str.strip() never raises.
+                df_header.columns = df_header.columns.astype(str).str.strip()
+
+                # --- d. Check required columns presence ---
+                if not all(col in df_header.columns for col in required_cols):
+                    continue
+
+                # --- e. Read full DataFrame once the system is matched ---
+                file_bytes.seek(0)
+                force_type = wfn_config.get("force_type", {})  # from CLIENT_CONFIGS
+                df = pd.read_excel(
+                    file_bytes,
+                    header=header_row,
+                    engine=engine,
+                    dtype=force_type or None,
+                )
+                df.columns = df.columns.astype(str).str.strip()
+
+                print(
+                    f"WFN system '{wfn_system_name}' matched for client "
+                    f"'{clientId}' using header row index {header_row} "
+                    f"(Excel row {header_row + 1})."
+                )
+                return (
+                    df,
+                    wfn_system_name,
+                    wfn_config,
+                )
+            except Exception as e:
+                print(
+                    f"WFN header scan skip row index {header_row} for "
+                    f"'{wfn_system_name}': {type(e).__name__}: {e}"
+                )
                 continue  # try next header row / system
-
-            # --- c. Normalize column names for robust matching ---
-            df_header.columns = df_header.columns.str.strip()
-
-            # --- d. Check required columns presence ---
-            if not all(col in df_header.columns for col in required_cols):
-                continue
-
-            # --- e. Read full DataFrame once the system is matched ---
-            file_bytes.seek(0)
-            force_type = wfn_config.get("force_type", {})  # from CLIENT_CONFIGS
-            df = pd.read_excel(
-                file_bytes,
-                header=header_row,
-                engine=engine,
-                dtype=force_type or None,
-            )
-            df.columns = df.columns.str.strip()  # normalize full DF too
-
-            print(
-                f"WFN system '{wfn_system_name}' matched for client "
-                f"'{clientId}' using header row index {header_row} "
-                f"(Excel row {header_row + 1})."
-            )
-            return (
-                df,
-                wfn_system_name,
-                wfn_config,
-            )
 
     # Step 3: No system matched
     print(
