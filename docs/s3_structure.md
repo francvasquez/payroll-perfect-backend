@@ -17,16 +17,19 @@ s3://pp-client-data/                          # S3_BUCKET (env, default pp-clien
               │         ├── results.json      # frontend payload after processing
               │         └── annotations.json  # optional; deleted on reprocess
               └── waiver/                     # one set per client, not per pay date
-                   ├── waiver.xlsx            # original Excel upload
-                   ├── waiver.csv             # parsed copy
-                   └── waiver.json
+                   ├── waiver.xlsx            # original Excel upload (standardized name)
+                   ├── waiver.csv             # parsed copy (reused when no new waiver uploaded)
+                   ├── waiver.json
+                   └── waiver_meta.json       # { fileName, updatedAt } for sticky-reuse UI
 
 Notes
 - Frontend uploads Excel via presigned URL and always uses the standardized names above
-  (original filenames are ignored). TA and WFN go under raw/{pay_date}/; waiver goes
+  for S3 keys (ta.xlsx / wfn.xlsx / waiver.xlsx). The original waiver filename is stored
+  in waiver_meta.json for display. TA and WFN go under raw/{pay_date}/; waiver goes
   under waiver/.
 - After processing, TA/WFN are also saved as CSV under csv/{pay_date}/. Waiver is
-  saved as both CSV and JSON next to the Excel.
+  saved as both CSV and JSON next to the Excel. process-files reuses waiver.csv when
+  the user does not upload a new waiver for that run.
 - list-pay-periods walks clients/{client_id}/processed/ and reads metadata from
   each results.json.
 - Deleting a pay period removes that date under processed/, raw/, and csv/.

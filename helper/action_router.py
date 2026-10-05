@@ -8,6 +8,7 @@ from helper.aws import (
     load_annotations,
     delete_annotations,
     delete_pay_period,
+    get_waiver_status,
 )
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
@@ -47,6 +48,8 @@ def route_action(action, params, event):
         return load_processed_results(clientId, payDate)
     elif action == "get-upload-url":
         return handle_presigned_url_request(event)
+    elif action == "get-waiver-status":
+        return get_waiver_status(clientId)
     elif action == "save-annotations":
         return save_annotations(clientId, payDate, annotations)
     elif action == "load-annotations":

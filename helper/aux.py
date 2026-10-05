@@ -63,6 +63,8 @@ def parse_event_params(event):
         "waiver_key": body.get("waiver_key"),
         "wfn_key": body.get("wfn_key"),
         "ta_key": body.get("ta_key"),
+        "waiverOriginalFileName": body.get("waiverOriginalFileName")
+        or body.get("waiver_original_file_name"),
     }
     return params
 

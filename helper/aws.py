@@ -449,6 +449,106 @@ def read_waiver_excel_from_s3(key, header=0, engine=None):
     return pd.read_excel(file_bytes, header=header, engine=engine)
 
 
+def waiver_csv_key(client_id: str) -> str:
+    return f"clients/{client_id}/waiver/waiver.csv"
+
+
+def waiver_xlsx_key(client_id: str) -> str:
+    return f"clients/{client_id}/waiver/waiver.xlsx"
+
+
+def waiver_meta_key(client_id: str) -> str:
+    return f"clients/{client_id}/waiver/waiver_meta.json"
+
+
+def _s3_object_exists(key: str) -> bool:
+    try:
+        s3_client.head_object(Bucket=S3_BUCKET, Key=key)
+        return True
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return False
+        raise
+
+
+def load_saved_processed_waiver(client_id: str):
+    """
+    Load clients/{id}/waiver/waiver.csv and return process_waiver(df).
+    Returns None if no saved waiver CSV exists.
+    """
+    from waiver.waiver_process import process_waiver
+
+    key = waiver_csv_key(client_id)
+    try:
+        obj = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("404", "NoSuchKey", "NotFound"):
+            return None
+        raise AppError(
+            f"Failed to load saved waiver from storage: {key}", status_code=500
+        ) from e
+
+    df = pd.read_csv(io.BytesIO(obj["Body"].read()))
+    df.columns = df.columns.astype(str).str.strip()
+    return process_waiver(df)
+
+
+def save_waiver_meta(client_id: str, file_name: str | None):
+    """Persist original waiver filename for sticky-reuse UI."""
+    if not client_id or not file_name:
+        return None
+    payload = {
+        "fileName": file_name,
+        "updatedAt": datetime.now(timezone.utc).isoformat(),
+    }
+    key = waiver_meta_key(client_id)
+    s3_client.put_object(
+        Bucket=S3_BUCKET,
+        Key=key,
+        Body=json.dumps(payload),
+        ContentType="application/json",
+    )
+    print(f"Saved waiver meta to: s3://{S3_BUCKET}/{key}")
+    return key
+
+
+def get_waiver_status(client_id: str) -> dict:
+    """
+    Return whether a sticky client-level waiver is on file, plus optional meta.
+    """
+    if not client_id:
+        raise AppError("Missing clientId", status_code=400)
+
+    csv_exists = _s3_object_exists(waiver_csv_key(client_id))
+    xlsx_exists = _s3_object_exists(waiver_xlsx_key(client_id))
+    exists = csv_exists or xlsx_exists
+
+    if not exists:
+        return {"exists": False}
+
+    file_name = None
+    updated_at = None
+    try:
+        obj = s3_client.get_object(Bucket=S3_BUCKET, Key=waiver_meta_key(client_id))
+        meta = json.loads(obj["Body"].read().decode("utf-8"))
+        file_name = meta.get("fileName")
+        updated_at = meta.get("updatedAt")
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("404", "NoSuchKey", "NotFound"):
+            raise AppError("Failed to load waiver metadata", status_code=500) from e
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        print(f"[WARN] Invalid waiver_meta.json for {client_id}: {e}")
+
+    return {
+        "exists": True,
+        "fileName": file_name,
+        "updatedAt": updated_at,
+    }
+
+
 def read_ta_excel_from_s3(key, clientId, engine=None):
     """
     Reads Excel file from S3, auto-detects system, and returns (df, system_name, config).

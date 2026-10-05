@@ -3,6 +3,8 @@ from helper.aws import (
     read_wfn_excel_from_s3,
     read_ta_excel_from_s3,
     read_waiver_excel_from_s3,
+    load_saved_processed_waiver,
+    save_waiver_meta,
     save_csv_to_s3,
     save_waiver_json_s3,
     put_result_to_s3,
@@ -18,7 +20,8 @@ import json, time
 def handle_file_upload(event, params):
     """
     Processes all three files in sequence: Waiver → WFN → TA
-    Frontend ensures all three files are provided
+    Frontend ensures TA and WFN are provided. Waiver is optional; when
+    omitted, falls back to the client's last saved waiver.csv if present.
     """
 
     ### 1. Verify TA and WFN are provided (if no Waiver, user has already provided consent in frontend)
@@ -35,12 +38,16 @@ def handle_file_upload(event, params):
         disregard_pay_date_mismatches = raw_body.get(
             "disregard_pay_date_mismatches", False
         )
+        waiver_original_file_name = raw_body.get("waiverOriginalFileName") or raw_body.get(
+            "waiver_original_file_name"
+        )
     except Exception:
         # Fallback just in case
         ignore_warnings = params.get("ignore_warnings", False)
         disregard_pay_date_mismatches = params.get(
             "disregard_pay_date_mismatches", False
         )
+        waiver_original_file_name = params.get("waiverOriginalFileName")
 
     ### 3 & 4. Extract global parameters with default fallback
     (
@@ -61,19 +68,26 @@ def handle_file_upload(event, params):
         print(f"Deleting annotations for {client_id}/{pay_date} b4 reprocessing.")
         del_annot_msg = delete_annotations(client_id, pay_date)
 
-    ### 6. Process WAIVER
+    ### 6. Process WAIVER (new upload, else sticky saved copy)
     if waiver_key:
         waiver_start = time.time()
         waiver_df = read_waiver_excel_from_s3(waiver_key)
         processed_waiver_df = process_waiver(waiver_df)
         waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
-        print(f"Waiver processed: {len(processed_waiver_df)} rows")
+        print(f"Waiver processed from upload: {len(processed_waiver_df)} rows")
     else:
-        # No waiver file provided
         waiver_df = None
-        processed_waiver_df = None
-        waiver_process_time = 0
-        print("No waiver file provided, skipping waiver processing.")
+        waiver_start = time.time()
+        processed_waiver_df = load_saved_processed_waiver(client_id)
+        if processed_waiver_df is not None:
+            waiver_process_time = round((time.time() - waiver_start) * 1000, 2)
+            print(
+                f"Waiver loaded from saved client copy: "
+                f"{len(processed_waiver_df)} rows"
+            )
+        else:
+            waiver_process_time = 0
+            print("No waiver upload and no saved waiver; continuing without waiver.")
 
     ### 7. Process WFN
     wfn_df, wfn_system_name, wfn_system_config = read_wfn_excel_from_s3(
@@ -126,6 +140,7 @@ def handle_file_upload(event, params):
     if waiver_df is not None:
         save_csv_to_s3(waiver_df, "waiver", event)
         save_waiver_json_s3(waiver_df, "waiver", event)
+        save_waiver_meta(client_id, waiver_original_file_name)
 
     ### 10. Generate result for React front-end
     result = generate_results(

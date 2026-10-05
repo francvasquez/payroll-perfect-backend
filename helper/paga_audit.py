@@ -23,7 +23,6 @@ from client_config import CLIENT_CONFIGS
 from exceptions import AppError
 from helper.aux import extract_global_config
 from ta.ta_process import process_data_ta
-from waiver.waiver_process import process_waiver
 from wfn.wfn_process import process_data_wfn
 
 logger = logging.getLogger()
@@ -257,15 +256,9 @@ def _load_csv_from_s3(key: str) -> pd.DataFrame:
 
 
 def _load_waiver_processed(client_id: str) -> pd.DataFrame | None:
-    key = f"clients/{client_id}/waiver/waiver.csv"
-    try:
-        raw = _load_csv_from_s3(key)
-    except AppError as e:
-        if e.status_code == 404:
-            logger.info("No waiver.csv for %s; continuing without waiver.", client_id)
-            return None
-        raise
-    return process_waiver(raw)
+    from helper.aws import load_saved_processed_waiver
+
+    return load_saved_processed_waiver(client_id)
 
 
 def _extract_raw_master(raw_wfn: pd.DataFrame) -> pd.DataFrame:

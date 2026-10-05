@@ -51,7 +51,7 @@ Ask the client (or their payroll/IT contact) for **one complete pay period** of 
 - [ ] Sample **waiver** file (if they use meal waivers), or written confirmation they do not
 - [ ] If they use **more than one TA export format** (e.g. different properties), a sample **per format**
 
-The upload UI recognizes files by name: the filename should contain `ta` or `time` (time cards), `wfn` (payroll), or `waiver`. Original names are otherwise ignored; the app stores them as `ta.xlsx`, `wfn.xlsx`, and `waiver.xlsx`.
+The upload UI recognizes files by name: the filename should contain `ta` or `time` (time cards), `wfn` (payroll), or `waiver`. TA/WFN original names are otherwise ignored (stored as `ta.xlsx` / `wfn.xlsx`). Waiver uploads are stored as `waiver.xlsx`, but the original filename is kept in `waiver_meta.json` for the sticky-reuse card.
 
 ### 1b. System setup information
 
@@ -120,7 +120,9 @@ Break, rest, sick, vacation: **Break Credit Hours**, **Break Credit Earnings**, 
 
 ### 1f. Meal waiver (optional)
 
-If used, the file needs an employee **ID** (matching TA). Optional **Prior_ID_1** holds a previous ID (e.g. after a hotel/`CO.` move) so either ID still counts as waived. **Any employee listed is treated as having a meal-period waiver on file** — no `Check` / `X` column is required. If they skip the waiver file, every punch is treated as having **no** waiver.
+If used, the file needs an employee **ID** (matching TA). Optional **Prior_ID_1** holds a previous ID (e.g. after a hotel/`CO.` move) so either ID still counts as waived. **Any employee listed is treated as having a meal-period waiver on file** — no `Check` / `X` column is required.
+
+The waiver is **sticky per client**: it lives under `clients/{client_id}/waiver/` (not per pay date). Re-uploading overwrites it; skipping upload reuses the last saved `waiver.csv`. If they have never uploaded a waiver and choose to proceed without one, every punch is treated as having **no** waiver.
 
 ### 1g. Business rules for `config.json`
 
@@ -277,7 +279,7 @@ If detection or IDs are wrong, fix mappings in `CLIENT_CONFIGS` and redeploy (St
 - Invite remaining users into the same Cognito group.
 - Confirm they can open prior processed periods from the pay-period list.
 - Optional: add location overrides as additional sites come online.
-- Optional: keep a waiver file current under `clients/{client_id}/waiver/` (one file per client, not per pay date).
+- Optional: keep a waiver file current under `clients/{client_id}/waiver/` (one sticky file per client, not per pay date; re-upload to overwrite).
 
 ---
 
