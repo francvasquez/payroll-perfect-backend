@@ -13,6 +13,7 @@ from helper.aws import (
 from helper.db_utils import handle_query_ta_records, handle_get_ta_columns
 from helper.file_processor import handle_file_upload
 from helper.paga_audit import generate_paga_audit, list_paga_co_codes
+from helper.custom_report import generate_custom_report
 
 
 def route_action(action, params, event):
@@ -26,6 +27,7 @@ def route_action(action, params, event):
     payDates = params.get("payDates") or []
     sheetLayout = params.get("sheetLayout") or "stacked"
     includeCoCodes = params.get("includeCoCodes")
+    tables = params.get("tables") or []
     annotations = params.get("annotations")
     config = params.get("config")
     client_config = params.get("client_config")
@@ -64,6 +66,8 @@ def route_action(action, params, event):
         return generate_paga_audit(
             clientId, payDates, client_config, sheetLayout, includeCoCodes
         )
+    elif action == "generate-custom-report":
+        return generate_custom_report(clientId, payDates, tables)
     elif action == "process-files":
         return handle_file_upload(event, params)
     else:
