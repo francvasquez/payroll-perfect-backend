@@ -1,4 +1,4 @@
-import json, boto3, io, json, traceback
+import json, os, boto3, io, json, traceback
 from datetime import datetime, timezone
 import pandas as pd
 from app_config import S3_BUCKET
@@ -20,7 +20,7 @@ from exceptions import (
 from botocore.exceptions import ClientError
 
 s3_client = boto3.client("s3")
-ses = boto3.client("ses", region_name="us-west-1")
+ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-west-2"))
 
 
 def debug_to_s3(df, debug_id, debug_cols, bucket_name):
